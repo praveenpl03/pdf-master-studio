@@ -1,0 +1,337 @@
+<main class="workspace">
+  <aside class="left-panel">
+    <div class="brand-row">
+      <div>
+        <p class="eyebrow">TheConvertor</p>
+        <h1>PDF Operations Studio</h1>
+      </div>
+      <span class="tool-count">{{ tools.length }}</span>
+    </div>
+
+    <label class="file-drop">
+      <input type="file" accept="application/pdf" (change)="loadMainFile($event)" />
+      <span>Open PDF</span>
+      <small>{{ fileName }}</small>
+    </label>
+
+    <label class="file-drop compact">
+      <input type="file" accept="application/pdf" multiple (change)="addMergeFiles($event)" />
+      <span>Add merge PDFs</span>
+      <small>{{ extraFiles.length }} queued</small>
+    </label>
+    <input id="imageUpload" class="hidden-upload" type="file" accept="image/png,image/jpeg" (change)="addImageOverlay($event)" />
+
+    <div class="control-grid">
+      <label>
+        Range
+        <input [(ngModel)]="rangeText" placeholder="1-3, 8, 10" />
+      </label>
+      <label>
+        Search
+        <input [(ngModel)]="searchTerm" placeholder="find text or tool" />
+      </label>
+      <label>
+        Edit text
+        <input [(ngModel)]="editText" />
+      </label>
+      <label>
+        Stamp
+        <input [(ngModel)]="stampText" />
+      </label>
+      <label>
+        Watermark
+        <input [(ngModel)]="watermarkText" />
+      </label>
+      <label>
+        JPEG quality
+        <input type="range" min="0.35" max="0.98" step="0.01" [(ngModel)]="jpegQuality" />
+      </label>
+      <label>
+        Compression
+        <input type="range" min="0.25" max="0.95" step="0.01" [(ngModel)]="compression" />
+      </label>
+      <label>
+        Compress level
+        <select [(ngModel)]="compressionLevel">
+          <option [ngValue]="1">1 - light</option>
+          <option [ngValue]="2">2</option>
+          <option [ngValue]="3">3 - balanced</option>
+          <option [ngValue]="4">4</option>
+          <option [ngValue]="5">5 - smallest</option>
+        </select>
+      </label>
+      <label>
+        Raster scale
+        <input type="range" min="0.55" max="2" step="0.05" [(ngModel)]="compressionScale" />
+      </label>
+      <label>
+        Numbering
+        <select [(ngModel)]="pageNumberPosition">
+          <option value="bottom">Bottom</option>
+          <option value="top">Top</option>
+        </select>
+      </label>
+      <label>
+        Zoom
+        <input type="range" min="0.55" max="1.7" step="0.05" [(ngModel)]="zoom" />
+      </label>
+    </div>
+
+    <section class="metadata">
+      <p>Metadata</p>
+      <input [(ngModel)]="title" placeholder="Title" />
+      <input [(ngModel)]="author" placeholder="Author" />
+      <input [(ngModel)]="subject" placeholder="Subject" />
+      <input [(ngModel)]="keywords" placeholder="Keywords" />
+    </section>
+  </aside>
+
+  <section class="center-panel">
+    <header class="topbar">
+      <div>
+        <strong>{{ pages.length }} pages</strong>
+        <span>{{ selectedPages.length }} selected</span>
+      </div>
+      <div class="top-actions">
+        <button type="button" (click)="run('downloadPdf')" [disabled]="busy">Save PDF</button>
+        <button type="button" (click)="run('reconstructHtml')" [disabled]="busy">Rebuild HTML</button>
+        <button type="button" (click)="shapeMenuOpen = !shapeMenuOpen" [disabled]="busy || !pages.length">Shapes</button>
+        <button type="button" (click)="run('visualRebuild')" [disabled]="busy">Flatten</button>
+        <button type="button" (click)="run('compressedPdf')" [disabled]="busy">Optimize</button>
+        @if (shapeMenuOpen) {
+          <div class="shape-popover top-shape-popover">
+            <button type="button" class="shape-choice rectangle" (click)="addShape('rectangle')"><span></span>Box</button>
+            <button type="button" class="shape-choice highlight" (click)="addShape('highlight')"><span></span>Highlight</button>
+            <button type="button" class="shape-choice ellipse" (click)="addShape('ellipse')"><span></span>Circle</button>
+            <button type="button" class="shape-choice line" (click)="addShape('line')"><span></span>Line</button>
+          </div>
+        }
+      </div>
+    </header>
+
+    <div class="viewer-shell" [class.busy]="busy" (pointermove)="dragOverlay($event)" (pointerup)="stopDrag()" (pointerleave)="stopDrag()">
+      @if (busy) {
+        <div class="loading-overlay" aria-live="polite">
+          <div class="loader-ring"></div>
+          <strong>{{ busyLabel || 'Working' }}</strong>
+          <span>loading, converting and preparing...</span>
+        </div>
+      }
+      @if (activePage) {
+        <div class="page-stage" [style.width.px]="activePage.width * zoom" [style.min-height.px]="activePage.height * zoom" (click)="closeActiveEditing()">
+          <canvas #mainCanvas class="page-preview" [style.width.px]="activePage.width * zoom" [style.height.px]="activePage.height * zoom"></canvas>
+          <div #nativeTextLayer class="native-text-layer textLayer" [style.width.px]="activePage.width" [style.height.px]="activePage.height"></div>
+          @if (htmlEditMode) {
+            <div class="html-rebuild-layer" [style.width.px]="activePage.width" [style.height.px]="activePage.height" [style.transform]="'scale(' + zoom + ')'" [style.background-image]="activeHtmlBackground ? 'url(' + activeHtmlBackground + ')' : null">
+              @for (textItem of activeHtmlTextItems; track textItem.id) {
+                <div class="html-text-mask"
+                  [style.left.px]="textItem.x" [style.top.px]="textItem.y" [style.width.px]="textItem.width" [style.height.px]="textItem.height"></div>
+                <textarea class="html-text-run" [class.selected]="textItem.id === selectedHtmlTextId"
+                  [(ngModel)]="textItem.text"
+                  [style.left.px]="textItem.x" [style.top.px]="textItem.y" [style.width.px]="textItem.width" [style.height.px]="textItem.height"
+                  [style.font-size.px]="textItem.size" [style.font-family]="textItem.fontFamily" [style.font-weight]="textItem.fontWeight" [style.font-style]="textItem.fontStyle" [style.color]="textItem.color" [style.text-decoration]="textItem.textDecoration"
+                  (click)="selectHtmlText(textItem, $event)" (pointerdown)="$event.stopPropagation()"></textarea>
+              }
+              <div class="html-overlay-layer">
+                @for (item of pageOverlays; track item.id) {
+                  <div class="overlay-item" [class.selected]="item.id === selectedOverlayId" [class.box]="item.kind === 'rectangle'" [class.locked]="item.locked" [class.highlight]="item.kind === 'highlight'" [class.signature]="item.kind === 'signature'" [class.image-item]="item.kind === 'image'" [class.ellipse]="item.kind === 'ellipse'" [class.line]="item.kind === 'line'"
+                    [style.left.px]="item.x" [style.top.px]="item.y" [style.width.px]="item.width" [style.height.px]="item.height" [style.transform]="'rotate(' + (item.rotation || 0) + 'deg)'"
+                    [style.color]="item.color" [style.background-color]="item.kind === 'rectangle' || item.kind === 'highlight' || item.kind === 'ellipse' ? item.color : null" [style.opacity]="item.opacity" (click)="selectOverlay(item, $event)" (pointerdown)="startDrag(item, $event)">
+                    @if (item.kind === 'image') {
+                      <img [src]="item.imageData" alt="Inserted PDF overlay" />
+                    } @else if (item.kind === 'rectangle' || item.kind === 'highlight' || item.kind === 'ellipse' || item.kind === 'line') {
+                      <span></span>
+                    } @else {
+                      <input [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" />
+                    }
+                    @if (item.id === selectedOverlayId && !item.locked) {
+                      <button type="button" class="remove-handle" title="Delete" (click)="removeOverlay(item, $event)">x</button>
+                      <button type="button" class="resize-handle" title="Resize" (pointerdown)="startResize(item, $event)"></button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+            @if (selectedHtmlText; as htmlEdit) {
+              <div class="floating-toolbar" [style.left.px]="htmlToolbarLeft(htmlEdit)" [style.top.px]="htmlToolbarTop(htmlEdit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
+                <button type="button" (click)="toggleSelectedHtmlBold()">B</button>
+                <button type="button" (click)="toggleSelectedHtmlItalic()"><i>I</i></button>
+                <button type="button" (click)="resizeSelectedHtmlText(-1)">A-</button>
+                <button type="button" (click)="resizeSelectedHtmlText(1)">A+</button>
+                <input type="color" [(ngModel)]="htmlEdit.color" />
+                <button type="button" (click)="shapeMenuOpen = !shapeMenuOpen">Shapes</button>
+                <button type="button" (click)="removeSelectedHtmlText()">Delete</button>
+                @if (shapeMenuOpen) {
+                  <div class="shape-popover">
+                    <button type="button" class="shape-choice rectangle" (click)="addShape('rectangle')"><span></span>Box</button>
+                    <button type="button" class="shape-choice highlight" (click)="addShape('highlight')"><span></span>Highlight</button>
+                    <button type="button" class="shape-choice ellipse" (click)="addShape('ellipse')"><span></span>Circle</button>
+                    <button type="button" class="shape-choice line" (click)="addShape('line')"><span></span>Line</button>
+                  </div>
+                }
+              </div>
+            }
+            @if (selectedOverlay; as edit) {
+              <div class="floating-toolbar" [style.left.px]="toolbarLeft(edit)" [style.top.px]="toolbarTop(edit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
+                <button type="button" (click)="rotateSelectedOverlay(-15)">Rot-</button>
+                <button type="button" (click)="rotateSelectedOverlay(15)">Rot+</button>
+                <button type="button" (click)="shapeMenuOpen = !shapeMenuOpen">Shapes</button>
+                <button type="button" (click)="duplicateSelectedOverlay()">Copy</button>
+                <button type="button" (click)="removeSelectedOverlay()">Delete</button>
+                @if (shapeMenuOpen) {
+                  <div class="shape-popover">
+                    <button type="button" class="shape-choice rectangle" (click)="addShape('rectangle')"><span></span>Box</button>
+                    <button type="button" class="shape-choice highlight" (click)="addShape('highlight')"><span></span>Highlight</button>
+                    <button type="button" class="shape-choice ellipse" (click)="addShape('ellipse')"><span></span>Circle</button>
+                    <button type="button" class="shape-choice line" (click)="addShape('line')"><span></span>Line</button>
+                  </div>
+                }
+              </div>
+            }
+          } @else {
+            @if (textInspectMode && inspectedTextItems.length) {
+              <div class="pdf-text-layer" [style.width.px]="activePage.width" [style.height.px]="activePage.height" [style.transform]="'scale(' + zoom + ')'">
+                @for (textItem of inspectedTextItems; track textItem.id) {
+                  <button type="button" class="pdf-text-item"
+                    [style.left.px]="textItem.x" [style.top.px]="textItem.y" [style.width.px]="textItem.width" [style.height.px]="textItem.height"
+                    [style.font-size.px]="textItem.size" (click)="openInspectPopup(textItem, $event)">
+                    {{ textItem.text }}
+                  </button>
+                }
+              </div>
+            }
+            <div class="edit-layer" [style.width.px]="activePage.width" [style.height.px]="activePage.height" [style.transform]="'scale(' + zoom + ')'">
+              @for (item of pageOverlays; track item.id) {
+                <div class="overlay-item" [class.selected]="item.id === selectedOverlayId" [class.box]="item.kind === 'rectangle'" [class.locked]="item.locked" [class.highlight]="item.kind === 'highlight'" [class.signature]="item.kind === 'signature'" [class.image-item]="item.kind === 'image'" [class.ellipse]="item.kind === 'ellipse'" [class.line]="item.kind === 'line'"
+                  [style.left.px]="item.x" [style.top.px]="item.y" [style.width.px]="item.width" [style.height.px]="item.height" [style.transform]="'rotate(' + (item.rotation || 0) + 'deg)'"
+                  [style.color]="item.color" [style.background-color]="item.kind === 'rectangle' || item.kind === 'highlight' ? item.color : null" [style.opacity]="item.opacity" (click)="selectOverlay(item, $event)" (pointerdown)="startDrag(item, $event)">
+                  @if (item.kind === 'image') {
+                    <img [src]="item.imageData" alt="Inserted PDF overlay" />
+                  } @else if (item.kind === 'rectangle' || item.kind === 'highlight' || item.kind === 'ellipse' || item.kind === 'line') {
+                    <span></span>
+                  } @else {
+                    <input [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" />
+                  }
+                  @if (item.id === selectedOverlayId && !item.locked) {
+                    <button type="button" class="remove-handle" title="Delete" (click)="removeOverlay(item, $event)">x</button>
+                    <button type="button" class="resize-handle" title="Resize" (pointerdown)="startResize(item, $event)"></button>
+                  }
+                </div>
+              }
+            </div>
+            @if (selectedOverlay; as edit) {
+              <div class="floating-toolbar" [style.left.px]="toolbarLeft(edit)" [style.top.px]="toolbarTop(edit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
+                <button type="button" (click)="toggleSelectedBold()">B</button>
+                <button type="button" (click)="toggleSelectedItalic()"><i>I</i></button>
+                <button type="button" (click)="resizeSelectedText(-1)">A-</button>
+                <button type="button" (click)="resizeSelectedText(1)">A+</button>
+                <input type="color" [(ngModel)]="edit.color" />
+                <button type="button" (click)="selectAllOverlayText()">Ctrl+A</button>
+                <button type="button" (click)="duplicateSelectedOverlay()">Copy</button>
+                <button type="button" (click)="nudgeSelected(-1, 0)">Left</button>
+                <button type="button" (click)="nudgeSelected(1, 0)">Right</button>
+                <button type="button" (click)="removeSelectedOverlay()">Delete</button>
+              </div>
+            }
+          }
+        </div>
+      } @else {
+        <div class="empty-state">Open a PDF to start editing.</div>
+      }
+    </div>
+
+    <div class="page-strip">
+      @for (page of pages; track page.id; let i = $index) {
+        <div class="page-card" role="button" tabindex="0" [class.active]="page.id === activePageId" [class.selected]="page.selected" (click)="setActive(page)" (keydown.enter)="setActive(page)">
+          @if (page.thumb) {
+            <img [src]="page.thumb" alt="PDF page thumbnail" />
+          }
+          <canvas #thumbCanvas [class.ready]="page.thumb"></canvas>
+          <span>Page {{ i + 1 }}</span>
+          <div class="page-actions">
+            <button type="button" class="select-page" [class.checked]="page.selected" title="Select page" (click)="togglePage(page, $event)">
+              <span></span>
+            </button>
+            <button type="button" title="Move up" [disabled]="i === 0" (click)="movePage(i, -1, $event)">&#8593;</button>
+            <button type="button" title="Move down" [disabled]="i === pages.length - 1" (click)="movePage(i, 1, $event)">&#8595;</button>
+            <button type="button" class="delete-page" title="Delete page" (click)="deletePage(i, $event)">x</button>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <aside class="right-panel">
+    @if (selectedHtmlText; as htmlEdit) {
+      <section class="precision-panel">
+        <div class="precision-head">
+          <h2>HTML Text</h2>
+          <button type="button" (click)="closeActiveEditing()">Close</button>
+        </div>
+        <textarea [(ngModel)]="htmlEdit.text"></textarea>
+        <div class="precision-grid">
+          <label>X <input type="number" [(ngModel)]="htmlEdit.x" /></label>
+          <label>Y <input type="number" [(ngModel)]="htmlEdit.y" /></label>
+          <label>W <input type="number" [(ngModel)]="htmlEdit.width" /></label>
+          <label>H <input type="number" [(ngModel)]="htmlEdit.height" /></label>
+          <label>Size <input type="number" [(ngModel)]="htmlEdit.size" /></label>
+          <label>Color <input type="color" [(ngModel)]="htmlEdit.color" /></label>
+        </div>
+        <div class="precision-actions">
+          <button type="button" (click)="removeSelectedHtmlText()">Remove fragment</button>
+          <button type="button" (click)="run('htmlRebuildPdf')">Export HTML PDF</button>
+        </div>
+      </section>
+    } @else if (selectedOverlay; as edit) {
+      <section class="precision-panel">
+        <div class="precision-head">
+          <h2>Precision Edit</h2>
+          <button type="button" (click)="closeActiveEditing()">Close</button>
+        </div>
+        @if (edit.kind !== 'image' && edit.kind !== 'rectangle' && edit.kind !== 'highlight') {
+          <textarea [(ngModel)]="edit.text"></textarea>
+          <div class="precision-actions">
+            <button type="button" (click)="selectAllOverlayText()">Ctrl+A</button>
+            <button type="button" (click)="removeSelectedOverlay()">Delete text</button>
+          </div>
+        }
+        <div class="precision-grid">
+          <label>X <input type="number" [(ngModel)]="edit.x" /></label>
+          <label>Y <input type="number" [(ngModel)]="edit.y" /></label>
+          <label>W <input type="number" [(ngModel)]="edit.width" /></label>
+          <label>H <input type="number" [(ngModel)]="edit.height" /></label>
+          <label>Rotate <input type="number" [(ngModel)]="edit.rotation" /></label>
+          @if (edit.kind !== 'image') {
+            <label>Size <input type="number" [(ngModel)]="edit.size" /></label>
+            <label>Color <input type="color" [(ngModel)]="edit.color" /></label>
+          }
+          <label class="wide">Opacity <input type="range" min="0.1" max="1" step="0.05" [(ngModel)]="edit.opacity" /></label>
+        </div>
+        <div class="precision-actions">
+          <button type="button" (click)="duplicateSelectedOverlay()">Duplicate</button>
+          <button type="button" (click)="removeSelectedOverlay()">Remove</button>
+        </div>
+        @if (edit.generatedFromText) {
+          <div class="precision-actions">
+            <button type="button" (click)="revealOriginalForSelectedOverlay()">Reveal original</button>
+          </div>
+        }
+      </section>
+    }
+
+    <div class="status-bar" [class.loading]="busy">{{ status }}</div>
+
+    @for (group of toolGroups; track group.key) {
+      <section class="tool-section">
+        <h2>{{ group.title }}</h2>
+        <div class="tool-grid">
+          @for (tool of toolsFor(group.key); track tool.name) {
+            <button type="button" (click)="run(tool.action)" [disabled]="busy || !pages.length">
+              {{ tool.name }}
+            </button>
+          }
+        </div>
+      </section>
+    }
+  </aside>
+</main>
