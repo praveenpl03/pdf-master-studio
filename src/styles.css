@@ -2,3 +2,4 @@
 
 @import 'tailwindcss';
 @import 'pdfjs-dist/web/pdf_viewer.css';
+@import '@fortawesome/fontawesome-free/css/all.min.css';

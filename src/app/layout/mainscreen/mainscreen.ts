@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, ViewChild, ViewChildren, QueryList } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as pdfjsLib from 'pdfjs-dist';
-import { PDFDocument, StandardFonts, degrees, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, degrees, rgb, PDFFont } from 'pdf-lib';
 
 type OperationGroup = 'organize' | 'convert' | 'edit' | 'optimize' | 'protect' | 'analyze';
 type OverlayKind = 'text' | 'rectangle' | 'signature' | 'highlight' | 'image' | 'ellipse' | 'line';
@@ -28,9 +28,17 @@ interface OverlayItem {
   height: number;
   size: number;
   color: string;
+  fillColor?: string;
+  borderColor?: string;
+  fillEnabled?: boolean;
+  borderWidth?: number;
   opacity: number;
   imageData?: string;
   imageType?: 'png' | 'jpg';
+  cropX?: number;
+  cropY?: number;
+  cropWidth?: number;
+  cropHeight?: number;
   locked?: boolean;
   generatedFromText?: boolean;
   fontFamily?: string;
@@ -43,6 +51,27 @@ interface PdfTool {
   name: string;
   group: OperationGroup;
   action: string;
+}
+
+type ToolOptionType = 'text' | 'password' | 'number' | 'range' | 'select' | 'textarea';
+type ToolOptionValue = string | number;
+
+interface ToolOptionField {
+  key: string;
+  label: string;
+  type: ToolOptionType;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  wide?: boolean;
+  options?: { label: string; value: ToolOptionValue }[];
+}
+
+interface ToolOptionModal {
+  action: string;
+  title: string;
+  fields: ToolOptionField[];
 }
 
 interface FileRecord {
@@ -67,6 +96,23 @@ interface InspectTextItem {
 
 interface HtmlTextItem extends InspectTextItem {
   pageId: string;
+  backgroundColor: string;
+  originalText: string;
+  originalSize: number;
+  originalColor?: string;
+  originalFontWeight?: string;
+  originalFontStyle?: string;
+  textAlign?: 'left' | 'center';
+}
+
+interface EditorSnapshot {
+  pages: PageItem[];
+  overlays: OverlayItem[];
+  htmlTextItems: HtmlTextItem[];
+  htmlPageBackgrounds: Record<string, string>;
+  activePageId: string;
+  selectedOverlayId: string;
+  selectedHtmlTextId: string;
 }
 
 interface PdfTextItemLike {
@@ -121,7 +167,7 @@ export class Mainscreen implements AfterViewInit {
   currentBytes: Uint8Array<ArrayBufferLike> = new Uint8Array();
   busy = false;
   busyLabel = '';
-  zoom = 1;
+  zoom = 1.5;
   rangeText = '';
   stampText = 'APPROVED';
   watermarkText = 'Confidential';
@@ -130,10 +176,14 @@ export class Mainscreen implements AfterViewInit {
   title = 'Edited PDF';
   subject = 'PDF processed in browser';
   keywords = 'pdf, convertor, editor';
+  openPassword = '';
+  pdfPassword = '';
+  ownerPassword = '';
   compression = 0.72;
   compressionLevel = 3;
   compressionScale = 1.15;
-  jpegQuality = 0.86;
+  jpegQuality = 0.96;
+  imageExportScale = 5;
   pageNumberPosition: 'bottom' | 'top' = 'bottom';
   searchTerm = '';
   selectedOverlayId = '';
@@ -144,8 +194,16 @@ export class Mainscreen implements AfterViewInit {
   htmlPageBackgrounds: Record<string, string> = {};
   selectedHtmlTextId = '';
   shapeMenuOpen = false;
+  toolOptions?: ToolOptionModal;
+  toolOptionValues: Record<string, ToolOptionValue> = {};
+  undoStack: EditorSnapshot[] = [];
+  redoStack: EditorSnapshot[] = [];
   private dragState?: { id: string; startX: number; startY: number; originalX: number; originalY: number };
   private resizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number };
+  private trackingHtmlEditId = '';
+  private trackingOverlayEditId = '';
+  private lastWheelPageTurn = 0;
+  private readonly htmlBackgroundScale = 2.4;
 
   readonly toolGroups: { key: OperationGroup; title: string }[] = [
     { key: 'organize', title: 'Organize' },
@@ -180,6 +238,10 @@ export class Mainscreen implements AfterViewInit {
     { name: 'Export PDF', group: 'convert', action: 'downloadPdf' },
     { name: 'Convert page to PNG', group: 'convert', action: 'downloadPng' },
     { name: 'Convert page to JPEG', group: 'convert', action: 'downloadJpeg' },
+    { name: 'PDF to Word (.docx)', group: 'convert', action: 'exportDocx' },
+    { name: 'PDF to DOC', group: 'convert', action: 'exportDoc' },
+    { name: 'PDF to Excel', group: 'convert', action: 'exportExcel' },
+    { name: 'PDF to Text', group: 'convert', action: 'exportText' },
     { name: 'Export selected as PDFs', group: 'convert', action: 'downloadSelected' },
     { name: 'Export selected images ZIP', group: 'convert', action: 'downloadSelectedImagesZip' },
     { name: 'Export all images ZIP', group: 'convert', action: 'downloadAllImagesZip' },
@@ -189,6 +251,7 @@ export class Mainscreen implements AfterViewInit {
     { name: 'Flatten edits', group: 'convert', action: 'downloadFlattened' },
     { name: 'Rebuild visual PDF', group: 'convert', action: 'visualRebuild' },
     { name: 'Export HTML rebuild', group: 'convert', action: 'htmlRebuildPdf' },
+    { name: 'Generate watermarked PDF', group: 'convert', action: 'watermarkedPdf' },
     { name: 'Generate bookmarks', group: 'convert', action: 'generateBookmarks' },
     { name: 'Reconstruct HTML page', group: 'edit', action: 'reconstructHtml' },
     { name: 'Inspect text layer', group: 'edit', action: 'inspectText' },
@@ -211,6 +274,7 @@ export class Mainscreen implements AfterViewInit {
     { name: 'Remove embedded edits', group: 'optimize', action: 'clearAllEdits' },
     { name: 'Fast web save', group: 'optimize', action: 'optimize' },
     { name: 'Sanitize metadata', group: 'protect', action: 'sanitizeMetadata' },
+    { name: 'Add password', group: 'protect', action: 'encryptPdf' },
     { name: 'Owner note stamp', group: 'protect', action: 'ownerStamp' },
     { name: 'Redact selected page', group: 'protect', action: 'addRedaction' },
     { name: 'Lock visual copy', group: 'protect', action: 'downloadFlattened' },
@@ -258,13 +322,144 @@ export class Mainscreen implements AfterViewInit {
     return this.overlays.find((item) => item.id === this.selectedOverlayId);
   }
 
+  get canUndo(): boolean {
+    return this.undoStack.length > 0;
+  }
+
+  get canRedo(): boolean {
+    return this.redoStack.length > 0;
+  }
+
+  shapeFillColor(item: OverlayItem): string | null {
+    if (item.kind === 'highlight') return item.fillColor ?? item.color;
+    if (item.kind === 'rectangle' || item.kind === 'ellipse') {
+      return item.fillEnabled ? item.fillColor ?? item.color : 'transparent';
+    }
+    return null;
+  }
+
+  shapeBorderColor(item: OverlayItem): string | null {
+    return item.kind === 'rectangle' || item.kind === 'ellipse'
+      ? item.borderColor ?? item.color
+      : null;
+  }
+
+  shapeBorderWidth(item: OverlayItem): number | null {
+    return item.kind === 'rectangle' || item.kind === 'ellipse'
+      ? item.borderWidth ?? 2
+      : null;
+  }
+
   get visibleTools(): PdfTool[] {
-    const term = this.searchTerm.trim().toLowerCase();
-    return term ? this.tools.filter((tool) => tool.name.toLowerCase().includes(term)) : this.tools;
+    return this.tools;
   }
 
   toolsFor(group: OperationGroup): PdfTool[] {
-    return this.visibleTools.filter((tool) => tool.group === group);
+    return this.visibleTools.filter((tool) => tool.group === group && tool.action !== 'reconstructHtml');
+  }
+
+  iconForGroup(group: OperationGroup): string {
+    const icons: Record<OperationGroup, string> = {
+      organize: 'fa-table-cells-large',
+      convert: 'fa-right-left',
+      edit: 'fa-pen-to-square',
+      optimize: 'fa-gauge-high',
+      protect: 'fa-shield-halved',
+      analyze: 'fa-chart-simple',
+    };
+    return icons[group];
+  }
+
+  iconForAction(action: string): string {
+    const icons: Record<string, string> = {
+      merge: 'fa-object-group',
+      splitSelected: 'fa-scissors',
+      extractRange: 'fa-filter',
+      deleteSelected: 'fa-trash',
+      duplicateSelected: 'fa-copy',
+      moveFirst: 'fa-angles-up',
+      moveLast: 'fa-angles-down',
+      reversePages: 'fa-arrow-right-arrow-left',
+      oddEven: 'fa-arrow-down-1-9',
+      evenOdd: 'fa-arrow-down-9-1',
+      rotateLeft: 'fa-rotate-left',
+      rotateRight: 'fa-rotate-right',
+      rotate180: 'fa-arrows-rotate',
+      selectAll: 'fa-check-double',
+      clearSelection: 'fa-ban',
+      selectOdd: 'fa-list-ol',
+      selectEven: 'fa-list',
+      keepSelected: 'fa-box-archive',
+      removeBlank: 'fa-eraser',
+      reset: 'fa-clock-rotate-left',
+      downloadPdf: 'fa-floppy-disk',
+      downloadPng: 'fa-file-image',
+      downloadJpeg: 'fa-image',
+      exportDocx: 'fa-file-word',
+      exportDoc: 'fa-file-word',
+      exportExcel: 'fa-file-excel',
+      exportText: 'fa-file-lines',
+      downloadSelected: 'fa-file-export',
+      downloadSelectedImagesZip: 'fa-file-zipper',
+      downloadAllImagesZip: 'fa-images',
+      booklet: 'fa-book-open',
+      a4Fit: 'fa-file-lines',
+      letterFit: 'fa-file',
+      downloadFlattened: 'fa-layer-group',
+      visualRebuild: 'fa-wand-magic-sparkles',
+      htmlRebuildPdf: 'fa-code',
+      generateBookmarks: 'fa-bookmark',
+      inspectText: 'fa-magnifying-glass',
+      addText: 'fa-font',
+      chooseImage: 'fa-image',
+      addSignature: 'fa-signature',
+      addHighlight: 'fa-highlighter',
+      addEllipse: 'fa-circle',
+      addLine: 'fa-minus',
+      addRedaction: 'fa-square',
+      stampPage: 'fa-stamp',
+      watermarkAll: 'fa-droplet',
+      watermarkedPdf: 'fa-file-shield',
+      pageNumbers: 'fa-hashtag',
+      clearPageEdits: 'fa-broom',
+      clearAllEdits: 'fa-soap',
+      metadata: 'fa-tags',
+      optimize: 'fa-gauge-high',
+      compressedPdf: 'fa-compress',
+      downsampleActive: 'fa-minimize',
+      sanitizeMetadata: 'fa-user-shield',
+      encryptPdf: 'fa-lock',
+      ownerStamp: 'fa-id-badge',
+      docInfo: 'fa-circle-info',
+      countPages: 'fa-calculator',
+      findText: 'fa-search',
+      auditDimensions: 'fa-ruler-combined',
+      listSelected: 'fa-list-check',
+    };
+    return icons[action] ?? 'fa-wand-magic-sparkles';
+  }
+
+  handleViewerWheel(event: WheelEvent): void {
+    if (!this.pages.length || Math.abs(event.deltaY) < 16) return;
+    const shell = event.currentTarget as HTMLElement;
+    const currentIndex = this.pages.findIndex((page) => page.id === this.activePageId);
+    if (currentIndex < 0) return;
+    const now = Date.now();
+    if (now - this.lastWheelPageTurn < 420) return;
+
+    const atBottom = shell.scrollTop + shell.clientHeight >= shell.scrollHeight - 6;
+    const atTop = shell.scrollTop <= 6;
+    if (event.deltaY > 0 && atBottom && currentIndex < this.pages.length - 1) {
+      event.preventDefault();
+      this.lastWheelPageTurn = now;
+      this.setActive(this.pages[currentIndex + 1]);
+      setTimeout(() => shell.scrollTop = 0);
+    } else if (event.deltaY < 0 && atTop && currentIndex > 0) {
+      event.preventDefault();
+      this.lastWheelPageTurn = now;
+      this.setActive(this.pages[currentIndex - 1]);
+      setTimeout(() => shell.scrollTop = shell.scrollHeight);
+    }
   }
 
   async loadMainFile(event: Event): Promise<void> {
@@ -278,22 +473,27 @@ export class Mainscreen implements AfterViewInit {
   async addMergeFiles(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
+    if (!files.length) return;
+    this.recordHistory();
     for (const file of files) {
       this.extraFiles.push({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
     }
-    this.status = `${this.extraFiles.length} merge file(s) ready.`;
+    this.status = `${this.extraFiles.length} merge file(s) ready. Adding pages to workspace...`;
     input.value = '';
+    await this.mergePdfs();
   }
 
-  async run(action: string): Promise<void> {
+  async run(action: string, optionsConfirmed = false): Promise<void> {
+    if (!optionsConfirmed && this.openToolOptions(action)) return;
     try {
+      if (this.shouldRecordHistory(action)) this.recordHistory();
       this.busy = true;
       this.busyLabel = this.busyMessageFor(action);
       switch (action) {
         case 'merge': await this.mergePdfs(); break;
         case 'splitSelected': await this.downloadSelectedAsOne(); break;
         case 'extractRange': await this.extractRange(); break;
-        case 'deleteSelected': this.pages = this.pages.filter((page) => !page.selected); this.afterPageChange('Selected pages deleted.'); break;
+        case 'deleteSelected': this.deleteSelectedPages(); break;
         case 'duplicateSelected': this.duplicateSelected(); break;
         case 'moveFirst': this.moveSelected(true); break;
         case 'moveLast': this.moveSelected(false); break;
@@ -310,9 +510,13 @@ export class Mainscreen implements AfterViewInit {
         case 'keepSelected': this.keepSelected(); break;
         case 'removeBlank': this.removeBlankLikePages(); break;
         case 'reset': await this.loadBytes(this.currentBytes, this.fileName); break;
-        case 'downloadPdf': await this.downloadPdf(false, 'edited.pdf'); break;
+        case 'downloadPdf': await this.downloadPdf(true, 'edited.pdf'); break;
         case 'downloadPng': await this.downloadActiveImage('image/png', 'page.png'); break;
         case 'downloadJpeg': await this.downloadActiveImage('image/jpeg', 'page.jpg', this.jpegQuality); break;
+        case 'exportDocx': await this.exportDocx(); break;
+        case 'exportDoc': await this.exportDoc(); break;
+        case 'exportExcel': await this.exportExcel(); break;
+        case 'exportText': await this.exportText(); break;
         case 'downloadSelected': await this.downloadSelectedSeparately(); break;
         case 'downloadSelectedImagesZip': await this.downloadImagesZip(this.selectedPages, 'selected-page-images.zip'); break;
         case 'downloadAllImagesZip': await this.downloadImagesZip(this.pages, 'all-page-images.zip'); break;
@@ -323,6 +527,7 @@ export class Mainscreen implements AfterViewInit {
         case 'visualRebuild': await this.downloadVisualRebuildPdf(); break;
         case 'htmlRebuildPdf': await this.downloadHtmlRebuildPdf(); break;
         case 'generateBookmarks': await this.generateBookmarks(); break;
+        case 'watermarkedPdf': await this.downloadWatermarkedPdf(); break;
         case 'reconstructHtml': await this.reconstructAllHtmlFromCurrentPdf(); break;
         case 'inspectText': await this.inspectTextLayer(); break;
         case 'addText': this.addOverlay('text'); break;
@@ -342,7 +547,8 @@ export class Mainscreen implements AfterViewInit {
         case 'compressedPdf': await this.downloadRasterPdf('compressed-preview.pdf'); break;
         case 'downsampleActive': await this.downloadActiveImage('image/jpeg', 'downsampled-page.jpg', this.compression); break;
         case 'sanitizeMetadata': await this.sanitizeMetadata(); break;
-        case 'ownerStamp': this.stampPage('Owner copy'); break;
+        case 'encryptPdf': await this.downloadEncryptedPdf(); break;
+        case 'ownerStamp': this.stampPage(this.stampText || 'Owner copy'); break;
         case 'docInfo': await this.docInfo(); break;
         case 'countPages': this.status = `${this.pages.length} page(s) in current document.`; break;
         case 'findText': await this.findText(); break;
@@ -357,6 +563,170 @@ export class Mainscreen implements AfterViewInit {
     }
   }
 
+  closeToolOptions(): void {
+    this.toolOptions = undefined;
+    this.toolOptionValues = {};
+  }
+
+  async confirmToolOptions(): Promise<void> {
+    const action = this.toolOptions?.action;
+    if (!action) return;
+    this.applyToolOptionValues();
+    this.closeToolOptions();
+    await this.run(action, true);
+  }
+
+  private openToolOptions(action: string): boolean {
+    const fields = this.optionFieldsFor(action);
+    if (!fields.length) return false;
+    this.toolOptions = {
+      action,
+      title: this.tools.find((tool) => tool.action === action)?.name ?? 'Options',
+      fields,
+    };
+    this.toolOptionValues = Object.fromEntries(fields.map((field) => [field.key, this.valueForOption(field.key)]));
+    return true;
+  }
+
+  private optionFieldsFor(action: string): ToolOptionField[] {
+    const quality: ToolOptionField = { key: 'jpegQuality', label: 'JPEG quality', type: 'range', min: 0.35, max: 1, step: 0.01 };
+    const imageScale: ToolOptionField = { key: 'imageExportScale', label: 'Export resolution', type: 'range', min: 2, max: 7, step: 0.25 };
+    const compression: ToolOptionField = { key: 'compression', label: 'Compression', type: 'range', min: 0.25, max: 0.95, step: 0.01 };
+    const openPassword: ToolOptionField = { key: 'openPassword', label: 'Open password', type: 'password', placeholder: 'Only for locked source PDFs', wide: true };
+    const compressionLevel: ToolOptionField = {
+      key: 'compressionLevel',
+      label: 'Compress level',
+      type: 'select',
+      options: [
+        { label: '1 - light', value: 1 },
+        { label: '2', value: 2 },
+        { label: '3 - balanced', value: 3 },
+        { label: '4', value: 4 },
+        { label: '5 - smallest', value: 5 },
+      ],
+    };
+    const rasterScale: ToolOptionField = { key: 'compressionScale', label: 'Raster scale', type: 'range', min: 0.55, max: 2, step: 0.05 };
+
+    switch (action) {
+      case 'extractRange':
+        return [{ key: 'rangeText', label: 'Range', type: 'text', placeholder: '1-3, 8, 10', wide: true }];
+      case 'findText':
+        return [{ key: 'searchTerm', label: 'Find text', type: 'text', placeholder: 'Word or phrase', wide: true }];
+      case 'addText':
+        return [{ key: 'editText', label: 'Edit text', type: 'textarea', placeholder: 'Text to place on the page', wide: true }];
+      case 'stampPage':
+      case 'ownerStamp':
+        return [{ key: 'stampText', label: 'Stamp', type: 'text', placeholder: action === 'ownerStamp' ? 'Owner copy' : 'APPROVED', wide: true }];
+      case 'watermarkAll':
+      case 'watermarkedPdf':
+        return [{ key: 'watermarkText', label: 'Watermark', type: 'text', placeholder: 'Confidential', wide: true }];
+      case 'downloadJpeg':
+        return [quality, imageScale];
+      case 'downloadPng':
+      case 'downloadSelectedImagesZip':
+      case 'downloadAllImagesZip':
+        return [imageScale];
+      case 'visualRebuild':
+        return [quality];
+      case 'compressedPdf':
+        return [openPassword, compression, compressionLevel, rasterScale];
+      case 'downsampleActive':
+        return [compression];
+      case 'pageNumbers':
+        return [{
+          key: 'pageNumberPosition',
+          label: 'Numbering',
+          type: 'select',
+          options: [
+            { label: 'Bottom', value: 'bottom' },
+            { label: 'Top', value: 'top' },
+          ],
+        }];
+      case 'downloadPdf':
+      case 'encryptPdf':
+        return [
+          openPassword,
+          { key: 'pdfPassword', label: 'PDF password', type: 'password', placeholder: action === 'downloadPdf' ? 'Optional' : 'Required' },
+          { key: 'ownerPassword', label: 'Owner password', type: 'password', placeholder: 'Optional' },
+        ];
+      case 'metadata':
+        return [
+          openPassword,
+          { key: 'title', label: 'Title', type: 'text', placeholder: 'Title', wide: true },
+          { key: 'author', label: 'Author', type: 'text', placeholder: 'Author', wide: true },
+          { key: 'subject', label: 'Subject', type: 'text', placeholder: 'Subject', wide: true },
+          { key: 'keywords', label: 'Keywords', type: 'textarea', placeholder: 'Comma-separated keywords', wide: true },
+        ];
+      default:
+        return [];
+    }
+  }
+
+  private valueForOption(key: string): ToolOptionValue {
+    const values: Record<string, ToolOptionValue> = {
+      rangeText: this.rangeText,
+      searchTerm: this.searchTerm,
+      editText: this.editText,
+      stampText: this.stampText,
+      watermarkText: this.watermarkText,
+      jpegQuality: this.jpegQuality,
+      imageExportScale: this.imageExportScale,
+      compression: this.compression,
+      compressionLevel: this.compressionLevel,
+      compressionScale: this.compressionScale,
+      pageNumberPosition: this.pageNumberPosition,
+      openPassword: this.openPassword,
+      pdfPassword: this.pdfPassword,
+      ownerPassword: this.ownerPassword,
+      title: this.title,
+      author: this.author,
+      subject: this.subject,
+      keywords: this.keywords,
+    };
+    return values[key] ?? '';
+  }
+
+  private applyToolOptionValues(): void {
+    const hasValue = (key: string) => Object.prototype.hasOwnProperty.call(this.toolOptionValues, key);
+    const stringValue = (key: string) => String(this.toolOptionValues[key] ?? '');
+    const numberValue = (key: string) => Number(this.toolOptionValues[key]);
+    if (hasValue('rangeText')) this.rangeText = stringValue('rangeText');
+    if (hasValue('searchTerm')) this.searchTerm = stringValue('searchTerm');
+    if (hasValue('editText')) this.editText = stringValue('editText');
+    if (hasValue('stampText')) this.stampText = stringValue('stampText') || this.stampText;
+    if (hasValue('watermarkText')) this.watermarkText = stringValue('watermarkText') || this.watermarkText;
+    if (hasValue('openPassword')) this.openPassword = stringValue('openPassword');
+    if (hasValue('pdfPassword')) this.pdfPassword = stringValue('pdfPassword');
+    if (hasValue('ownerPassword')) this.ownerPassword = stringValue('ownerPassword');
+    if (hasValue('title')) this.title = stringValue('title') || this.title;
+    if (hasValue('author')) this.author = stringValue('author') || this.author;
+    if (hasValue('subject')) this.subject = stringValue('subject') || this.subject;
+    if (hasValue('keywords')) this.keywords = stringValue('keywords') || this.keywords;
+    if (hasValue('jpegQuality') && Number.isFinite(numberValue('jpegQuality'))) this.jpegQuality = numberValue('jpegQuality');
+    if (hasValue('imageExportScale') && Number.isFinite(numberValue('imageExportScale'))) this.imageExportScale = numberValue('imageExportScale');
+    if (hasValue('compression') && Number.isFinite(numberValue('compression'))) this.compression = numberValue('compression');
+    if (hasValue('compressionLevel') && Number.isFinite(numberValue('compressionLevel'))) this.compressionLevel = numberValue('compressionLevel');
+    if (hasValue('compressionScale') && Number.isFinite(numberValue('compressionScale'))) this.compressionScale = numberValue('compressionScale');
+    const numbering = stringValue('pageNumberPosition');
+    if (hasValue('pageNumberPosition') && (numbering === 'top' || numbering === 'bottom')) this.pageNumberPosition = numbering;
+  }
+
+  undo(): void {
+    const snapshot = this.undoStack.pop();
+    if (!snapshot) return;
+    this.redoStack.push(this.createSnapshot());
+    this.restoreSnapshot(snapshot);
+    this.status = 'Undo applied.';
+  }
+
+  redo(): void {
+    const snapshot = this.redoStack.pop();
+    if (!snapshot) return;
+    this.undoStack.push(this.createSnapshot());
+    this.restoreSnapshot(snapshot);
+    this.status = 'Redo applied.';
+  }
+
   setActive(page: PageItem): void {
     this.activePageId = page.id;
     this.selectedOverlayId = '';
@@ -368,6 +738,7 @@ export class Mainscreen implements AfterViewInit {
 
   togglePage(page: PageItem, event: Event): void {
     event.stopPropagation();
+    this.recordHistory();
     page.selected = !page.selected;
   }
 
@@ -375,19 +746,25 @@ export class Mainscreen implements AfterViewInit {
     event.stopPropagation();
     const target = index + direction;
     if (target < 0 || target >= this.pages.length) return;
+    this.recordHistory();
     const [page] = this.pages.splice(index, 1);
     this.pages.splice(target, 0, page);
+    this.activePageId = page.id;
     this.status = `Moved page ${index + 1} to ${target + 1}.`;
+    this.queueActiveRender();
+    this.queueThumbRender();
   }
 
   deletePage(index: number, event: Event): void {
     event.stopPropagation();
+    this.recordHistory();
     const [removed] = this.pages.splice(index, 1);
     if (removed) {
       this.overlays = this.overlays.filter((item) => item.pageId !== removed.id);
       this.htmlTextItems = this.htmlTextItems.filter((item) => item.pageId !== removed.id);
       delete this.htmlPageBackgrounds[removed.id];
     }
+    this.activePageId = this.pages[Math.min(index, this.pages.length - 1)]?.id ?? '';
     this.afterPageChange(`Deleted page ${index + 1}.`);
   }
 
@@ -402,12 +779,16 @@ export class Mainscreen implements AfterViewInit {
     if (item.locked) return;
     this.selectedOverlayId = item.id;
     this.selectedHtmlTextId = '';
+    this.trackingOverlayEditId = '';
+    this.trackingHtmlEditId = '';
   }
 
   closeActiveEditing(): void {
     if (this.textInspectMode) return;
     this.selectedOverlayId = '';
     this.selectedHtmlTextId = '';
+    this.trackingOverlayEditId = '';
+    this.trackingHtmlEditId = '';
     this.clearInspectLayer();
     this.status = 'Editing applied on the page. Save or flatten to export changes.';
   }
@@ -427,6 +808,7 @@ export class Mainscreen implements AfterViewInit {
   duplicateSelectedOverlay(): void {
     const item = this.selectedOverlay;
     if (!item || item.locked) return;
+    this.recordHistory();
     const clone: OverlayItem = { ...item, id: crypto.randomUUID(), x: item.x + 14, y: item.y + 14 };
     this.overlays = [...this.overlays, clone];
     this.selectedOverlayId = clone.id;
@@ -436,12 +818,14 @@ export class Mainscreen implements AfterViewInit {
   rotateSelectedOverlay(amount: number): void {
     const item = this.selectedOverlay;
     if (!item || item.locked) return;
+    this.recordHistory();
     item.rotation = ((item.rotation ?? 0) + amount + 360) % 360;
   }
 
   removeSelectedOverlay(): void {
     const item = this.selectedOverlay;
     if (!item || item.locked) return;
+    this.recordHistory();
     this.removeOverlay(item);
     this.status = item.generatedFromText ? 'Replacement removed. Original covered text stays hidden.' : 'Selected edit removed.';
   }
@@ -449,6 +833,7 @@ export class Mainscreen implements AfterViewInit {
   revealOriginalForSelectedOverlay(): void {
     const item = this.selectedOverlay;
     if (!item || !item.generatedFromText) return;
+    this.recordHistory();
     this.overlays = this.overlays.filter((overlay) => overlay.id !== item.id && !(overlay.locked && overlay.pageId === item.pageId && Math.abs(overlay.x - item.x) < 2 && Math.abs(overlay.y - item.y) < 2));
     this.selectedOverlayId = '';
     this.status = 'Replacement and its whiteout removed. Original text is visible again.';
@@ -457,18 +842,21 @@ export class Mainscreen implements AfterViewInit {
   toggleSelectedBold(): void {
     const item = this.selectedOverlay;
     if (!item || item.locked) return;
+    this.recordHistory();
     item.fontWeight = Number(item.fontWeight) >= 600 || item.fontWeight === 'bold' ? '400' : '700';
   }
 
   toggleSelectedItalic(): void {
     const item = this.selectedOverlay;
     if (!item || item.locked) return;
+    this.recordHistory();
     item.fontStyle = item.fontStyle === 'italic' ? 'normal' : 'italic';
   }
 
   resizeSelectedText(amount: number): void {
     const item = this.selectedOverlay;
     if (!item || item.locked) return;
+    this.recordHistory();
     item.size = Math.max(6, item.size + amount);
     item.height = Math.max(item.height, item.size + 8);
   }
@@ -476,18 +864,21 @@ export class Mainscreen implements AfterViewInit {
   toggleSelectedHtmlBold(): void {
     const item = this.selectedHtmlText;
     if (!item) return;
+    this.recordHistory();
     item.fontWeight = Number(item.fontWeight) >= 600 || item.fontWeight === 'bold' ? '400' : '700';
   }
 
   toggleSelectedHtmlItalic(): void {
     const item = this.selectedHtmlText;
     if (!item) return;
+    this.recordHistory();
     item.fontStyle = item.fontStyle === 'italic' ? 'normal' : 'italic';
   }
 
   resizeSelectedHtmlText(amount: number): void {
     const item = this.selectedHtmlText;
     if (!item) return;
+    this.recordHistory();
     item.size = Math.max(6, item.size + amount);
     item.height = Math.max(item.height, item.size * 1.25);
   }
@@ -504,6 +895,7 @@ export class Mainscreen implements AfterViewInit {
     const item = this.selectedOverlay;
     const page = this.activePage;
     if (!item || !page || item.locked) return;
+    this.recordHistory();
     item.x = Math.max(0, Math.min(page.width - item.width, item.x + dx));
     item.y = Math.max(0, Math.min(page.height - item.height, item.y + dy));
   }
@@ -521,6 +913,7 @@ export class Mainscreen implements AfterViewInit {
     const file = input.files?.[0];
     const page = this.activePage;
     if (!file || !page) return;
+    this.recordHistory();
     const dataUrl = await this.readFileAsDataUrl(file);
     const size = await this.getImageSize(dataUrl);
     const maxWidth = page.width * 0.42;
@@ -539,6 +932,10 @@ export class Mainscreen implements AfterViewInit {
       opacity: 1,
       imageData: dataUrl,
       imageType: file.type.includes('png') ? 'png' : 'jpg',
+      cropX: 0,
+      cropY: 0,
+      cropWidth: 100,
+      cropHeight: 100,
     };
     this.overlays = [...this.overlays, overlay];
     this.selectedOverlayId = overlay.id;
@@ -551,6 +948,7 @@ export class Mainscreen implements AfterViewInit {
     if (item.locked) return;
     event.preventDefault();
     this.selectOverlay(item, event);
+    this.recordHistory();
     this.dragState = { id: item.id, startX: event.clientX, startY: event.clientY, originalX: item.x, originalY: item.y };
   }
 
@@ -559,6 +957,7 @@ export class Mainscreen implements AfterViewInit {
     event.preventDefault();
     if (item.locked) return;
     this.selectOverlay(item, event);
+    this.recordHistory();
     this.resizeState = { id: item.id, startX: event.clientX, startY: event.clientY, originalWidth: item.width, originalHeight: item.height };
   }
 
@@ -593,7 +992,7 @@ export class Mainscreen implements AfterViewInit {
     const host = this.nativeTextLayer?.nativeElement;
     if (!active) throw new Error('Load a PDF first.');
     if (!host) throw new Error('Text layer is not ready.');
-    const pdf = await pdfjsLib.getDocument({ data: this.currentBytes.slice() }).promise;
+    const pdf = await this.openPdfJsDocument();
     const page = await pdf.getPage(active.sourceIndex + 1);
     const viewport = page.getViewport({ scale: 1, rotation: active.rotation });
     const content = await page.getTextContent();
@@ -608,18 +1007,24 @@ export class Mainscreen implements AfterViewInit {
   async reconstructHtmlPage(): Promise<void> {
     const active = this.activePage;
     if (!active) throw new Error('Load a PDF first.');
-    const pdf = await pdfjsLib.getDocument({ data: this.currentBytes.slice() }).promise;
+    const pdf = await this.openPdfJsDocument();
     const page = await pdf.getPage(active.sourceIndex + 1);
     const viewport = page.getViewport({ scale: 1, rotation: active.rotation });
     const content = await page.getTextContent();
     const annotations = await page.getAnnotations({ intent: 'display' });
-    const items = this.htmlItemsFromTextContent(content, viewport, active.id, this.linkRectsFromAnnotations(annotations, viewport));
+    const backgroundCanvas = await this.renderPageCanvas(active, this.htmlBackgroundScale);
+    const items = this.applyHtmlItemBackgrounds(
+      this.htmlItemsFromTextContent(content, viewport, active.id, this.linkRectsFromAnnotations(annotations, viewport)),
+      backgroundCanvas,
+      this.htmlBackgroundScale,
+    );
+    const editableItems = this.replaceGraphicHtmlItemsWithImages(active, items, backgroundCanvas, this.htmlBackgroundScale);
 
     this.htmlTextItems = [
       ...this.htmlTextItems.filter((item) => item.pageId !== active.id),
-      ...items,
+      ...editableItems,
     ];
-    this.htmlPageBackgrounds[active.id] = await this.renderPageCanvas(active, 1.5).then((canvas) => canvas.toDataURL('image/jpeg', 0.9));
+    this.htmlPageBackgrounds[active.id] = backgroundCanvas.toDataURL('image/png');
     this.htmlEditMode = true;
     this.selectedOverlayId = '';
     this.selectedHtmlTextId = '';
@@ -631,7 +1036,7 @@ export class Mainscreen implements AfterViewInit {
 
   async reconstructAllHtmlFromCurrentPdf(): Promise<void> {
     if (!this.currentBytes.length) throw new Error('Load a PDF first.');
-    const pdf = await pdfjsLib.getDocument({ data: this.currentBytes.slice() }).promise;
+    const pdf = await this.openPdfJsDocument();
     const rebuilt = await this.reconstructAllHtmlPages(pdf);
     this.htmlEditMode = true;
     this.selectedOverlayId = '';
@@ -644,16 +1049,59 @@ export class Mainscreen implements AfterViewInit {
     event?.stopPropagation();
     this.selectedOverlayId = '';
     this.selectedHtmlTextId = item.id;
+    this.trackingHtmlEditId = '';
+    this.trackingOverlayEditId = '';
+  }
+
+  markHtmlTextEdit(item: HtmlTextItem): void {
+    if (this.trackingHtmlEditId === item.id) return;
+    this.recordHistory();
+    this.trackingHtmlEditId = item.id;
+  }
+
+  markOverlayEdit(item: OverlayItem): void {
+    if (this.trackingOverlayEditId === item.id) return;
+    this.recordHistory();
+    this.trackingOverlayEditId = item.id;
+  }
+
+  resetSelectedImageCrop(): void {
+    const item = this.selectedOverlay;
+    if (!item || item.kind !== 'image') return;
+    this.recordHistory();
+    item.cropX = 0;
+    item.cropY = 0;
+    item.cropWidth = 100;
+    item.cropHeight = 100;
+    this.status = 'Image crop reset.';
+  }
+
+  adjustSelectedImageCrop(amount: number): void {
+    const item = this.selectedOverlay;
+    if (!item || item.kind !== 'image') return;
+    this.recordHistory();
+    const nextX = Math.max(0, Math.min(45, (item.cropX ?? 0) + amount));
+    const nextY = Math.max(0, Math.min(45, (item.cropY ?? 0) + amount));
+    const nextWidth = Math.max(10, Math.min(100 - nextX, (item.cropWidth ?? 100) - amount * 2));
+    const nextHeight = Math.max(10, Math.min(100 - nextY, (item.cropHeight ?? 100) - amount * 2));
+    item.cropX = nextX;
+    item.cropY = nextY;
+    item.cropWidth = nextWidth;
+    item.cropHeight = nextHeight;
+    this.status = 'Image crop adjusted. Drag to move, corner handle to resize, Delete to remove.';
   }
 
   removeSelectedHtmlText(): void {
-    if (!this.selectedHtmlTextId) return;
-    this.htmlTextItems = this.htmlTextItems.filter((item) => item.id !== this.selectedHtmlTextId);
+    const item = this.selectedHtmlText;
+    if (!item) return;
+    this.recordHistory();
+    item.text = '';
     this.selectedHtmlTextId = '';
-    this.status = 'HTML text fragment removed from reconstructed page.';
+    this.status = 'HTML text fragment cleared and will be removed when saved.';
   }
 
   addShape(kind: 'rectangle' | 'highlight' | 'ellipse' | 'line'): void {
+    this.recordHistory();
     this.addOverlay(kind);
     this.shapeMenuOpen = false;
   }
@@ -818,7 +1266,7 @@ export class Mainscreen implements AfterViewInit {
         if (!clean) continue;
         const averageCharWidth = Math.max(2, item.width / Math.max(clean.length, 1));
         const gap = current.length ? item.x - previousEnd : 0;
-        const tableGap = Math.max(size * 1.6, averageCharWidth * 4);
+        const tableGap = Math.max(size * 0.85, averageCharWidth * 2.2);
         if (current.length && gap > tableGap) {
           segments.push(current);
           current = [];
@@ -864,7 +1312,160 @@ export class Mainscreen implements AfterViewInit {
         fontStyle: first.fontStyle,
         color: isLinked ? '#0000ee' : first.color ?? '#111111',
         textDecoration: isLinked ? 'underline' : undefined,
+        backgroundColor: '#ffffff',
+        originalText: text,
+        originalSize: size,
+        originalColor: isLinked ? '#0000ee' : first.color ?? '#111111',
+        originalFontWeight: first.fontWeight,
+        originalFontStyle: first.fontStyle,
+        textAlign: 'left',
       };
+  }
+
+  private applyHtmlItemBackgrounds(items: HtmlTextItem[], canvas: HTMLCanvasElement, scale: number): HtmlTextItem[] {
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return items;
+    return items.map((item) => {
+      const backgroundColor = item.textDecoration === 'underline' || this.isColoredText(item.color)
+        ? '#ffffff'
+        : this.sampleCanvasColor(context, item, scale);
+      const darkBackground = this.isDarkColor(backgroundColor);
+      const textColor = darkBackground ? '#ffffff' : item.color;
+      return {
+        ...item,
+        color: textColor,
+        originalColor: textColor,
+        backgroundColor,
+        textAlign: darkBackground ? 'center' : 'left',
+      };
+    });
+  }
+
+  private isColoredText(color?: string): boolean {
+    const value = (color ?? '').toLowerCase();
+    return !!value && !['#000000', '#111111', '#172033'].includes(value);
+  }
+
+  private replaceGraphicHtmlItemsWithImages(pageItem: PageItem, items: HtmlTextItem[], canvas: HTMLCanvasElement, scale: number): HtmlTextItem[] {
+    const imageItems = items
+      .filter((item) => this.shouldRenderHtmlItemAsImage(item))
+      .flatMap((item) => [
+        this.createGraphicCoverOverlay(pageItem, item),
+        this.createImageOverlayFromCanvasArea(pageItem, item, canvas, scale),
+      ]);
+    if (imageItems.length) {
+      this.overlays = [
+        ...this.overlays.filter((overlay) => !(overlay.pageId === pageItem.id && overlay.generatedFromText && (overlay.text === 'Rendered object' || overlay.text === 'Rendered object cover'))),
+        ...imageItems,
+      ];
+    }
+    return items.filter((item) => !this.shouldRenderHtmlItemAsImage(item));
+  }
+
+  private createGraphicCoverOverlay(pageItem: PageItem, item: HtmlTextItem): OverlayItem {
+    const padding = Math.max(3, Math.round(item.size * 0.18));
+    return {
+      id: crypto.randomUUID(),
+      pageId: pageItem.id,
+      kind: 'rectangle',
+      text: 'Rendered object cover',
+      x: Math.max(0, item.x - padding),
+      y: Math.max(0, item.y - padding),
+      width: Math.max(8, item.width + padding * 2),
+      height: Math.max(8, item.height + padding * 2),
+      size: item.size,
+      color: item.backgroundColor,
+      opacity: 1,
+      locked: true,
+      generatedFromText: true,
+    };
+  }
+
+  private createImageOverlayFromCanvasArea(pageItem: PageItem, item: HtmlTextItem, canvas: HTMLCanvasElement, scale: number): OverlayItem {
+    const padding = Math.max(3, Math.round(item.size * 0.18));
+    const sx = Math.max(0, Math.floor((item.x - padding) * scale));
+    const sy = Math.max(0, Math.floor((item.y - padding) * scale));
+    const sw = Math.min(canvas.width - sx, Math.ceil((item.width + padding * 2) * scale));
+    const sh = Math.min(canvas.height - sy, Math.ceil((item.height + padding * 2) * scale));
+    const crop = document.createElement('canvas');
+    crop.width = Math.max(1, sw);
+    crop.height = Math.max(1, sh);
+    const context = crop.getContext('2d');
+    context?.drawImage(canvas, sx, sy, sw, sh, 0, 0, crop.width, crop.height);
+    return {
+      id: crypto.randomUUID(),
+      pageId: pageItem.id,
+      kind: 'image',
+      text: 'Rendered object',
+      x: Math.max(0, item.x - padding),
+      y: Math.max(0, item.y - padding),
+      width: Math.max(8, item.width + padding * 2),
+      height: Math.max(8, item.height + padding * 2),
+      size: item.size,
+      color: '#111827',
+      opacity: 1,
+      imageData: crop.toDataURL('image/png'),
+      imageType: 'png',
+      cropX: 0,
+      cropY: 0,
+      cropWidth: 100,
+      cropHeight: 100,
+      generatedFromText: true,
+    };
+  }
+
+  private shouldRenderHtmlItemAsImage(item: HtmlTextItem): boolean {
+    if (item.textDecoration === 'underline') return false;
+    if (this.isDarkColor(item.backgroundColor)) return false;
+    const textColor = this.hexToRgbValues(item.color ?? '');
+    if (textColor && textColor[2] > 140 && textColor[0] < 80) return false;
+    return this.isGraphicBackground(item.backgroundColor);
+  }
+
+  private isDarkColor(color: string): boolean {
+    const rgbValue = this.hexToRgbValues(color);
+    if (!rgbValue) return false;
+    const [red, green, blue] = rgbValue;
+    return (red * 299 + green * 587 + blue * 114) / 1000 < 138;
+  }
+
+  private isGraphicBackground(color: string): boolean {
+    const rgbValue = this.hexToRgbValues(color);
+    if (!rgbValue) return false;
+    const [red, green, blue] = rgbValue;
+    const max = Math.max(red, green, blue);
+    const min = Math.min(red, green, blue);
+    const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+    return brightness < 242 && max - min > 18;
+  }
+
+  private sampleCanvasColor(context: CanvasRenderingContext2D, item: Pick<HtmlTextItem, 'x' | 'y' | 'width' | 'height'>, scale: number): string {
+    const canvas = context.canvas;
+    const samplePoints: [number, number][] = [];
+    for (const xRatio of [0.08, 0.22, 0.5, 0.78, 0.92]) {
+      for (const yRatio of [0.08, 0.22, 0.5, 0.78, 0.92]) {
+        samplePoints.push([item.x + item.width * xRatio, item.y + item.height * yRatio]);
+      }
+    }
+    const colors = samplePoints.map(([x, y]) => {
+      const px = Math.max(0, Math.min(canvas.width - 1, Math.round(x * scale)));
+      const py = Math.max(0, Math.min(canvas.height - 1, Math.round(y * scale)));
+      return Array.from(context.getImageData(px, py, 1, 1).data).slice(0, 3);
+    });
+    const colored = colors.filter(([red, green, blue]) => {
+      const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+      return brightness > 30 && brightness < 245 && Math.max(red, green, blue) - Math.min(red, green, blue) > 18;
+    });
+    const candidates = colored.length >= 3 ? colored : colors;
+    const [red, green, blue] = candidates
+      .sort((a, b) => this.colorScore(b) - this.colorScore(a))[0];
+    return `#${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}${blue.toString(16).padStart(2, '0')}`;
+  }
+
+  private colorScore([red, green, blue]: number[]): number {
+    const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+    const saturation = Math.max(red, green, blue) - Math.min(red, green, blue);
+    return saturation > 18 && brightness < 245 ? saturation * 3 + brightness : brightness;
   }
 
   private linkRectsFromAnnotations(annotations: unknown[], viewport: PdfViewportLike): LinkRect[] {
@@ -921,9 +1522,11 @@ export class Mainscreen implements AfterViewInit {
     this.overlays = [];
     this.htmlTextItems = [];
     this.htmlPageBackgrounds = {};
+    this.undoStack = [];
+    this.redoStack = [];
     this.selectedHtmlTextId = '';
     this.htmlEditMode = true;
-    const pdf = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+    const pdf = await this.openPdfJsDocument(bytes);
     this.pages = [];
     for (let index = 1; index <= pdf.numPages; index += 1) {
       const page = await pdf.getPage(index);
@@ -945,6 +1548,8 @@ export class Mainscreen implements AfterViewInit {
     this.busyLabel = '';
     this.queueActiveRender();
     this.queueThumbRender();
+    this.trackingHtmlEditId = '';
+    this.trackingOverlayEditId = '';
   }
 
   private async reconstructAllHtmlPages(pdf: { getPage: (pageNumber: number) => Promise<{ getViewport: (options: { scale: number; rotation?: number }) => PdfViewportLike; getTextContent: () => Promise<{ items: unknown[]; styles?: Record<string, PdfTextStyleLike> }>; getAnnotations: (options?: { intent: string }) => Promise<unknown[]> }> }): Promise<number> {
@@ -955,10 +1560,16 @@ export class Mainscreen implements AfterViewInit {
         const viewport = page.getViewport({ scale: 1, rotation: pageItem.rotation });
         const content = await page.getTextContent();
         const annotations = await page.getAnnotations({ intent: 'display' });
-        allItems.push(...this.htmlItemsFromTextContent(content, viewport, pageItem.id, this.linkRectsFromAnnotations(annotations, viewport)));
-        this.htmlPageBackgrounds[pageItem.id] = await this.renderPageCanvas(pageItem, 1.5).then((canvas) => canvas.toDataURL('image/jpeg', 0.9));
+        const backgroundCanvas = await this.renderPageCanvas(pageItem, this.htmlBackgroundScale);
+        const items = this.applyHtmlItemBackgrounds(
+          this.htmlItemsFromTextContent(content, viewport, pageItem.id, this.linkRectsFromAnnotations(annotations, viewport)),
+          backgroundCanvas,
+          this.htmlBackgroundScale,
+        );
+        allItems.push(...this.replaceGraphicHtmlItemsWithImages(pageItem, items, backgroundCanvas, this.htmlBackgroundScale));
+        this.htmlPageBackgrounds[pageItem.id] = backgroundCanvas.toDataURL('image/png');
       } catch {
-        this.htmlPageBackgrounds[pageItem.id] = await this.renderPageCanvas(pageItem, 1).then((canvas) => canvas.toDataURL('image/jpeg', 0.86));
+        this.htmlPageBackgrounds[pageItem.id] = await this.renderPageCanvas(pageItem, this.htmlBackgroundScale).then((canvas) => canvas.toDataURL('image/png'));
       }
     }
     this.htmlTextItems = allItems;
@@ -969,9 +1580,9 @@ export class Mainscreen implements AfterViewInit {
     const active = this.activePage;
     const canvas = this.mainCanvas?.nativeElement;
     if (!active || !canvas || !this.currentBytes.length) return;
-    const pdf = await pdfjsLib.getDocument({ data: this.currentBytes.slice() }).promise;
+    const pdf = await this.openPdfJsDocument();
     const page = await pdf.getPage(active.sourceIndex + 1);
-    const renderScale = Math.max(2.75, window.devicePixelRatio * 2);
+    const renderScale = Math.max(3.25, window.devicePixelRatio * 2.5);
     const viewport = page.getViewport({ scale: renderScale, rotation: active.rotation });
     const context = canvas.getContext('2d');
     if (!context) return;
@@ -984,7 +1595,7 @@ export class Mainscreen implements AfterViewInit {
 
   private async renderThumbs(): Promise<void> {
     if (!this.currentBytes.length) return;
-    const pdf = await pdfjsLib.getDocument({ data: this.currentBytes.slice() }).promise;
+    const pdf = await this.openPdfJsDocument();
     const canvases = this.thumbCanvases.toArray();
     for (let index = 0; index < this.pages.length; index += 1) {
       const item = this.pages[index];
@@ -1009,9 +1620,70 @@ export class Mainscreen implements AfterViewInit {
     setTimeout(() => void this.renderThumbs(), 140);
   }
 
+  private async openPdfJsDocument(bytes = this.currentBytes): Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }> {
+    const loadingTask = pdfjsLib.getDocument({
+      data: bytes.slice(),
+      password: this.openPassword || undefined,
+    });
+    loadingTask.onPassword = (updatePassword: (password: string) => void, reason: number) => {
+      const password = window.prompt(
+        reason === 2 ? 'Incorrect PDF password. Enter it again:' : 'Enter the PDF open password:',
+        this.openPassword,
+      );
+      if (password === null) throw new Error('PDF password required.');
+      this.openPassword = password;
+      updatePassword(password);
+    };
+    return loadingTask.promise as Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }>;
+  }
+
+  private async loadSourcePdfDocument(): Promise<PDFDocument> {
+    const bytes = this.openPassword
+      ? await this.runQpdf(this.currentBytes, [`--password=${this.openPassword}`, '--decrypt'])
+      : this.currentBytes;
+    return PDFDocument.load(bytes, { ignoreEncryption: true });
+  }
+
+  private async runQpdf(inputBytes: Uint8Array<ArrayBufferLike>, args: string[]): Promise<Uint8Array> {
+    if (!globalThis.crossOriginIsolated || typeof SharedArrayBuffer === 'undefined') {
+      throw new Error('PDF password tools need cross-origin isolation. Restart the dev server so COOP/COEP headers are applied, then reload the page.');
+    }
+    const init = (await import('qpdf-wasm')).default;
+    const wasmBinary = await this.loadQpdfWasm();
+    const errors: string[] = [];
+    const qpdf = await init({
+      wasmBinary,
+      locateFile: (path: string) => path.startsWith('qpdf.') ? `/assets/${path}` : path,
+      printErr: (message: string) => errors.push(message),
+    });
+    const inputPath = '/input.pdf';
+    const outputPath = '/output.pdf';
+    qpdf.FS.writeFile(inputPath, inputBytes);
+    const exitCode = qpdf.callMain([...args, inputPath, outputPath]);
+    if (exitCode !== 0) {
+      throw new Error(errors.at(-1) || 'PDF password operation failed.');
+    }
+    return qpdf.FS.readFile(outputPath);
+  }
+
+  private async loadQpdfWasm(): Promise<Uint8Array> {
+    const candidates = ['/assets/qpdf.wasm', 'assets/qpdf.wasm', './assets/qpdf.wasm'];
+    const failures: string[] = [];
+    for (const path of candidates) {
+      try {
+        const response = await fetch(path);
+        if (response.ok) return new Uint8Array(await response.arrayBuffer());
+        failures.push(`${path}: ${response.status}`);
+      } catch (error) {
+        failures.push(`${path}: ${error instanceof Error ? error.message : 'failed'}`);
+      }
+    }
+    throw new Error(`Could not load PDF password engine. Restart the dev server if assets were just added. ${failures.join(' | ')}`);
+  }
+
   private async createPdfDocument(applyMetadata = false): Promise<PDFDocument> {
     if (!this.currentBytes.length) throw new Error('Load a PDF first.');
-    const source = await PDFDocument.load(this.currentBytes);
+    const source = await this.loadSourcePdfDocument();
     const output = await PDFDocument.create();
     for (const page of this.pages) {
       const [copied] = await output.copyPages(source, [page.sourceIndex]);
@@ -1021,6 +1693,120 @@ export class Mainscreen implements AfterViewInit {
     await this.applyOverlays(output);
     if (applyMetadata) this.writeMetadata(output);
     return output;
+  }
+
+  private async createHtmlEditedPdf(applyMetadata = true): Promise<PDFDocument> {
+    if (!this.currentBytes.length) throw new Error('Load a PDF first.');
+    const source = await this.loadSourcePdfDocument();
+    const output = await PDFDocument.create();
+    for (const page of this.pages) {
+      const [copied] = await output.copyPages(source, [page.sourceIndex]);
+      copied.setRotation(degrees((copied.getRotation().angle + page.rotation + 360) % 360));
+      output.addPage(copied);
+    }
+    await this.applyHtmlTextEdits(output);
+    await this.applyOverlays(output);
+    if (applyMetadata) this.writeMetadata(output);
+    return output;
+  }
+
+  private async createExportPdf(applyMetadata = true): Promise<PDFDocument> {
+    return this.createHtmlEditedPdf(applyMetadata);
+  }
+
+  private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
+    const fonts = {
+      helvetica: await pdf.embedFont(StandardFonts.Helvetica),
+      helveticaBold: await pdf.embedFont(StandardFonts.HelveticaBold),
+      helveticaItalic: await pdf.embedFont(StandardFonts.HelveticaOblique),
+      helveticaBoldItalic: await pdf.embedFont(StandardFonts.HelveticaBoldOblique),
+      times: await pdf.embedFont(StandardFonts.TimesRoman),
+      timesBold: await pdf.embedFont(StandardFonts.TimesRomanBold),
+      timesItalic: await pdf.embedFont(StandardFonts.TimesRomanItalic),
+      timesBoldItalic: await pdf.embedFont(StandardFonts.TimesRomanBoldItalic),
+      courier: await pdf.embedFont(StandardFonts.Courier),
+      courierBold: await pdf.embedFont(StandardFonts.CourierBold),
+      courierItalic: await pdf.embedFont(StandardFonts.CourierOblique),
+      courierBoldItalic: await pdf.embedFont(StandardFonts.CourierBoldOblique),
+    };
+    const pdfPages = pdf.getPages();
+    for (const [pageIndex, pageItem] of this.pages.entries()) {
+      const page = pdfPages[pageIndex];
+      const { width, height } = page.getSize();
+      const scaleX = width / pageItem.width;
+      const scaleY = height / pageItem.height;
+      const editedItems = this.htmlTextItems
+        .filter((item) => item.pageId === pageItem.id && this.htmlTextChanged(item));
+      for (const item of editedItems) {
+        const isLinkedText = item.textDecoration === 'underline';
+        const x = item.x * scaleX;
+        const topY = item.y * scaleY;
+        const boxWidth = Math.max(1, item.width * scaleX);
+        const boxHeight = Math.max(item.size * 1.25, item.height) * scaleY;
+        const boxY = height - topY - boxHeight;
+        if (!isLinkedText || item.text !== item.originalText) {
+          page.drawRectangle({
+            x: x - 1,
+            y: boxY - 1,
+            width: boxWidth + 2,
+            height: boxHeight + 2,
+            color: this.hexToRgb(item.backgroundColor || '#ffffff'),
+            opacity: 1,
+          });
+        }
+        const textFont = this.fontForHtmlItem(item, fonts);
+        const fontSize = Math.max(5, item.size * Math.min(scaleX, scaleY));
+        const lineHeight = fontSize * 1.12;
+        item.text.split(/\r?\n/).forEach((line, lineIndex) => {
+          const y = boxY + boxHeight - fontSize - lineIndex * lineHeight;
+          if (y < boxY - lineHeight) return;
+          const textWidth = Math.min(boxWidth, textFont.widthOfTextAtSize(line, fontSize));
+          const textX = item.textAlign === 'center' ? x + boxWidth / 2 - textWidth / 2 : x;
+          page.drawText(line || ' ', {
+            x: textX,
+            y,
+            size: fontSize,
+            font: textFont,
+            color: this.hexToRgb(item.color ?? '#111111'),
+            maxWidth: boxWidth,
+          });
+          if (item.textDecoration === 'underline') {
+            const underlineY = y - Math.max(1, fontSize * 0.12);
+            page.drawLine({
+              start: { x: textX, y: underlineY },
+              end: { x: textX + textWidth, y: underlineY },
+              thickness: Math.max(0.5, fontSize * 0.04),
+              color: this.hexToRgb(item.color ?? '#0000ee'),
+            });
+          }
+        });
+      }
+    }
+  }
+
+  htmlTextChanged(item: HtmlTextItem): boolean {
+    return item.text !== item.originalText
+      || (item.textDecoration !== 'underline' && (
+        Math.abs(item.size - item.originalSize) > 0.2
+        || (item.color ?? '#111111').toLowerCase() !== (item.originalColor ?? '#111111').toLowerCase()
+        || (item.fontWeight ?? '400') !== (item.originalFontWeight ?? '400')
+        || (item.fontStyle ?? 'normal') !== (item.originalFontStyle ?? 'normal')
+      ));
+  }
+
+  private fontForHtmlItem(item: HtmlTextItem, fonts: Record<string, PDFFont>): PDFFont {
+    const family = (item.fontFamily ?? '').toLowerCase();
+    const bold = Number(item.fontWeight) >= 600 || item.fontWeight === 'bold';
+    const italic = item.fontStyle === 'italic';
+    const prefix = family.includes('courier') || family.includes('mono')
+      ? 'courier'
+      : family.includes('times') || family.includes('serif') || family.includes('georgia')
+        ? 'times'
+        : 'helvetica';
+    if (bold && italic) return fonts[`${prefix}BoldItalic`];
+    if (bold) return fonts[`${prefix}Bold`];
+    if (italic) return fonts[`${prefix}Italic`];
+    return fonts[prefix];
   }
 
   private async applyOverlays(pdf: PDFDocument): Promise<void> {
@@ -1038,17 +1824,39 @@ export class Mainscreen implements AfterViewInit {
         const x = overlay.x * scaleX;
         const y = height - (overlay.y + overlay.height) * scaleY;
         if (overlay.kind === 'image' && overlay.imageData) {
-          const imageBytes = await fetch(overlay.imageData).then((response) => response.arrayBuffer());
+          const imageData = await this.croppedImageDataUrl(overlay);
+          const imageBytes = await fetch(imageData).then((response) => response.arrayBuffer());
           const image = overlay.imageType === 'png' ? await pdf.embedPng(imageBytes) : await pdf.embedJpg(imageBytes);
           page.drawImage(image, { x, y, width: overlay.width * scaleX, height: overlay.height * scaleY, opacity: overlay.opacity });
         } else if (overlay.kind === 'rectangle' || overlay.kind === 'highlight' || overlay.kind === 'ellipse' || overlay.kind === 'line') {
-          const color = overlay.kind === 'rectangle' ? this.hexToRgb(overlay.color) : rgb(1, 0.88, 0.18);
           if (overlay.kind === 'line') {
             page.drawLine({ start: { x, y: y + overlay.height * scaleY / 2 }, end: { x: x + overlay.width * scaleX, y: y + overlay.height * scaleY / 2 }, thickness: Math.max(1, overlay.height * scaleY), color: this.hexToRgb(overlay.color), opacity: overlay.opacity });
           } else if (overlay.kind === 'ellipse') {
-            page.drawEllipse({ x: x + overlay.width * scaleX / 2, y: y + overlay.height * scaleY / 2, xScale: overlay.width * scaleX / 2, yScale: overlay.height * scaleY / 2, color: this.hexToRgb(overlay.color), opacity: overlay.opacity });
+            page.drawEllipse({
+              x: x + overlay.width * scaleX / 2,
+              y: y + overlay.height * scaleY / 2,
+              xScale: overlay.width * scaleX / 2,
+              yScale: overlay.height * scaleY / 2,
+              color: overlay.fillEnabled ? this.hexToRgb(overlay.fillColor ?? overlay.color) : undefined,
+              borderColor: this.hexToRgb(overlay.borderColor ?? overlay.color),
+              borderWidth: Math.max(0, overlay.borderWidth ?? 2),
+              opacity: overlay.opacity,
+              borderOpacity: overlay.opacity,
+            });
+          } else if (overlay.kind === 'rectangle') {
+            page.drawRectangle({
+              x,
+              y,
+              width: overlay.width * scaleX,
+              height: overlay.height * scaleY,
+              color: overlay.fillEnabled ? this.hexToRgb(overlay.fillColor ?? overlay.color) : undefined,
+              borderColor: this.hexToRgb(overlay.borderColor ?? overlay.color),
+              borderWidth: Math.max(0, overlay.borderWidth ?? 2),
+              opacity: overlay.opacity,
+              borderOpacity: overlay.opacity,
+            });
           } else {
-            page.drawRectangle({ x, y, width: overlay.width * scaleX, height: overlay.height * scaleY, color, opacity: overlay.opacity });
+            page.drawRectangle({ x, y, width: overlay.width * scaleX, height: overlay.height * scaleY, color: rgb(1, 0.88, 0.18), opacity: overlay.opacity });
           }
         } else {
           const isBold = overlay.kind === 'signature' || Number(overlay.fontWeight) >= 600 || overlay.fontWeight === 'bold';
@@ -1071,7 +1879,7 @@ export class Mainscreen implements AfterViewInit {
   }
 
   private async generateBookmarks(): Promise<void> {
-    const pdf = await pdfjsLib.getDocument({ data: this.currentBytes.slice() }).promise;
+    const pdf = await this.openPdfJsDocument();
     const bookmarks: { title: string; page: number }[] = [];
     for (let index = 1; index <= pdf.numPages; index += 1) {
       const page = await pdf.getPage(index);
@@ -1087,16 +1895,100 @@ export class Mainscreen implements AfterViewInit {
     this.status = `${bookmarks.length} bookmark title(s) generated.`;
   }
 
+  private async exportText(): Promise<void> {
+    const pages = await this.structuredTextPages();
+    const text = pages
+      .map((page) => [`Page ${page.page}`, ...page.rows.map((row) => row.cells.map((cell) => cell.text).join('\t'))].join('\n'))
+      .join('\n\n');
+    this.downloadBlob(text, 'converted.txt', 'text/plain;charset=utf-8');
+    this.status = 'Text exported.';
+  }
+
+  private async exportDoc(): Promise<void> {
+    const pages = await this.structuredTextPages();
+    const body = pages.map((page) => `
+      <h2>Page ${page.page}</h2>
+      ${page.rows.map((row) => `<p>${row.cells.map((cell) => this.escapeHtml(cell.text)).join(' ')}</p>`).join('')}
+    `).join('<br style="page-break-before:always">');
+    const html = `<!doctype html>
+      <html><head><meta charset="utf-8"><title>${this.escapeHtml(this.title || this.fileName)}</title>
+      <style>body{font-family:Arial,sans-serif;font-size:11pt;line-height:1.35}h2{font-size:13pt}p{margin:0 0 6pt}</style>
+      </head><body>${body}</body></html>`;
+    this.downloadBlob(html, 'converted.doc', 'application/msword;charset=utf-8');
+    this.status = 'Word-compatible DOC exported.';
+  }
+
+  private async exportDocx(): Promise<void> {
+    const pages = await this.structuredTextPages();
+    const paragraphs = pages.flatMap((page, index) => [
+      this.docxParagraph(`Page ${page.page}`, index > 0),
+      ...page.rows.map((row) => this.docxParagraph(row.cells.map((cell) => cell.text).join(' '))),
+    ]).join('');
+    const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>${paragraphs}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr></w:body>
+      </w:document>`;
+    const files = [
+      { name: '[Content_Types].xml', data: this.utf8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`) },
+      { name: '_rels/.rels', data: this.utf8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`) },
+      { name: 'word/document.xml', data: this.utf8(documentXml) },
+    ];
+    this.downloadBlob(this.createZip(files), 'converted.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    this.status = 'DOCX exported.';
+  }
+
+  private async exportExcel(): Promise<void> {
+    const pages = await this.structuredTextPages();
+    const sheets = pages.map((page) => `
+      <h2>Page ${page.page}</h2>
+      <table>
+        ${page.rows.map((row) => `<tr>${row.cells.map((cell) => `<td>${this.escapeHtml(cell.text)}</td>`).join('')}</tr>`).join('')}
+      </table>
+    `).join('<br>');
+    const html = `<!doctype html>
+      <html><head><meta charset="utf-8"><style>
+        body{font-family:Arial,sans-serif;font-size:10pt}
+        table{border-collapse:collapse;margin-bottom:18px}
+        td{border:1px solid #999;padding:4px 8px;vertical-align:top;mso-number-format:"\\@";}
+        h2{font-size:12pt}
+      </style></head><body>${sheets}</body></html>`;
+    this.downloadBlob(html, 'converted.xls', 'application/vnd.ms-excel;charset=utf-8');
+    this.status = 'Excel-compatible XLS exported.';
+  }
+
   private async downloadPdf(applyMetadata: boolean, name: string, forceMetadata = false): Promise<void> {
-    const pdf = await this.createPdfDocument(applyMetadata || forceMetadata);
+    const pdf = await this.createExportPdf(applyMetadata || forceMetadata);
     const bytes = await pdf.save({ useObjectStreams: true, addDefaultPage: false });
-    this.downloadBlob(bytes, name, 'application/pdf');
-    this.status = `${name} exported.`;
+    const protectedBytes = await this.protectPdfBytes(new Uint8Array(bytes));
+    this.downloadBlob(protectedBytes, name, 'application/pdf');
+    this.status = this.pdfPassword.trim()
+      ? `${name} exported with password protection.`
+      : `${name} exported.`;
+  }
+
+  private async downloadEncryptedPdf(): Promise<void> {
+    const userPassword = this.pdfPassword.trim();
+    if (!userPassword) throw new Error('Enter a PDF password first.');
+    const pdf = await this.createExportPdf(true);
+    const bytes = await pdf.save({ useObjectStreams: true, addDefaultPage: false });
+    const encrypted = await this.protectPdfBytes(new Uint8Array(bytes), true);
+    this.downloadBlob(encrypted, 'password-protected.pdf', 'application/pdf');
+    this.status = 'Password-protected PDF exported.';
+  }
+
+  private async protectPdfBytes(bytes: Uint8Array, requirePassword = false): Promise<Uint8Array> {
+    const userPassword = this.pdfPassword.trim();
+    if (!userPassword) {
+      if (requirePassword) throw new Error('Enter a PDF password first.');
+      return bytes;
+    }
+    const ownerPassword = this.ownerPassword.trim() || userPassword;
+    return this.runQpdf(bytes, ['--encrypt', userPassword, ownerPassword, '256', '--']);
   }
 
   private async mergePdfs(): Promise<void> {
     if (!this.extraFiles.length) throw new Error('Choose extra PDFs to merge first.');
-    const output = await this.createPdfDocument(true);
+    const output = this.currentBytes.length ? await this.createExportPdf(true) : await PDFDocument.create();
     for (const file of this.extraFiles) {
       const incoming = await PDFDocument.load(file.bytes);
       const copied = await output.copyPages(incoming, incoming.getPageIndices());
@@ -1120,13 +2012,11 @@ export class Mainscreen implements AfterViewInit {
   private async downloadSelectedSeparately(): Promise<void> {
     const selected = this.selectedPages;
     if (!selected.length) throw new Error('Select pages first.');
-    const source = await PDFDocument.load(this.currentBytes);
     for (let index = 0; index < selected.length; index += 1) {
-      const output = await PDFDocument.create();
-      const [copied] = await output.copyPages(source, [selected[index].sourceIndex]);
-      copied.setRotation(degrees((copied.getRotation().angle + selected[index].rotation + 360) % 360));
-      output.addPage(copied);
-      this.downloadBlob(await output.save({ useObjectStreams: true }), `page-${index + 1}.pdf`, 'application/pdf');
+      const original = this.pages;
+      this.pages = [selected[index]];
+      await this.downloadPdf(true, `page-${index + 1}.pdf`);
+      this.pages = original;
     }
     this.status = `${selected.length} selected page PDF(s) exported.`;
   }
@@ -1177,6 +2067,16 @@ export class Mainscreen implements AfterViewInit {
     this.afterPageChange('Kept selected pages only.');
   }
 
+  private deleteSelectedPages(): void {
+    const removedIds = new Set(this.selectedPages.map((page) => page.id));
+    if (!removedIds.size) throw new Error('Select pages to delete.');
+    this.pages = this.pages.filter((page) => !removedIds.has(page.id));
+    this.overlays = this.overlays.filter((item) => !removedIds.has(item.pageId));
+    this.htmlTextItems = this.htmlTextItems.filter((item) => !removedIds.has(item.pageId));
+    for (const id of removedIds) delete this.htmlPageBackgrounds[id];
+    this.afterPageChange('Selected pages deleted.');
+  }
+
   private removeBlankLikePages(): void {
     const before = this.pages.length;
     this.pages = this.pages.filter((page) => page.width * page.height > 10000);
@@ -1198,7 +2098,7 @@ export class Mainscreen implements AfterViewInit {
   }
 
   private async downloadFittedPdf(width: number, height: number, name: string): Promise<void> {
-    const source = await this.createPdfDocument(true);
+    const source = await this.createExportPdf(true);
     const output = await PDFDocument.create();
     const embedded = await output.embedPdf(await source.save());
     embedded.forEach((page) => {
@@ -1213,6 +2113,7 @@ export class Mainscreen implements AfterViewInit {
   private addOverlay(kind: OverlayKind): void {
     const page = this.activePage;
     if (!page) throw new Error('Load a PDF first.');
+    const isShape = kind === 'rectangle' || kind === 'ellipse';
     this.overlays = [...this.overlays, {
       id: crypto.randomUUID(),
       pageId: page.id,
@@ -1223,7 +2124,11 @@ export class Mainscreen implements AfterViewInit {
       width: kind === 'text' || kind === 'signature' ? 160 : kind === 'line' ? 180 : 220,
       height: kind === 'text' || kind === 'signature' ? 42 : kind === 'line' ? 4 : 58,
       size: kind === 'signature' ? 28 : 18,
-      color: kind === 'rectangle' ? '#050505' : kind === 'highlight' ? '#facc15' : kind === 'signature' ? '#14532d' : '#111827',
+      color: isShape ? '#0f766e' : kind === 'highlight' ? '#facc15' : kind === 'signature' ? '#14532d' : '#111827',
+      fillColor: isShape ? '#ffffff' : kind === 'highlight' ? '#facc15' : undefined,
+      borderColor: isShape ? '#0f766e' : undefined,
+      fillEnabled: kind === 'highlight',
+      borderWidth: isShape ? 2 : undefined,
       opacity: kind === 'highlight' ? 0.35 : 1,
       rotation: 0,
     }];
@@ -1253,6 +2158,14 @@ export class Mainscreen implements AfterViewInit {
       });
     }
     this.status = 'Watermark added to every page.';
+  }
+
+  private async downloadWatermarkedPdf(): Promise<void> {
+    const before = this.cloneData(this.overlays);
+    this.watermarkAll();
+    await this.downloadPdf(true, 'watermarked.pdf');
+    this.overlays = before;
+    this.status = 'Watermarked PDF generated with metadata.';
   }
 
   private pageNumbers(): void {
@@ -1291,18 +2204,56 @@ export class Mainscreen implements AfterViewInit {
   }
 
   private async docInfo(): Promise<void> {
-    const pdf = await PDFDocument.load(this.currentBytes);
+    const pdf = await this.loadSourcePdfDocument();
     this.status = `Title: ${pdf.getTitle() || 'none'} | Author: ${pdf.getAuthor() || 'none'} | Pages: ${pdf.getPageCount()}`;
+  }
+
+  private async structuredTextPages(): Promise<{ page: number; rows: { y: number; cells: { x: number; text: string }[] }[] }[]> {
+    if (!this.pages.length) throw new Error('Load a PDF first.');
+    if (this.htmlTextItems.length) {
+      return this.pages.map((page, index) => ({
+        page: index + 1,
+        rows: this.rowsFromPositionedItems(this.htmlTextItems.filter((item) => item.pageId === page.id)),
+      }));
+    }
+
+    const pdf = await this.openPdfJsDocument();
+    const results: { page: number; rows: { y: number; cells: { x: number; text: string }[] }[] }[] = [];
+    for (const [index, pageItem] of this.pages.entries()) {
+      const page = await pdf.getPage(pageItem.sourceIndex + 1);
+      const viewport = page.getViewport({ scale: 1, rotation: pageItem.rotation });
+      const content = await page.getTextContent();
+      results.push({
+        page: index + 1,
+        rows: this.rowsFromPositionedItems(this.htmlItemsFromTextContent(content, viewport, pageItem.id)),
+      });
+    }
+    return results;
+  }
+
+  private rowsFromPositionedItems(items: Pick<HtmlTextItem, 'x' | 'y' | 'text' | 'size' | 'height'>[]): { y: number; cells: { x: number; text: string }[] }[] {
+    const rows: { y: number; cells: { x: number; text: string }[] }[] = [];
+    for (const item of [...items].sort((a, b) => Math.abs(a.y - b.y) < Math.max(a.size, b.size) * 0.5 ? a.x - b.x : a.y - b.y)) {
+      const text = item.text.replace(/\s+/g, ' ').trim();
+      if (!text) continue;
+      const row = rows.find((candidate) => Math.abs(candidate.y - item.y) <= Math.max(item.height, item.size) * 0.65);
+      if (row) {
+        row.cells.push({ x: item.x, text });
+      } else {
+        rows.push({ y: item.y, cells: [{ x: item.x, text }] });
+      }
+    }
+    return rows.map((row) => ({ ...row, cells: row.cells.sort((a, b) => a.x - b.x) }));
   }
 
   private async findText(): Promise<void> {
     const term = this.searchTerm.trim().toLowerCase();
     if (!term) throw new Error('Type a search term first.');
-    const pdf = await pdfjsLib.getDocument({ data: this.currentBytes.slice() }).promise;
+    const pdf = await this.openPdfJsDocument();
     const matches: number[] = [];
     for (let index = 1; index <= pdf.numPages; index += 1) {
       const text = await (await pdf.getPage(index)).getTextContent();
-      const pageText = text.items.map((item) => 'str' in item ? item.str : '').join(' ').toLowerCase();
+      const pageText = (text.items as unknown[]).map((item) => this.isPdfTextItem(item) ? item.str : '').join(' ').toLowerCase();
       if (pageText.includes(term)) matches.push(index);
     }
     this.status = matches.length ? `Found "${term}" on page(s): ${matches.join(', ')}.` : `No matches for "${term}".`;
@@ -1319,11 +2270,53 @@ export class Mainscreen implements AfterViewInit {
     return 'Working';
   }
 
-  private async downloadActiveImage(type: 'image/png' | 'image/jpeg', name: string, quality = 0.92): Promise<void> {
-    const canvas = await this.renderActivePageCanvas(type === 'image/png' ? 2 : 1.6);
-    canvas.toBlob((blob) => {
-      if (blob) this.downloadBlob(blob, name, type);
-    }, type, quality);
+  private shouldRecordHistory(action: string): boolean {
+    return !/download|export|docInfo|countPages|findText|auditDimensions|listSelected/i.test(action);
+  }
+
+  private recordHistory(): void {
+    this.undoStack.push(this.createSnapshot());
+    if (this.undoStack.length > 40) this.undoStack.shift();
+    this.redoStack = [];
+  }
+
+  private createSnapshot(): EditorSnapshot {
+    return {
+      pages: this.cloneData(this.pages),
+      overlays: this.cloneData(this.overlays),
+      htmlTextItems: this.cloneData(this.htmlTextItems),
+      htmlPageBackgrounds: { ...this.htmlPageBackgrounds },
+      activePageId: this.activePageId,
+      selectedOverlayId: this.selectedOverlayId,
+      selectedHtmlTextId: this.selectedHtmlTextId,
+    };
+  }
+
+  private restoreSnapshot(snapshot: EditorSnapshot): void {
+    this.pages = this.cloneData(snapshot.pages);
+    this.overlays = this.cloneData(snapshot.overlays);
+    this.htmlTextItems = this.cloneData(snapshot.htmlTextItems);
+    this.htmlPageBackgrounds = { ...snapshot.htmlPageBackgrounds };
+    this.activePageId = snapshot.activePageId;
+    this.selectedOverlayId = snapshot.selectedOverlayId;
+    this.selectedHtmlTextId = snapshot.selectedHtmlTextId;
+    if (!this.pages.some((page) => page.id === this.activePageId)) {
+      this.activePageId = this.pages[0]?.id ?? '';
+    }
+    this.queueActiveRender();
+    this.queueThumbRender();
+  }
+
+  private cloneData<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value)) as T;
+  }
+
+  private async downloadActiveImage(type: 'image/png' | 'image/jpeg', name: string, quality = this.jpegQuality): Promise<void> {
+    const active = this.activePage;
+    if (!active) throw new Error('No active page.');
+    const canvas = await this.renderPageImageForExport(active, this.effectiveImageExportScale());
+    const blob = await this.canvasToBlob(canvas, type, type === 'image/jpeg' ? this.effectiveJpegQuality() : undefined);
+    this.downloadBlob(blob, name, type);
     this.status = `${name} exported.`;
   }
 
@@ -1333,10 +2326,10 @@ export class Mainscreen implements AfterViewInit {
     for (const page of targets) {
       const pageIndex = this.pages.indexOf(page) + 1;
       this.busyLabel = `Converting page ${pageIndex}`;
-      const canvas = await this.renderCompositePageCanvas(page, 1.8);
-      const blob = await this.canvasToBlob(canvas, 'image/jpeg', this.jpegQuality);
+      const canvas = await this.renderPageImageForExport(page, this.effectiveImageExportScale());
+      const blob = await this.canvasToBlob(canvas, 'image/png');
       files.push({
-        name: `page-${String(pageIndex).padStart(3, '0')}.jpg`,
+        name: `page-${String(pageIndex).padStart(3, '0')}.png`,
         data: new Uint8Array(await blob.arrayBuffer()),
       });
     }
@@ -1350,15 +2343,24 @@ export class Mainscreen implements AfterViewInit {
     const quality = this.effectiveCompressionQuality();
     for (const page of this.pages) {
       this.busyLabel = `Compressing page ${this.pages.indexOf(page) + 1}`;
-      const canvas = await this.renderCompositePageCanvas(page, scale);
+      const canvas = await this.renderEditedPageCanvas(page, scale);
       const blob = await this.canvasToBlob(canvas, 'image/jpeg', quality);
       const bytes = await blob.arrayBuffer();
       const image = await output.embedJpg(bytes);
       const target = output.addPage([page.width, page.height]);
       target.drawImage(image, { x: 0, y: 0, width: page.width, height: page.height });
     }
+    this.writeMetadata(output);
     this.downloadBlob(await output.save({ useObjectStreams: true }), name, 'application/pdf');
     this.status = `Compressed PDF exported at level ${this.compressionLevel}.`;
+  }
+
+  private effectiveImageExportScale(): number {
+    return Math.max(2, Math.min(7, this.imageExportScale));
+  }
+
+  private effectiveJpegQuality(): number {
+    return Math.max(0.35, Math.min(1, this.jpegQuality));
   }
 
   private effectiveCompressionScale(): number {
@@ -1374,30 +2376,46 @@ export class Mainscreen implements AfterViewInit {
   private async downloadVisualRebuildPdf(): Promise<void> {
     const output = await PDFDocument.create();
     for (const page of this.pages) {
-      const canvas = await this.renderCompositePageCanvas(page, 2);
-      const bytes = await fetch(canvas.toDataURL('image/jpeg', this.jpegQuality)).then((response) => response.arrayBuffer());
+      const canvas = await this.renderEditedPageCanvas(page, 2);
+      const bytes = await fetch(canvas.toDataURL('image/jpeg', this.effectiveJpegQuality())).then((response) => response.arrayBuffer());
       const image = await output.embedJpg(bytes);
       const target = output.addPage([page.width, page.height]);
       target.drawImage(image, { x: 0, y: 0, width: page.width, height: page.height });
     }
+    this.writeMetadata(output);
     this.downloadBlob(await output.save({ useObjectStreams: true }), 'visual-rebuild.pdf', 'application/pdf');
     this.status = 'Visual PDF rebuilt from canvas. Placement matches the screen, but text is flattened.';
   }
 
   private async downloadHtmlRebuildPdf(): Promise<void> {
+    const output = await this.createVisualHtmlRebuildPdf();
+    this.downloadBlob(await output.save({ useObjectStreams: true, addDefaultPage: false }), 'html-rebuild.pdf', 'application/pdf');
+    const editedCount = this.htmlTextItems.filter((item) => this.htmlTextChanged(item)).length;
+    this.status = editedCount
+      ? `HTML rebuilt PDF exported with ${editedCount} edited text fragment(s). Reconstructed chart pages were exported as structured visuals.`
+      : 'HTML rebuilt PDF exported with reconstructed page structure preserved visually.';
+  }
+
+  private async createVisualHtmlRebuildPdf(): Promise<PDFDocument> {
     const output = await PDFDocument.create();
     for (const page of this.pages) {
       const htmlItems = this.htmlTextItems.filter((item) => item.pageId === page.id);
-      const canvas = htmlItems.length
-        ? await this.renderHtmlPageCanvas(page, htmlItems, 2)
-        : await this.renderCompositePageCanvas(page, 2);
-      const bytes = await fetch(canvas.toDataURL('image/jpeg', this.jpegQuality)).then((response) => response.arrayBuffer());
-      const image = await output.embedJpg(bytes);
-      const target = output.addPage([page.width, page.height]);
-      target.drawImage(image, { x: 0, y: 0, width: page.width, height: page.height });
+      const hasRebuild = !!this.htmlPageBackgrounds[page.id] || htmlItems.length > 0;
+      if (hasRebuild) {
+        const canvas = await this.renderHtmlPageCanvas(page, htmlItems.filter((item) => this.htmlTextChanged(item)), this.htmlBackgroundScale);
+        const imageBytes = await fetch(canvas.toDataURL('image/png')).then((response) => response.arrayBuffer());
+        const image = await output.embedPng(imageBytes);
+        const target = output.addPage([page.width, page.height]);
+        target.drawImage(image, { x: 0, y: 0, width: page.width, height: page.height });
+      } else {
+        const source = await this.loadSourcePdfDocument();
+        const [copied] = await output.copyPages(source, [page.sourceIndex]);
+        copied.setRotation(degrees((copied.getRotation().angle + page.rotation + 360) % 360));
+        output.addPage(copied);
+      }
     }
-    this.downloadBlob(await output.save({ useObjectStreams: true }), 'html-rebuild.pdf', 'application/pdf');
-    this.status = 'HTML rebuilt PDF exported. Reconstructed pages use editable text placement; image-only pages were preserved as page images.';
+    this.writeMetadata(output);
+    return output;
   }
 
   private async renderHtmlPageCanvas(pageItem: PageItem, htmlItems: HtmlTextItem[], scale: number): Promise<HTMLCanvasElement> {
@@ -1414,6 +2432,24 @@ export class Mainscreen implements AfterViewInit {
     return canvas;
   }
 
+  private async renderEditedPageCanvas(pageItem: PageItem, scale: number): Promise<HTMLCanvasElement> {
+    const htmlItems = this.htmlTextItems.filter((item) => item.pageId === pageItem.id && this.htmlTextChanged(item));
+    return htmlItems.length
+      ? this.renderHtmlPageCanvas(pageItem, htmlItems, scale)
+      : this.renderCompositePageCanvas(pageItem, scale);
+  }
+
+  private async renderPageImageForExport(pageItem: PageItem, scale: number): Promise<HTMLCanvasElement> {
+    return this.pageHasEdits(pageItem)
+      ? this.renderEditedPageCanvas(pageItem, scale)
+      : this.renderPageCanvas(pageItem, scale);
+  }
+
+  private pageHasEdits(pageItem: PageItem): boolean {
+    return this.overlays.some((item) => item.pageId === pageItem.id)
+      || this.htmlTextItems.some((item) => item.pageId === pageItem.id && this.htmlTextChanged(item));
+  }
+
   private paintHtmlTextToCanvas(context: CanvasRenderingContext2D, item: HtmlTextItem, scale: number): void {
     context.save();
     const weight = Number(item.fontWeight) >= 600 || item.fontWeight === 'bold' ? '700' : '400';
@@ -1423,18 +2459,21 @@ export class Mainscreen implements AfterViewInit {
     context.font = `${style} ${weight} ${item.size * scale}px ${family}`;
     context.fillStyle = item.color ?? '#111111';
     context.textBaseline = 'top';
+    context.textAlign = item.textAlign === 'center' ? 'center' : 'left';
     item.text.split(/\r?\n/).forEach((line, index) => {
-      const x = item.x * scale;
+      const x = item.textAlign === 'center' ? (item.x + item.width / 2) * scale : item.x * scale;
       const y = item.y * scale + index * lineHeight;
-      context.fillStyle = '#ffffff';
+      context.fillStyle = item.backgroundColor || '#ffffff';
       context.fillRect(item.x * scale - 1, y - 1, item.width * scale + 2, lineHeight + 2);
       context.fillStyle = item.color ?? '#111111';
       context.fillText(line, x, y, item.width * scale);
       if (item.textDecoration === 'underline') {
         const underlineY = y + item.size * scale * 1.02;
+        const textWidth = Math.min(context.measureText(line).width, item.width * scale);
+        const underlineStart = item.textAlign === 'center' ? x - textWidth / 2 : x;
         context.beginPath();
-        context.moveTo(x, underlineY);
-        context.lineTo(x + Math.min(context.measureText(line).width, item.width * scale), underlineY);
+        context.moveTo(underlineStart, underlineY);
+        context.lineTo(underlineStart + textWidth, underlineY);
         context.lineWidth = Math.max(1, scale * 0.5);
         context.strokeStyle = item.color ?? '#0000ee';
         context.stroke();
@@ -1444,7 +2483,7 @@ export class Mainscreen implements AfterViewInit {
   }
 
   private async renderPageCanvas(pageItem: PageItem, scale: number): Promise<HTMLCanvasElement> {
-    const pdf = await pdfjsLib.getDocument({ data: this.currentBytes.slice() }).promise;
+    const pdf = await this.openPdfJsDocument();
     const sourcePage = await pdf.getPage(pageItem.sourceIndex + 1);
     const viewport = sourcePage.getViewport({ scale, rotation: pageItem.rotation });
     const canvas = document.createElement('canvas');
@@ -1480,15 +2519,31 @@ export class Mainscreen implements AfterViewInit {
 
     if (overlay.kind === 'image' && overlay.imageData) {
       const image = await this.loadImageElement(overlay.imageData);
-      context.drawImage(image, 0, 0, width, height);
+      const cropX = ((overlay.cropX ?? 0) / 100) * image.naturalWidth;
+      const cropY = ((overlay.cropY ?? 0) / 100) * image.naturalHeight;
+      const cropWidth = ((overlay.cropWidth ?? 100) / 100) * image.naturalWidth;
+      const cropHeight = ((overlay.cropHeight ?? 100) / 100) * image.naturalHeight;
+      context.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, width, height);
     } else if (overlay.kind === 'rectangle' || overlay.kind === 'highlight') {
-      context.fillStyle = overlay.kind === 'highlight' ? '#facc15' : overlay.color;
-      context.fillRect(0, 0, width, height);
+      if (overlay.kind === 'highlight' || overlay.fillEnabled) {
+        context.fillStyle = overlay.kind === 'highlight' ? overlay.fillColor ?? '#facc15' : overlay.fillColor ?? overlay.color;
+        context.fillRect(0, 0, width, height);
+      }
+      if (overlay.kind === 'rectangle') {
+        context.strokeStyle = overlay.borderColor ?? overlay.color;
+        context.lineWidth = Math.max(0, (overlay.borderWidth ?? 2) * scale);
+        if (context.lineWidth > 0) context.strokeRect(0, 0, width, height);
+      }
     } else if (overlay.kind === 'ellipse') {
-      context.fillStyle = overlay.color;
       context.beginPath();
       context.ellipse(width / 2, height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
-      context.fill();
+      if (overlay.fillEnabled) {
+        context.fillStyle = overlay.fillColor ?? overlay.color;
+        context.fill();
+      }
+      context.strokeStyle = overlay.borderColor ?? overlay.color;
+      context.lineWidth = Math.max(0, (overlay.borderWidth ?? 2) * scale);
+      if (context.lineWidth > 0) context.stroke();
     } else if (overlay.kind === 'line') {
       context.strokeStyle = overlay.color;
       context.lineWidth = Math.max(1, height);
@@ -1524,10 +2579,33 @@ export class Mainscreen implements AfterViewInit {
     });
   }
 
+  private async croppedImageDataUrl(overlay: OverlayItem): Promise<string> {
+    if (!overlay.imageData || (
+      (overlay.cropX ?? 0) <= 0
+      && (overlay.cropY ?? 0) <= 0
+      && (overlay.cropWidth ?? 100) >= 100
+      && (overlay.cropHeight ?? 100) >= 100
+    )) {
+      return overlay.imageData ?? '';
+    }
+    const image = await this.loadImageElement(overlay.imageData);
+    const cropX = ((overlay.cropX ?? 0) / 100) * image.naturalWidth;
+    const cropY = ((overlay.cropY ?? 0) / 100) * image.naturalHeight;
+    const cropWidth = Math.max(1, ((overlay.cropWidth ?? 100) / 100) * image.naturalWidth);
+    const cropHeight = Math.max(1, ((overlay.cropHeight ?? 100) / 100) * image.naturalHeight);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(cropWidth);
+    canvas.height = Math.round(cropHeight);
+    const context = canvas.getContext('2d');
+    if (!context) return overlay.imageData;
+    context.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL(overlay.imageType === 'jpg' ? 'image/jpeg' : 'image/png', this.effectiveJpegQuality());
+  }
+
   private async renderActivePageCanvas(scale: number): Promise<HTMLCanvasElement> {
     const active = this.activePage;
     if (!active) throw new Error('No active page.');
-    const pdf = await pdfjsLib.getDocument({ data: this.currentBytes.slice() }).promise;
+    const pdf = await this.openPdfJsDocument();
     const sourcePage = await pdf.getPage(active.sourceIndex + 1);
     const viewport = sourcePage.getViewport({ scale, rotation: active.rotation });
     const canvas = document.createElement('canvas');
@@ -1585,11 +2663,21 @@ export class Mainscreen implements AfterViewInit {
   }
 
   private hexToRgb(hex: string): ReturnType<typeof rgb> {
-    const value = hex.replace('#', '');
-    const red = parseInt(value.slice(0, 2), 16) / 255;
-    const green = parseInt(value.slice(2, 4), 16) / 255;
-    const blue = parseInt(value.slice(4, 6), 16) / 255;
+    const [redRaw, greenRaw, blueRaw] = this.hexToRgbValues(hex) ?? [255, 255, 255];
+    const red = redRaw / 255;
+    const green = greenRaw / 255;
+    const blue = blueRaw / 255;
     return rgb(red, green, blue);
+  }
+
+  private hexToRgbValues(hex: string): [number, number, number] | undefined {
+    const value = hex.replace('#', '').trim();
+    if (!/^[0-9a-f]{6}$/i.test(value)) return undefined;
+    return [
+      parseInt(value.slice(0, 2), 16),
+      parseInt(value.slice(2, 4), 16),
+      parseInt(value.slice(4, 6), 16),
+    ];
   }
 
   private downloadBlob(data: Blob | Uint8Array<ArrayBufferLike> | ArrayBuffer | string, name: string, type: string): void {
@@ -1607,6 +2695,23 @@ export class Mainscreen implements AfterViewInit {
     const copy = new Uint8Array(data.byteLength);
     copy.set(data);
     return copy;
+  }
+
+  private utf8(value: string): Uint8Array {
+    return new TextEncoder().encode(value);
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  private docxParagraph(text: string, pageBreak = false): string {
+    const breakXml = pageBreak ? '<w:r><w:br w:type="page"/></w:r>' : '';
+    return `<w:p>${breakXml}<w:r><w:t xml:space="preserve">${this.escapeHtml(text)}</w:t></w:r></w:p>`;
   }
 
   private createZip(files: { name: string; data: Uint8Array }[]): Uint8Array {
