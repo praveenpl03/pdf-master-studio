@@ -77,7 +77,7 @@
                   [(ngModel)]="textItem.text"
                   [style.left.px]="textItem.x" [style.top.px]="textItem.y" [style.width.px]="textItem.width" [style.height.px]="textItem.height"
                   [style.font-size.px]="textItem.size" [style.font-family]="textItem.fontFamily" [style.font-weight]="textItem.fontWeight" [style.font-style]="textItem.fontStyle" [style.color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.color : 'transparent'" [style.text-decoration]="textItem.textDecoration" [style.background-color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.backgroundColor : 'transparent'" [style.text-align]="textItem.textAlign || 'left'"
-                  (ngModelChange)="markHtmlTextEdit(textItem)" (click)="selectHtmlText(textItem, $event)" (pointerdown)="$event.stopPropagation()"></textarea>
+                  (ngModelChange)="markHtmlTextEdit(textItem)" (click)="selectHtmlText(textItem, $event); focusTextField($event)" (pointerdown)="$event.stopPropagation()" (touchstart)="selectHtmlText(textItem, $event); focusTextField($event)"></textarea>
               }
               <div class="html-overlay-layer">
                 @for (item of pageOverlays; track item.id) {
@@ -91,7 +91,7 @@
                     } @else if (item.kind === 'rectangle' || item.kind === 'highlight' || item.kind === 'ellipse' || item.kind === 'line') {
                       <span></span>
                     } @else {
-                      <input [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" />
+                      <input [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" />
                     }
                     @if (item.id === selectedOverlayId && !item.locked) {
                       <button type="button" class="remove-handle" title="Delete" (click)="removeOverlay(item, $event)">x</button>
@@ -168,7 +168,7 @@
                   } @else if (item.kind === 'rectangle' || item.kind === 'highlight' || item.kind === 'ellipse' || item.kind === 'line') {
                     <span></span>
                   } @else {
-                    <input [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" />
+                    <input [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" />
                   }
                   @if (item.id === selectedOverlayId && !item.locked) {
                     <button type="button" class="remove-handle" title="Delete" (click)="removeOverlay(item, $event)">x</button>

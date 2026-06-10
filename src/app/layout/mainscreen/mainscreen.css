@@ -1204,6 +1204,29 @@ h2 {
   .left-panel,
   .right-panel {
     max-height: none;
+    padding: 12px;
+  }
+
+  .brand-row {
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: 21px;
+  }
+
+  .tool-count {
+    width: 36px;
+    height: 36px;
+  }
+
+  .file-drop {
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+
+  .control-grid {
+    margin-top: 12px;
   }
 
   .center-panel {
@@ -1216,6 +1239,59 @@ h2 {
   .topbar {
     align-items: flex-start;
     flex-direction: column;
+    position: sticky;
+    top: 0;
+    z-index: 70;
+    padding: 10px 12px;
+    overflow: visible;
+  }
+
+  .command-menu {
+    flex-wrap: nowrap;
+    gap: 8px;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+  }
+
+  .command-group {
+    position: static;
+    flex: 0 0 auto;
+  }
+
+  .command-group::after {
+    display: none;
+  }
+
+  .command-trigger {
+    min-height: 34px;
+    padding: 0 10px;
+    white-space: nowrap;
+  }
+
+  .command-list {
+    position: fixed;
+    top: 268px;
+    right: 8px;
+    bottom: auto;
+    left: 8px;
+    grid-template-columns: 1fr;
+    min-width: 0;
+    width: auto;
+    max-height: min(56dvh, 440px);
+    padding: 10px;
+    border: 1px solid #beb9ad;
+    border-radius: 8px;
+    box-shadow: 0 18px 44px rgba(32, 35, 49, 0.24);
+    animation: popupIn 150ms ease-out;
+  }
+
+  .command-list button {
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 12px;
   }
 
   .page-strip {
@@ -1243,8 +1319,8 @@ h2 {
   .viewer-shell {
     grid-column: 1;
     grid-row: 3;
-    min-height: 55vh;
-    padding: 18px;
+    min-height: 46vh;
+    padding: 12px;
   }
 
   .tool-grid {

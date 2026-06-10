@@ -162,7 +162,7 @@ export class Mainscreen implements AfterViewInit {
   overlays: OverlayItem[] = [];
   extraFiles: FileRecord[] = [];
   activePageId = '';
-  status = 'Load a PDF to begin, or use the sample file.';
+  status = 'Open a PDF to begin.';
   fileName = 'document.pdf';
   currentBytes: Uint8Array<ArrayBufferLike> = new Uint8Array();
   busy = false;
@@ -288,7 +288,6 @@ export class Mainscreen implements AfterViewInit {
   async ngAfterViewInit(): Promise<void> {
     (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc = '/pdf.worker.mjs';
     this.thumbCanvases.changes.subscribe(() => this.queueThumbRender());
-    this.status = 'Open a PDF to begin.';
   }
 
   get activePage(): PageItem | undefined {
@@ -1051,6 +1050,20 @@ export class Mainscreen implements AfterViewInit {
     this.selectedHtmlTextId = item.id;
     this.trackingHtmlEditId = '';
     this.trackingOverlayEditId = '';
+  }
+
+  focusTextField(event: Event): void {
+    event.stopPropagation();
+    const field = event.target as HTMLInputElement | HTMLTextAreaElement;
+    setTimeout(() => {
+      field.focus({ preventScroll: true });
+      const length = field.value.length;
+      try {
+        field.setSelectionRange(length, length);
+      } catch {
+        // Some input types do not support selection ranges.
+      }
+    });
   }
 
   markHtmlTextEdit(item: HtmlTextItem): void {
