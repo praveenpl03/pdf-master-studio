@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, ViewChild, ViewChildren, QueryList } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, ViewChild, ViewChildren, QueryList } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, StandardFonts, degrees, rgb, PDFFont } from 'pdf-lib';
 
 type OperationGroup = 'organize' | 'convert' | 'edit' | 'optimize' | 'protect' | 'analyze';
+type MenuCategoryKey = 'organize' | 'convert' | 'edit' | 'more';
 type OverlayKind = 'text' | 'rectangle' | 'signature' | 'highlight' | 'image' | 'ellipse' | 'line';
 
 interface PageItem {
@@ -167,7 +168,7 @@ export class Mainscreen implements AfterViewInit {
   currentBytes: Uint8Array<ArrayBufferLike> = new Uint8Array();
   busy = false;
   busyLabel = '';
-  zoom = 1.5;
+  zoom = 1.7;
   rangeText = '';
   stampText = 'APPROVED';
   watermarkText = 'Confidential';
@@ -186,6 +187,8 @@ export class Mainscreen implements AfterViewInit {
   imageExportScale = 5;
   pageNumberPosition: 'bottom' | 'top' = 'bottom';
   searchTerm = '';
+  toolSearchTerm = '';
+  activeToolGroup: MenuCategoryKey | undefined;
   selectedOverlayId = '';
   textInspectMode = false;
   inspectedTextItems: InspectTextItem[] = [];
@@ -204,14 +207,17 @@ export class Mainscreen implements AfterViewInit {
   private trackingOverlayEditId = '';
   private lastWheelPageTurn = 0;
   private readonly htmlBackgroundScale = 2.4;
+  private activeRenderToken = 0;
+  private renderTimer: ReturnType<typeof setTimeout> | undefined;
+  private activeRenderTask?: { cancel: () => void; promise: Promise<unknown> };
 
-  readonly toolGroups: { key: OperationGroup; title: string }[] = [
+  constructor(private ngZone: NgZone, private changeDetector: ChangeDetectorRef) {}
+
+  readonly toolGroups: { key: MenuCategoryKey; title: string; hint?: string }[] = [
     { key: 'organize', title: 'Organize' },
     { key: 'convert', title: 'Convert' },
     { key: 'edit', title: 'Edit' },
-    { key: 'optimize', title: 'Optimize' },
-    { key: 'protect', title: 'Protect' },
-    { key: 'analyze', title: 'Analyze' },
+    { key: 'more', title: 'More', hint: 'Optimize' },
   ];
 
   readonly tools: PdfTool[] = [
@@ -286,6 +292,7 @@ export class Mainscreen implements AfterViewInit {
   ];
 
   async ngAfterViewInit(): Promise<void> {
+    this.configureMobileRendering();
     (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc = '/pdf.worker.mjs';
     this.thumbCanvases.changes.subscribe(() => this.queueThumbRender());
   }
@@ -357,16 +364,55 @@ export class Mainscreen implements AfterViewInit {
     return this.visibleTools.filter((tool) => tool.group === group && tool.action !== 'reconstructHtml');
   }
 
-  iconForGroup(group: OperationGroup): string {
-    const icons: Record<OperationGroup, string> = {
+  toolsForCategory(group: MenuCategoryKey): PdfTool[] {
+    const term = this.toolSearchTerm.trim().toLowerCase();
+    const base = term
+      ? this.visibleTools
+      : group === 'more'
+      ? this.visibleTools.filter((tool) => ['optimize', 'protect', 'analyze'].includes(tool.group))
+      : this.visibleTools.filter((tool) => tool.group === group);
+    return base
+      .filter((tool) => tool.action !== 'reconstructHtml')
+      .filter((tool) => !term || tool.name.toLowerCase().includes(term) || tool.action.toLowerCase().includes(term));
+  }
+
+  get activeMenuTools(): PdfTool[] {
+    return this.activeToolGroup ? this.toolsForCategory(this.activeToolGroup) : [];
+  }
+
+  activeMenuTitle(): string {
+    return this.toolGroups.find((group) => group.key === this.activeToolGroup)?.title ?? 'Tools';
+  }
+
+  toggleToolMenu(group: MenuCategoryKey): void {
+    this.activeToolGroup = this.activeToolGroup === group ? undefined : group;
+    this.toolSearchTerm = '';
+  }
+
+  closeToolMenu(): void {
+    this.activeToolGroup = undefined;
+    this.toolSearchTerm = '';
+  }
+
+  async runMenuTool(action: string): Promise<void> {
+    this.closeToolMenu();
+    await this.run(action);
+  }
+
+  iconForGroup(group: MenuCategoryKey): string {
+    const icons: Record<MenuCategoryKey, string> = {
       organize: 'fa-table-cells-large',
       convert: 'fa-right-left',
       edit: 'fa-pen-to-square',
-      optimize: 'fa-gauge-high',
-      protect: 'fa-shield-halved',
-      analyze: 'fa-chart-simple',
+      more: 'fa-ellipsis',
     };
     return icons[group];
+  }
+
+  @HostListener('window:resize')
+  handleWindowResize(): void {
+    this.fitZoomForMobile();
+    if (this.currentBytes.length) this.queueActiveRender();
   }
 
   iconForAction(action: string): string {
@@ -732,7 +778,13 @@ export class Mainscreen implements AfterViewInit {
     this.selectedHtmlTextId = '';
     this.inspectedTextItems = [];
     this.textInspectMode = false;
+    if (this.isMobileScreen()) {
+      this.htmlPageBackgrounds = {};
+      this.releaseCanvasMemory();
+    }
+    this.fitZoomForMobile();
     this.queueActiveRender();
+    if (this.isMobileScreen()) void this.ensureActiveHtmlRebuild();
   }
 
   togglePage(page: PageItem, event: Event): void {
@@ -808,7 +860,7 @@ export class Mainscreen implements AfterViewInit {
     const item = this.selectedOverlay;
     if (!item || item.locked) return;
     this.recordHistory();
-    const clone: OverlayItem = { ...item, id: crypto.randomUUID(), x: item.x + 14, y: item.y + 14 };
+    const clone: OverlayItem = { ...item, id: this.createId(), x: item.x + 14, y: item.y + 14 };
     this.overlays = [...this.overlays, clone];
     this.selectedOverlayId = clone.id;
     this.status = 'Selected edit duplicated.';
@@ -918,7 +970,7 @@ export class Mainscreen implements AfterViewInit {
     const maxWidth = page.width * 0.42;
     const scale = Math.min(1, maxWidth / size.width);
     const overlay: OverlayItem = {
-      id: crypto.randomUUID(),
+      id: this.createId(),
       pageId: page.id,
       kind: 'image',
       text: file.name,
@@ -1007,29 +1059,19 @@ export class Mainscreen implements AfterViewInit {
     const active = this.activePage;
     if (!active) throw new Error('Load a PDF first.');
     const pdf = await this.openPdfJsDocument();
-    const page = await pdf.getPage(active.sourceIndex + 1);
-    const viewport = page.getViewport({ scale: 1, rotation: active.rotation });
-    const content = await page.getTextContent();
-    const annotations = await page.getAnnotations({ intent: 'display' });
-    const backgroundCanvas = await this.renderPageCanvas(active, this.htmlBackgroundScale);
-    const items = this.applyHtmlItemBackgrounds(
-      this.htmlItemsFromTextContent(content, viewport, active.id, this.linkRectsFromAnnotations(annotations, viewport)),
-      backgroundCanvas,
-      this.htmlBackgroundScale,
-    );
-    const editableItems = this.replaceGraphicHtmlItemsWithImages(active, items, backgroundCanvas, this.htmlBackgroundScale);
+    const editableItems = await this.reconstructHtmlPageItem(pdf, active);
 
     this.htmlTextItems = [
       ...this.htmlTextItems.filter((item) => item.pageId !== active.id),
       ...editableItems,
     ];
-    this.htmlPageBackgrounds[active.id] = backgroundCanvas.toDataURL('image/png');
+    this.refreshView();
     this.htmlEditMode = true;
     this.selectedOverlayId = '';
     this.selectedHtmlTextId = '';
     this.clearInspectLayer();
-    this.status = items.length
-      ? `HTML edit mode rebuilt ${items.length} editable line(s). Edit directly on the page, then export HTML rebuild.`
+    this.status = editableItems.length
+      ? `HTML edit mode rebuilt ${editableItems.length} editable line(s). Edit directly on the page, then export HTML rebuild.`
       : 'This page has no extractable text, so HTML edit mode will keep it as an image.';
   }
 
@@ -1055,15 +1097,48 @@ export class Mainscreen implements AfterViewInit {
   focusTextField(event: Event): void {
     event.stopPropagation();
     const field = event.target as HTMLInputElement | HTMLTextAreaElement;
+    if (!(field instanceof HTMLInputElement) && !(field instanceof HTMLTextAreaElement)) return;
+    this.focusEditableField(field);
+    this.showVirtualKeyboard();
+    const length = field.value.length;
+    try {
+      field.setSelectionRange(length, length);
+    } catch {
+      // Some input types do not support selection ranges.
+    }
     setTimeout(() => {
-      field.focus({ preventScroll: true });
-      const length = field.value.length;
+      this.focusEditableField(field);
+      this.showVirtualKeyboard();
       try {
         field.setSelectionRange(length, length);
       } catch {
         // Some input types do not support selection ranges.
       }
     });
+  }
+
+  private focusEditableField(field: HTMLInputElement | HTMLTextAreaElement): void {
+    try {
+      field.focus({ preventScroll: true });
+    } catch {
+      field.focus();
+    }
+  }
+
+  private showVirtualKeyboard(): void {
+    const nav = navigator as Navigator & {
+      virtualKeyboard?: {
+        overlaysContent?: boolean;
+        show?: () => void;
+      };
+    };
+    if (!nav.virtualKeyboard) return;
+    try {
+      nav.virtualKeyboard.overlaysContent = true;
+      nav.virtualKeyboard.show?.();
+    } catch {
+      // The Virtual Keyboard API is optional and varies across mobile browsers.
+    }
   }
 
   markHtmlTextEdit(item: HtmlTextItem): void {
@@ -1144,7 +1219,7 @@ export class Mainscreen implements AfterViewInit {
     const page = this.activePage;
     if (!page) return;
     const cover: OverlayItem = {
-      id: crypto.randomUUID(),
+      id: this.createId(),
       pageId: page.id,
       kind: 'rectangle',
       text: '',
@@ -1158,7 +1233,7 @@ export class Mainscreen implements AfterViewInit {
       locked: true,
     };
     const replacement: OverlayItem = {
-      id: crypto.randomUUID(),
+      id: this.createId(),
       pageId: page.id,
       kind: 'text',
       text: item.text,
@@ -1378,7 +1453,7 @@ export class Mainscreen implements AfterViewInit {
   private createGraphicCoverOverlay(pageItem: PageItem, item: HtmlTextItem): OverlayItem {
     const padding = Math.max(3, Math.round(item.size * 0.18));
     return {
-      id: crypto.randomUUID(),
+      id: this.createId(),
       pageId: pageItem.id,
       kind: 'rectangle',
       text: 'Rendered object cover',
@@ -1406,7 +1481,7 @@ export class Mainscreen implements AfterViewInit {
     const context = crop.getContext('2d');
     context?.drawImage(canvas, sx, sy, sw, sh, 0, 0, crop.width, crop.height);
     return {
-      id: crypto.randomUUID(),
+      id: this.createId(),
       pageId: pageItem.id,
       kind: 'image',
       text: 'Rendered object',
@@ -1530,6 +1605,9 @@ export class Mainscreen implements AfterViewInit {
   private async loadBytes(bytes: Uint8Array, name: string): Promise<void> {
     this.busy = true;
     this.busyLabel = 'Loading PDF';
+    this.status = 'Loading PDF...';
+    this.refreshView();
+    this.releaseCanvasMemory();
     this.currentBytes = bytes;
     this.fileName = name;
     this.overlays = [];
@@ -1545,7 +1623,7 @@ export class Mainscreen implements AfterViewInit {
       const page = await pdf.getPage(index);
       const viewport = page.getViewport({ scale: 1 });
       this.pages.push({
-        id: crypto.randomUUID(),
+        id: this.createId(),
         sourceIndex: index - 1,
         rotation: 0,
         selected: false,
@@ -1555,10 +1633,15 @@ export class Mainscreen implements AfterViewInit {
     }
     this.activePageId = this.pages[0]?.id ?? '';
     this.busyLabel = 'Converting PDF';
-    const rebuilt = await this.reconstructAllHtmlPages(pdf);
+    this.status = 'Converting PDF and preparing editable text...';
+    this.refreshView();
+    const rebuilt = this.isMobileScreen()
+      ? await this.reconstructActiveHtmlPage(pdf)
+      : await this.reconstructAllHtmlPages(pdf);
     this.status = `${name} loaded with ${this.pages.length} page(s). HTML rebuilt ${rebuilt} editable line(s).`;
     this.busy = false;
     this.busyLabel = '';
+    this.fitZoomForMobile();
     this.queueActiveRender();
     this.queueThumbRender();
     this.trackingHtmlEditId = '';
@@ -1568,89 +1651,219 @@ export class Mainscreen implements AfterViewInit {
   private async reconstructAllHtmlPages(pdf: { getPage: (pageNumber: number) => Promise<{ getViewport: (options: { scale: number; rotation?: number }) => PdfViewportLike; getTextContent: () => Promise<{ items: unknown[]; styles?: Record<string, PdfTextStyleLike> }>; getAnnotations: (options?: { intent: string }) => Promise<unknown[]> }> }): Promise<number> {
     const allItems: HtmlTextItem[] = [];
     for (const pageItem of this.pages) {
-      try {
-        const page = await pdf.getPage(pageItem.sourceIndex + 1);
-        const viewport = page.getViewport({ scale: 1, rotation: pageItem.rotation });
-        const content = await page.getTextContent();
-        const annotations = await page.getAnnotations({ intent: 'display' });
-        const backgroundCanvas = await this.renderPageCanvas(pageItem, this.htmlBackgroundScale);
-        const items = this.applyHtmlItemBackgrounds(
-          this.htmlItemsFromTextContent(content, viewport, pageItem.id, this.linkRectsFromAnnotations(annotations, viewport)),
-          backgroundCanvas,
-          this.htmlBackgroundScale,
-        );
-        allItems.push(...this.replaceGraphicHtmlItemsWithImages(pageItem, items, backgroundCanvas, this.htmlBackgroundScale));
-        this.htmlPageBackgrounds[pageItem.id] = backgroundCanvas.toDataURL('image/png');
-      } catch {
-        this.htmlPageBackgrounds[pageItem.id] = await this.renderPageCanvas(pageItem, this.htmlBackgroundScale).then((canvas) => canvas.toDataURL('image/png'));
-      }
+      allItems.push(...await this.reconstructHtmlPageItem(pdf, pageItem));
     }
     this.htmlTextItems = allItems;
+    this.refreshView();
     return allItems.length;
   }
 
+  private async reconstructActiveHtmlPage(pdf: { getPage: (pageNumber: number) => Promise<{ getViewport: (options: { scale: number; rotation?: number }) => PdfViewportLike; getTextContent: () => Promise<{ items: unknown[]; styles?: Record<string, PdfTextStyleLike> }>; getAnnotations: (options?: { intent: string }) => Promise<unknown[]> }> }): Promise<number> {
+    const active = this.activePage;
+    if (!active) return 0;
+    const items = await this.reconstructHtmlPageItem(pdf, active);
+    this.htmlTextItems = [
+      ...this.htmlTextItems.filter((item) => item.pageId !== active.id),
+      ...items,
+    ];
+    this.refreshView();
+    return items.length;
+  }
+
+  private async ensureActiveHtmlRebuild(): Promise<void> {
+    const active = this.activePage;
+    if (!active || this.htmlTextItems.some((item) => item.pageId === active.id)) return;
+    try {
+      const pdf = await this.openPdfJsDocument();
+      const rebuilt = await this.reconstructActiveHtmlPage(pdf);
+      if (rebuilt) this.status = `HTML edit mode rebuilt ${rebuilt} editable line(s) on this page.`;
+      this.refreshView();
+    } catch {
+      this.status = 'This page rendered visually, but no editable text layer could be extracted.';
+      this.refreshView();
+    }
+  }
+
+  private async reconstructHtmlPageItem(pdf: { getPage: (pageNumber: number) => Promise<{ getViewport: (options: { scale: number; rotation?: number }) => PdfViewportLike; getTextContent: () => Promise<{ items: unknown[]; styles?: Record<string, PdfTextStyleLike> }>; getAnnotations: (options?: { intent: string }) => Promise<unknown[]> }> }, pageItem: PageItem): Promise<HtmlTextItem[]> {
+    let extractedItems: HtmlTextItem[] = [];
+    try {
+      const { viewport, content, annotations } = await this.runPdfOutsideAngular(async () => {
+        const page = await pdf.getPage(pageItem.sourceIndex + 1);
+        return {
+          viewport: page.getViewport({ scale: 1, rotation: pageItem.rotation }),
+          content: await page.getTextContent(),
+          annotations: await page.getAnnotations({ intent: 'display' }),
+        };
+      });
+      extractedItems = this.htmlItemsFromTextContent(content, viewport, pageItem.id, this.linkRectsFromAnnotations(annotations, viewport));
+      if (this.isMobileScreen()) {
+        delete this.htmlPageBackgrounds[pageItem.id];
+        return extractedItems;
+      }
+      const rebuildScale = this.effectiveHtmlBackgroundScale();
+      const backgroundCanvas = await this.runPdfOutsideAngular(() => this.renderPageCanvas(pageItem, rebuildScale));
+      const items = this.applyHtmlItemBackgrounds(extractedItems, backgroundCanvas, rebuildScale);
+      const graphicFilteredItems = this.replaceGraphicHtmlItemsWithImages(pageItem, items, backgroundCanvas, rebuildScale);
+      this.htmlPageBackgrounds[pageItem.id] = backgroundCanvas.toDataURL('image/png');
+      return graphicFilteredItems;
+    } catch {
+      delete this.htmlPageBackgrounds[pageItem.id];
+      return extractedItems;
+    }
+  }
+
   private async renderActivePage(): Promise<void> {
+    const token = ++this.activeRenderToken;
     const active = this.activePage;
     const canvas = this.mainCanvas?.nativeElement;
     if (!active || !canvas || !this.currentBytes.length) return;
+    this.activeRenderTask?.cancel();
+    if (this.isMobileScreen()) this.clearCanvas(canvas);
     const pdf = await this.openPdfJsDocument();
-    const page = await pdf.getPage(active.sourceIndex + 1);
-    const renderScale = Math.max(3.25, window.devicePixelRatio * 2.5);
+    const page = await this.runPdfOutsideAngular(() => pdf.getPage(active.sourceIndex + 1));
+    const requestedScale = window.innerWidth <= 760
+      ? Math.min(2, Math.max(1.25, window.devicePixelRatio))
+      : Math.min(4, Math.max(2.4, window.devicePixelRatio * 1.6));
+    const renderScale = this.safePdfRenderScale(active.width, active.height, requestedScale);
     const viewport = page.getViewport({ scale: renderScale, rotation: active.rotation });
     const context = canvas.getContext('2d');
     if (!context) return;
+    if (token !== this.activeRenderToken) return;
     canvas.width = Math.floor(viewport.width);
     canvas.height = Math.floor(viewport.height);
     canvas.style.width = `${active.width * this.zoom}px`;
     canvas.style.height = `${active.height * this.zoom}px`;
-    await page.render({ canvas, canvasContext: context, viewport }).promise;
+    const renderTask = page.render({ canvas, canvasContext: context, viewport });
+    this.activeRenderTask = renderTask;
+    try {
+      await this.runPdfOutsideAngular(() => renderTask.promise);
+    } catch (error) {
+      const name = error instanceof Error ? error.name : '';
+      if (token === this.activeRenderToken && name !== 'RenderingCancelledException') {
+        this.status = error instanceof Error ? error.message : 'Could not render this PDF page on this screen.';
+      }
+    } finally {
+      if (this.activeRenderTask === renderTask) this.activeRenderTask = undefined;
+    }
   }
 
   private async renderThumbs(): Promise<void> {
     if (!this.currentBytes.length) return;
+    if (this.isMobileScreen()) return;
     const pdf = await this.openPdfJsDocument();
     const canvases = this.thumbCanvases.toArray();
     for (let index = 0; index < this.pages.length; index += 1) {
       const item = this.pages[index];
       const canvas = canvases[index]?.nativeElement;
       if (!canvas) continue;
-      const page = await pdf.getPage(item.sourceIndex + 1);
+      const page = await this.runPdfOutsideAngular(() => pdf.getPage(item.sourceIndex + 1));
       const viewport = page.getViewport({ scale: 0.24, rotation: item.rotation });
       const context = canvas.getContext('2d');
       if (!context) continue;
       canvas.width = Math.max(1, Math.floor(viewport.width));
       canvas.height = Math.max(1, Math.floor(viewport.height));
-      await page.render({ canvas, canvasContext: context, viewport }).promise;
+      await this.runPdfOutsideAngular(() => page.render({ canvas, canvasContext: context, viewport }).promise);
       item.thumb = canvas.toDataURL('image/jpeg', 0.68);
     }
   }
 
   private queueActiveRender(): void {
-    setTimeout(() => void this.renderActivePage(), 80);
+    if (this.renderTimer) clearTimeout(this.renderTimer);
+    this.renderTimer = setTimeout(() => {
+      this.renderTimer = undefined;
+      void this.renderActivePage();
+    }, 120);
+  }
+
+  private fitZoomForMobile(): void {
+    const active = this.activePage;
+    if (!active || window.innerWidth > 760) return;
+    const availableWidth = Math.max(260, window.innerWidth - 28);
+    this.zoom = Math.max(0.35, Math.min(1.1, availableWidth / active.width));
+  }
+
+  private effectiveHtmlBackgroundScale(): number {
+    if (this.isMobileScreen()) return Math.min(1.35, Math.max(1, window.devicePixelRatio * 0.8));
+    return this.htmlBackgroundScale;
+  }
+
+  private isMobileScreen(): boolean {
+    return window.innerWidth <= 760;
+  }
+
+  private safePdfRenderScale(width: number, height: number, requestedScale: number): number {
+    if (!this.isMobileScreen()) return requestedScale;
+    const maxPixels = 3_200_000;
+    const maxSide = 2048;
+    const pixelScale = Math.sqrt(maxPixels / Math.max(1, width * height));
+    const sideScale = maxSide / Math.max(width, height, 1);
+    return Math.max(0.6, Math.min(requestedScale, pixelScale, sideScale, 1.35));
+  }
+
+  private configureMobileRendering(): void {
+    if (!this.isMobileScreen()) return;
+    const fabricGlobal = globalThis as typeof globalThis & {
+      fabric?: { config?: { devicePixelRatio?: number } };
+    };
+    if (fabricGlobal.fabric?.config) {
+      fabricGlobal.fabric.config.devicePixelRatio = Math.min(2, window.devicePixelRatio || 1);
+    }
+  }
+
+  private releaseCanvasMemory(): void {
+    this.activeRenderTask?.cancel();
+    this.activeRenderTask = undefined;
+    const main = this.mainCanvas?.nativeElement;
+    if (main) this.clearCanvas(main);
+    for (const item of this.thumbCanvases?.toArray?.() ?? []) {
+      this.clearCanvas(item.nativeElement);
+    }
+  }
+
+  private clearCanvas(canvas: HTMLCanvasElement): void {
+    const context = canvas.getContext('2d');
+    context?.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.width = 1;
+    canvas.height = 1;
+  }
+
+  private runPdfOutsideAngular<T>(work: () => Promise<T>): Promise<T> {
+    return this.ngZone.runOutsideAngular(work);
+  }
+
+  private refreshView(): void {
+    this.ngZone.run(() => this.changeDetector.detectChanges());
   }
 
   private queueThumbRender(): void {
+    if (this.isMobileScreen()) return;
     setTimeout(() => void this.renderThumbs(), 140);
   }
 
   private async openPdfJsDocument(bytes = this.currentBytes): Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }> {
-    const loadingTask = pdfjsLib.getDocument({
-      data: bytes.slice(),
-      password: this.openPassword || undefined,
+    return this.runPdfOutsideAngular(async () => {
+      const loadingTask = pdfjsLib.getDocument({
+        data: bytes.slice(),
+        password: this.openPassword || undefined,
+        disableWorker: this.isMobileScreen(),
+      } as unknown as Parameters<typeof pdfjsLib.getDocument>[0]);
+      loadingTask.onPassword = (updatePassword: (password: string) => void, reason: number) => {
+        const password = window.prompt(
+          reason === 2 ? 'Incorrect PDF password. Enter it again:' : 'Enter the PDF open password:',
+          this.openPassword,
+        );
+        if (password === null) throw new Error('PDF password required.');
+        this.openPassword = password;
+        updatePassword(password);
+      };
+      return loadingTask.promise as Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }>;
     });
-    loadingTask.onPassword = (updatePassword: (password: string) => void, reason: number) => {
-      const password = window.prompt(
-        reason === 2 ? 'Incorrect PDF password. Enter it again:' : 'Enter the PDF open password:',
-        this.openPassword,
-      );
-      if (password === null) throw new Error('PDF password required.');
-      this.openPassword = password;
-      updatePassword(password);
-    };
-    return loadingTask.promise as Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }>;
   }
 
   private async loadSourcePdfDocument(): Promise<PDFDocument> {
+    if (this.openPassword && this.isMobileScreen()) {
+      throw new Error('Password-protected PDF processing is disabled on mobile to avoid browser memory limits. Use desktop for encrypted PDFs.');
+    }
     const bytes = this.openPassword
       ? await this.runQpdf(this.currentBytes, [`--password=${this.openPassword}`, '--decrypt'])
       : this.currentBytes;
@@ -1658,6 +1871,9 @@ export class Mainscreen implements AfterViewInit {
   }
 
   private async runQpdf(inputBytes: Uint8Array<ArrayBufferLike>, args: string[]): Promise<Uint8Array> {
+    if (this.isMobileScreen()) {
+      throw new Error('qpdf-wasm operations are disabled on mobile to avoid browser memory limits.');
+    }
     if (!globalThis.crossOriginIsolated || typeof SharedArrayBuffer === 'undefined') {
       throw new Error('PDF password tools need cross-origin isolation. Restart the dev server so COOP/COEP headers are applied, then reload the page.');
     }
@@ -1995,6 +2211,9 @@ export class Mainscreen implements AfterViewInit {
       if (requirePassword) throw new Error('Enter a PDF password first.');
       return bytes;
     }
+    if (this.isMobileScreen()) {
+      throw new Error('Password encryption uses qpdf-wasm and is disabled on mobile. Export without password or use desktop.');
+    }
     const ownerPassword = this.ownerPassword.trim() || userPassword;
     return this.runQpdf(bytes, ['--encrypt', userPassword, ownerPassword, '256', '--']);
   }
@@ -2044,7 +2263,7 @@ export class Mainscreen implements AfterViewInit {
   }
 
   private duplicateSelected(): void {
-    const additions = this.selectedPages.map((page) => ({ ...page, id: crypto.randomUUID(), selected: false }));
+    const additions = this.selectedPages.map((page) => ({ ...page, id: this.createId(), selected: false }));
     this.pages.splice(this.pages.length, 0, ...additions);
     this.afterPageChange(`${additions.length} page(s) duplicated.`);
   }
@@ -2128,7 +2347,7 @@ export class Mainscreen implements AfterViewInit {
     if (!page) throw new Error('Load a PDF first.');
     const isShape = kind === 'rectangle' || kind === 'ellipse';
     this.overlays = [...this.overlays, {
-      id: crypto.randomUUID(),
+      id: this.createId(),
       pageId: page.id,
       kind,
       text: kind === 'signature' ? 'Signed' : this.editText,
@@ -2157,7 +2376,7 @@ export class Mainscreen implements AfterViewInit {
   private watermarkAll(): void {
     for (const page of this.pages) {
       this.overlays.push({
-        id: crypto.randomUUID(),
+        id: this.createId(),
         pageId: page.id,
         kind: 'text',
         text: this.watermarkText,
@@ -2184,7 +2403,7 @@ export class Mainscreen implements AfterViewInit {
   private pageNumbers(): void {
     this.pages.forEach((page, index) => {
       this.overlays.push({
-        id: crypto.randomUUID(),
+        id: this.createId(),
         pageId: page.id,
         kind: 'text',
         text: `${index + 1} / ${this.pages.length}`,
@@ -2324,6 +2543,16 @@ export class Mainscreen implements AfterViewInit {
     return JSON.parse(JSON.stringify(value)) as T;
   }
 
+  private createId(): string {
+    const cryptoApi = globalThis.crypto;
+    if (cryptoApi && typeof cryptoApi.getRandomValues === 'function') {
+      const values = new Uint32Array(4);
+      cryptoApi.getRandomValues(values);
+      return Array.from(values, (value) => value.toString(36).padStart(7, '0')).join('-');
+    }
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  }
+
   private async downloadActiveImage(type: 'image/png' | 'image/jpeg', name: string, quality = this.jpegQuality): Promise<void> {
     const active = this.activePage;
     if (!active) throw new Error('No active page.');
@@ -2415,7 +2644,7 @@ export class Mainscreen implements AfterViewInit {
       const htmlItems = this.htmlTextItems.filter((item) => item.pageId === page.id);
       const hasRebuild = !!this.htmlPageBackgrounds[page.id] || htmlItems.length > 0;
       if (hasRebuild) {
-        const canvas = await this.renderHtmlPageCanvas(page, htmlItems.filter((item) => this.htmlTextChanged(item)), this.htmlBackgroundScale);
+        const canvas = await this.renderHtmlPageCanvas(page, htmlItems.filter((item) => this.htmlTextChanged(item)), this.effectiveHtmlBackgroundScale());
         const imageBytes = await fetch(canvas.toDataURL('image/png')).then((response) => response.arrayBuffer());
         const image = await output.embedPng(imageBytes);
         const target = output.addPage([page.width, page.height]);
@@ -2498,7 +2727,8 @@ export class Mainscreen implements AfterViewInit {
   private async renderPageCanvas(pageItem: PageItem, scale: number): Promise<HTMLCanvasElement> {
     const pdf = await this.openPdfJsDocument();
     const sourcePage = await pdf.getPage(pageItem.sourceIndex + 1);
-    const viewport = sourcePage.getViewport({ scale, rotation: pageItem.rotation });
+    const safeScale = this.safePdfRenderScale(pageItem.width, pageItem.height, scale);
+    const viewport = sourcePage.getViewport({ scale: safeScale, rotation: pageItem.rotation });
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Canvas unavailable.');

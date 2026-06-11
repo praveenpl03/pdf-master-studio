@@ -5,54 +5,125 @@
         <p class="eyebrow">TheConvertor</p>
         <h1>PDF Operations Studio</h1>
       </div>
-      <span class="tool-count">{{ tools.length }}</span>
     </div>
 
-    <label class="file-drop">
-      <input type="file" accept="application/pdf" (change)="loadMainFile($event)" />
-      <span>Open PDF</span>
-      <small>{{ fileName }}</small>
-    </label>
+    <div class="file-actions">
+      <label class="file-drop">
+        <input type="file" accept="application/pdf" (change)="loadMainFile($event)" />
+        <span>Open PDF</span>
+        <small>{{ fileName }}</small>
+      </label>
 
-    <label class="file-drop compact">
-      <input type="file" accept="application/pdf" multiple (change)="addMergeFiles($event)" />
-      <span>Add merge PDFs</span>
-      <small>{{ extraFiles.length }} queued</small>
-    </label>
+      <label class="file-drop compact">
+        <input type="file" accept="application/pdf" multiple (change)="addMergeFiles($event)" />
+        <span>Add merge PDFs</span>
+        <small>{{ extraFiles.length }} queued</small>
+      </label>
+    </div>
     <input id="imageUpload" class="hidden-upload" type="file" accept="image/png,image/jpeg" (change)="addImageOverlay($event)" />
 
-    <div class="control-grid">
-      <label>
-        Zoom
-        <input type="range" min="0.55" max="1.7" step="0.05" [(ngModel)]="zoom" />
-      </label>
+    @if (selectedHtmlText; as htmlEdit) {
+      <section class="precision-panel">
+        <div class="precision-head">
+          <h2>HTML Text</h2>
+          <button type="button" (click)="closeActiveEditing()">Close</button>
+        </div>
+        <textarea [(ngModel)]="htmlEdit.text" (ngModelChange)="markHtmlTextEdit(htmlEdit)"></textarea>
+        <div class="precision-grid">
+          <label>X <input type="number" [(ngModel)]="htmlEdit.x" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
+          <label>Y <input type="number" [(ngModel)]="htmlEdit.y" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
+          <label>W <input type="number" [(ngModel)]="htmlEdit.width" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
+          <label>H <input type="number" [(ngModel)]="htmlEdit.height" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
+          <label>Size <input type="number" [(ngModel)]="htmlEdit.size" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
+          <label>Color <input type="color" [(ngModel)]="htmlEdit.color" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
+        </div>
+        <div class="precision-actions">
+          <button type="button" (click)="removeSelectedHtmlText()">Remove fragment</button>
+          <button type="button" (click)="run('htmlRebuildPdf')">Export HTML PDF</button>
+        </div>
+      </section>
+    } @else if (selectedOverlay; as edit) {
+      <section class="precision-panel">
+        <div class="precision-head">
+          <h2>Precision Edit</h2>
+          <button type="button" (click)="closeActiveEditing()">Close</button>
+        </div>
+        @if (edit.kind !== 'image' && edit.kind !== 'rectangle' && edit.kind !== 'highlight') {
+          <textarea [(ngModel)]="edit.text" (ngModelChange)="markOverlayEdit(edit)"></textarea>
+          <div class="precision-actions">
+            <button type="button" (click)="selectAllOverlayText()">Ctrl+A</button>
+            <button type="button" (click)="removeSelectedOverlay()">Delete text</button>
+          </div>
+        }
+        <div class="precision-grid">
+          <label>X <input type="number" [(ngModel)]="edit.x" (ngModelChange)="markOverlayEdit(edit)" /></label>
+          <label>Y <input type="number" [(ngModel)]="edit.y" (ngModelChange)="markOverlayEdit(edit)" /></label>
+          <label>W <input type="number" [(ngModel)]="edit.width" (ngModelChange)="markOverlayEdit(edit)" /></label>
+          <label>H <input type="number" [(ngModel)]="edit.height" (ngModelChange)="markOverlayEdit(edit)" /></label>
+          <label>Rotate <input type="number" [(ngModel)]="edit.rotation" (ngModelChange)="markOverlayEdit(edit)" /></label>
+          @if (edit.kind !== 'image' && edit.kind !== 'rectangle' && edit.kind !== 'ellipse') {
+            <label>Size <input type="number" [(ngModel)]="edit.size" (ngModelChange)="markOverlayEdit(edit)" /></label>
+            <label>Color <input type="color" [(ngModel)]="edit.color" (ngModelChange)="markOverlayEdit(edit)" /></label>
+          }
+          @if (edit.kind === 'rectangle' || edit.kind === 'ellipse') {
+            <label class="checkbox-row wide">Fill <input type="checkbox" [(ngModel)]="edit.fillEnabled" (ngModelChange)="markOverlayEdit(edit)" /></label>
+            <label>Fill color <input type="color" [(ngModel)]="edit.fillColor" (ngModelChange)="markOverlayEdit(edit)" /></label>
+            <label>Border color <input type="color" [(ngModel)]="edit.borderColor" (ngModelChange)="markOverlayEdit(edit)" /></label>
+            <label>Border <input type="number" min="0" max="20" [(ngModel)]="edit.borderWidth" (ngModelChange)="markOverlayEdit(edit)" /></label>
+          }
+          <label class="wide">Opacity <input type="range" min="0.1" max="1" step="0.05" [(ngModel)]="edit.opacity" (ngModelChange)="markOverlayEdit(edit)" /></label>
+          @if (edit.kind === 'image') {
+            <label>Crop X <input type="number" min="0" max="95" [(ngModel)]="edit.cropX" (ngModelChange)="markOverlayEdit(edit)" /></label>
+            <label>Crop Y <input type="number" min="0" max="95" [(ngModel)]="edit.cropY" (ngModelChange)="markOverlayEdit(edit)" /></label>
+            <label>Crop W <input type="number" min="5" max="100" [(ngModel)]="edit.cropWidth" (ngModelChange)="markOverlayEdit(edit)" /></label>
+            <label>Crop H <input type="number" min="5" max="100" [(ngModel)]="edit.cropHeight" (ngModelChange)="markOverlayEdit(edit)" /></label>
+          }
+        </div>
+        <div class="precision-actions">
+          <button type="button" (click)="duplicateSelectedOverlay()">Duplicate</button>
+          @if (edit.kind === 'image') {
+            <button type="button" (click)="resetSelectedImageCrop()">Reset crop</button>
+          }
+          <button type="button" (click)="removeSelectedOverlay()">Remove</button>
+        </div>
+        @if (edit.generatedFromText) {
+          <div class="precision-actions">
+            <button type="button" (click)="revealOriginalForSelectedOverlay()">Reveal original</button>
+          </div>
+        }
+      </section>
+    }
+
+    <div class="status-bar" [class.loading]="busy">{{ status }}</div>
+    <div class="side-quick-actions">
+      <button type="button" title="Compress PDF" (click)="run('compressedPdf')" [disabled]="busy"><i class="fa-solid fa-compress"></i><span>Compress</span></button>
+      <button type="button" title="Generate PDF" (click)="run('downloadPdf')" [disabled]="busy || !pages.length"><i class="fa-solid fa-file-pdf"></i><span>Generate PDF</span></button>
     </div>
   </aside>
 
   <section class="center-panel">
     <header class="topbar">
-      <div>
-        <strong>{{ pages.length }} pages</strong>
-        <span>{{ selectedPages.length }} selected</span>
-      </div>
-      <nav class="command-menu" aria-label="PDF actions">
-        @for (group of toolGroups; track group.key) {
-          <div class="command-group">
-            <button type="button" class="command-trigger">
-              <i class="fa-solid" [ngClass]="iconForGroup(group.key)"></i>
-              <span>{{ group.title }}</span>
-            </button>
-            <div class="command-list">
-              @for (tool of toolsFor(group.key); track tool.name) {
-                <button type="button" (click)="run(tool.action)" [disabled]="busy || !pages.length">
-                  <i class="fa-solid" [ngClass]="iconForAction(tool.action)"></i>
-                  <span>{{ tool.name }}</span>
-                </button>
-              }
+      <div class="page-summary">
+        <div>
+          <strong>{{ pages.length }} pages</strong>
+          <span>{{ selectedPages.length }} selected</span>
+        </div>
+        <div class="top-function-icons" aria-label="Quick functions">
+          <button type="button" title="Undo" (click)="undo()" [disabled]="busy || !canUndo"><i class="fa-solid fa-rotate-left"></i></button>
+          <button type="button" title="Redo" (click)="redo()" [disabled]="busy || !canRedo"><i class="fa-solid fa-rotate-right"></i></button>
+          <button type="button" title="Shapes" (click)="shapeMenuOpen = !shapeMenuOpen" [disabled]="busy || !pages.length"><i class="fa-solid fa-shapes"></i></button>
+          <button type="button" title="Flatten" (click)="run('visualRebuild')" [disabled]="busy"><i class="fa-solid fa-layer-group"></i></button>
+          @if (shapeMenuOpen) {
+            <div class="shape-popover top-shape-popover">
+              <button type="button" class="popover-close" title="Close" (click)="shapeMenuOpen = false">x</button>
+              <button type="button" class="shape-choice rectangle" (click)="addShape('rectangle')"><span></span>Box</button>
+              <button type="button" class="shape-choice highlight" (click)="addShape('highlight')"><span></span>Highlight</button>
+              <button type="button" class="shape-choice ellipse" (click)="addShape('ellipse')"><span></span>Circle</button>
+              <button type="button" class="shape-choice line" (click)="addShape('line')"><span></span>Line</button>
             </div>
-          </div>
-        }
-      </nav>
+          }
+        </div>
+      </div>
     </header>
 
     <div class="viewer-shell" [class.busy]="busy" (wheel)="handleViewerWheel($event)" (pointermove)="dragOverlay($event)" (pointerup)="stopDrag()" (pointerleave)="stopDrag()">
@@ -68,16 +139,18 @@
           <canvas #mainCanvas class="page-preview" [style.width.px]="activePage.width * zoom" [style.height.px]="activePage.height * zoom"></canvas>
           <div #nativeTextLayer class="native-text-layer textLayer" [style.width.px]="activePage.width" [style.height.px]="activePage.height"></div>
           @if (htmlEditMode) {
-            <div class="html-rebuild-layer" [style.width.px]="activePage.width" [style.height.px]="activePage.height" [style.transform]="'scale(' + zoom + ')'" [style.background-image]="activeHtmlBackground ? 'url(' + activeHtmlBackground + ')' : null">
+            <div class="html-rebuild-layer" [style.width.px]="activePage.width" [style.height.px]="activePage.height" [style.transform]="'scale(' + zoom + ')'" [style.background-color]="activeHtmlBackground ? '#ffffff' : 'transparent'" [style.background-image]="activeHtmlBackground ? 'url(' + activeHtmlBackground + ')' : null">
               @for (textItem of activeHtmlTextItems; track textItem.id) {
                 <div class="html-text-mask"
                   [style.display]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? 'block' : 'none'"
                   [style.left.px]="textItem.x" [style.top.px]="textItem.y" [style.width.px]="textItem.width" [style.height.px]="textItem.height" [style.background-color]="textItem.backgroundColor"></div>
                 <textarea class="html-text-run" [class.selected]="textItem.id === selectedHtmlTextId"
+                  virtualkeyboardpolicy="manual"
+                  inputmode="text" autocapitalize="sentences" spellcheck="true"
                   [(ngModel)]="textItem.text"
                   [style.left.px]="textItem.x" [style.top.px]="textItem.y" [style.width.px]="textItem.width" [style.height.px]="textItem.height"
-                  [style.font-size.px]="textItem.size" [style.font-family]="textItem.fontFamily" [style.font-weight]="textItem.fontWeight" [style.font-style]="textItem.fontStyle" [style.color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.color : 'transparent'" [style.text-decoration]="textItem.textDecoration" [style.background-color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.backgroundColor : 'transparent'" [style.text-align]="textItem.textAlign || 'left'"
-                  (ngModelChange)="markHtmlTextEdit(textItem)" (click)="selectHtmlText(textItem, $event); focusTextField($event)" (pointerdown)="$event.stopPropagation()" (touchstart)="selectHtmlText(textItem, $event); focusTextField($event)"></textarea>
+                  [style.font-size.px]="textItem.size" [style.font-family]="textItem.fontFamily" [style.font-weight]="textItem.fontWeight" [style.font-style]="textItem.fontStyle" [style.color]="!activeHtmlBackground || htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.color : 'transparent'" [style.text-decoration]="textItem.textDecoration" [style.background-color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.backgroundColor : 'transparent'" [style.text-align]="textItem.textAlign || 'left'"
+                  (ngModelChange)="markHtmlTextEdit(textItem)" (click)="selectHtmlText(textItem, $event); focusTextField($event)" (pointerdown)="selectHtmlText(textItem, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectHtmlText(textItem, $event); focusTextField($event)" (touchend)="selectHtmlText(textItem, $event); focusTextField($event)"></textarea>
               }
               <div class="html-overlay-layer">
                 @for (item of pageOverlays; track item.id) {
@@ -91,7 +164,7 @@
                     } @else if (item.kind === 'rectangle' || item.kind === 'highlight' || item.kind === 'ellipse' || item.kind === 'line') {
                       <span></span>
                     } @else {
-                      <input [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" />
+                      <input virtualkeyboardpolicy="manual" inputmode="text" autocapitalize="sentences" spellcheck="true" [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (pointerdown)="selectOverlay(item, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" (touchend)="selectOverlay(item, $event); focusTextField($event)" />
                     }
                     @if (item.id === selectedOverlayId && !item.locked) {
                       <button type="button" class="remove-handle" title="Delete" (click)="removeOverlay(item, $event)">x</button>
@@ -168,7 +241,7 @@
                   } @else if (item.kind === 'rectangle' || item.kind === 'highlight' || item.kind === 'ellipse' || item.kind === 'line') {
                     <span></span>
                   } @else {
-                    <input [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" />
+                    <input virtualkeyboardpolicy="manual" inputmode="text" autocapitalize="sentences" spellcheck="true" [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (pointerdown)="selectOverlay(item, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" (touchend)="selectOverlay(item, $event); focusTextField($event)" />
                   }
                   @if (item.id === selectedOverlayId && !item.locked) {
                     <button type="button" class="remove-handle" title="Delete" (click)="removeOverlay(item, $event)">x</button>
@@ -225,6 +298,49 @@
   </section>
 
   <aside class="right-panel">
+    <section class="services-menu" aria-label="PDF services">
+      <div class="services-head">
+        <div>
+          <p class="eyebrow">Services</p>
+          <h2>PDF Tools</h2>
+        </div>
+      </div>
+
+      <div class="service-categories">
+        @for (group of toolGroups; track group.key) {
+          <button type="button" class="service-category" [class.active]="activeToolGroup === group.key" (click)="toggleToolMenu(group.key)">
+            <span class="service-icon"><i class="fa-solid" [ngClass]="iconForGroup(group.key)"></i></span>
+            <span>{{ group.title }}</span>
+          </button>
+        }
+      </div>
+
+      @if (activeToolGroup) {
+        <div class="tool-popup-backdrop" (click)="closeToolMenu()">
+          <section class="tool-popup" role="dialog" aria-modal="true" [attr.aria-label]="activeMenuTitle()" (click)="$event.stopPropagation()">
+            <div class="tool-popup-head">
+              <h2>{{ activeMenuTitle() }}</h2>
+              <button type="button" title="Close" (click)="closeToolMenu()">x</button>
+            </div>
+            <label class="tool-search">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="search" placeholder="Search function" [(ngModel)]="toolSearchTerm" />
+            </label>
+            <div class="tool-popup-list">
+              @for (tool of activeMenuTools; track tool.name) {
+                <button type="button" (click)="runMenuTool(tool.action)" [disabled]="busy || !pages.length">
+                  <i class="fa-solid" [ngClass]="iconForAction(tool.action)"></i>
+                  <span>{{ tool.name }}</span>
+                </button>
+              } @empty {
+                <p>No function found.</p>
+              }
+            </div>
+          </section>
+        </div>
+      }
+    </section>
+
     @if (selectedHtmlText; as htmlEdit) {
       <section class="precision-panel">
         <div class="precision-head">
