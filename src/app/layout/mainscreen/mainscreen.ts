@@ -160,7 +160,8 @@ export class Mainscreen implements AfterViewInit {
   @ViewChild('mainCanvas') mainCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('nativeTextLayer') nativeTextLayer?: ElementRef<HTMLDivElement>;
   @ViewChildren('thumbCanvas') thumbCanvases!: QueryList<ElementRef<HTMLCanvasElement>>;
-
+// Look near line 30-40 inside your mainscreen.ts class variables:
+public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   pages: PageItem[] = [];
   overlays: OverlayItem[] = [];
   extraFiles: FileRecord[] = [];
@@ -170,7 +171,7 @@ export class Mainscreen implements AfterViewInit {
   currentBytes: Uint8Array<ArrayBufferLike> = new Uint8Array();
   busy = false;
   busyLabel = '';
-  zoom = 1.7;
+  zoom = this.isMobileScreen() ? 1.0 : 1.7
   rangeText = '';
   stampText = 'APPROVED';
   watermarkText = 'Confidential';
@@ -209,7 +210,7 @@ export class Mainscreen implements AfterViewInit {
   private trackingHtmlEditId = '';
   private trackingOverlayEditId = '';
   private lastWheelPageTurn = 0;
-  private readonly htmlBackgroundScale = 2.4;
+  private readonly htmlBackgroundScale =   this.isMobileScreen() ? 1.0 : 2.4;;
   private activeRenderToken = 0;
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
   private activeRenderTask?: { cancel: () => void; promise: Promise<unknown> };
@@ -1790,31 +1791,49 @@ export class Mainscreen implements AfterViewInit {
     }
   }
 
-  private async renderThumbs(): Promise<void> {
-    if (!this.currentBytes.length) return;
-    if (this.isMobileScreen()) return;
-    const pdf = await this.openPdfJsDocument();
-    const canvases = this.thumbCanvases.toArray();
-    for (let index = 0; index < this.pages.length; index += 1) {
-      const item = this.pages[index];
-      const canvas = canvases[index]?.nativeElement;
-      if (!canvas) continue;
-      const context = canvas.getContext('2d');
-      if (!context) continue;
-      if (item.blank) {
-        this.paintBlankCanvas(canvas, context, item, 0.24, false);
-        item.thumb = canvas.toDataURL('image/jpeg', 0.68);
-        continue;
-      }
-      const page = await this.runPdfOutsideAngular(() => pdf.getPage(item.sourceIndex + 1));
-      const viewport = page.getViewport({ scale: 0.24, rotation: item.rotation });
-      canvas.width = Math.max(1, Math.floor(viewport.width));
-      canvas.height = Math.max(1, Math.floor(viewport.height));
-      await this.runPdfOutsideAngular(() => page.render({ canvas, canvasContext: context, viewport }).promise);
-      item.thumb = canvas.toDataURL('image/jpeg', 0.68);
-    }
-  }
+private async renderThumbs(scale = 0.24): Promise<void> {
+  if (!this.currentBytes.length) return;
 
+  const pdf = await this.openPdfJsDocument();
+  const canvases = this.thumbCanvases.toArray();
+
+  for (let index = 0; index < this.pages.length; index += 1) {
+    const item = this.pages[index];
+    const canvas = canvases[index]?.nativeElement;
+    if (!canvas) continue;
+
+    const context = canvas.getContext('2d');
+    if (!context) continue;
+
+    if (item.blank) {
+      this.paintBlankCanvas(canvas, context, item, scale, false);
+      item.thumb = canvas.toDataURL('image/jpeg', 0.68);
+      continue;
+    }
+
+    const page = await this.runPdfOutsideAngular(
+      () => pdf.getPage(item.sourceIndex + 1)
+    );
+
+    const viewport = page.getViewport({
+      scale,
+      rotation: item.rotation
+    });
+
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
+
+    await this.runPdfOutsideAngular(
+      () => page.render({
+        canvas,
+        canvasContext: context,
+        viewport
+      }).promise
+    );
+
+    item.thumb = canvas.toDataURL('image/jpeg', 0.68);
+  }
+}
   private queueActiveRender(): void {
     if (this.renderTimer) clearTimeout(this.renderTimer);
     this.renderTimer = setTimeout(() => {
@@ -1823,21 +1842,14 @@ export class Mainscreen implements AfterViewInit {
     }, 120);
   }
 
-  private fitZoomForMobile(): void {
-    const active = this.activePage;
-    if (!active || window.innerWidth > 760) return;
-    const availableWidth = Math.max(260, window.innerWidth - 28);
-    this.zoom = Math.max(0.35, Math.min(1.1, availableWidth / active.width));
-  }
+
 
   private effectiveHtmlBackgroundScale(): number {
     if (this.isMobileScreen()) return Math.min(1.35, Math.max(1, window.devicePixelRatio * 0.8));
     return this.htmlBackgroundScale;
   }
 
-  private isMobileScreen(): boolean {
-    return window.innerWidth <= 760;
-  }
+ 
 
   private safePdfRenderScale(width: number, height: number, requestedScale: number): number {
     if (!this.isMobileScreen()) return requestedScale;
@@ -1848,16 +1860,43 @@ export class Mainscreen implements AfterViewInit {
     return Math.max(0.6, Math.min(requestedScale, pixelScale, sideScale, 1.35));
   }
 
+/**
+   * PREMIUM AMERICAN SAAS BREAKPOINT OVERHAUL
+   * Configures absolute viewport constraints and high-performance layout adapters for touch views.
+   */
   private configureMobileRendering(): void {
-    if (!this.isMobileScreen()) return;
-    const fabricGlobal = globalThis as typeof globalThis & {
-      fabric?: { config?: { devicePixelRatio?: number } };
+    this.fitZoomForMobile();
+    
+    // Setup explicit CSS viewport variable to bypass dynamic browser chrome address bar jitter
+    const updateViewportHeight = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
     };
-    if (fabricGlobal.fabric?.config) {
-      fabricGlobal.fabric.config.devicePixelRatio = Math.min(2, window.devicePixelRatio || 1);
-    }
+    
+    window.addEventListener('resize', updateViewportHeight);
+    window.addEventListener('orientationchange', updateViewportHeight);
+    updateViewportHeight();
   }
 
+  private isMobileScreen(): boolean {
+    return window.innerWidth <= 760;
+  }
+
+  private fitZoomForMobile(): void {
+    if (!this.isMobileScreen() || !this.pages.length) return;
+    
+    // Explicit dynamic safety scaling for narrow device widths
+    const active = this.activePage;
+    if (!active) return;
+    
+    const availableWidth = window.innerWidth - 32; // Generous 16px lateral padding
+    const pageBaseWidth = active.width || 595; // Handle default fallback A4 boundaries
+    
+    // Compute strict percentage scale matching device width limits
+    const safeZoom = Number((availableWidth / pageBaseWidth).toFixed(2));
+    this.zoom = Math.min(Math.max(safeZoom, 0.45), 1.25);
+    this.changeDetector.markForCheck();
+  }
   private releaseCanvasMemory(): void {
     this.activeRenderTask?.cancel();
     this.activeRenderTask = undefined;
@@ -1902,17 +1941,20 @@ export class Mainscreen implements AfterViewInit {
     this.ngZone.run(() => this.changeDetector.detectChanges());
   }
 
-  private queueThumbRender(): void {
-    if (this.isMobileScreen()) return;
-    setTimeout(() => void this.renderThumbs(), 140);
-  }
+private queueThumbRender(): void {
+  setTimeout(() => {
+    this.renderThumbs(
+      this.isMobileScreen() ? 0.12 : 0.24
+    );
+  }, 140);
+}
 
   private async openPdfJsDocument(bytes = this.currentBytes): Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }> {
     return this.runPdfOutsideAngular(async () => {
       const loadingTask = pdfjsLib.getDocument({
         data: bytes.slice(),
         password: this.openPassword || undefined,
-        disableWorker: this.isMobileScreen(),
+        disableWorker: false,
       } as unknown as Parameters<typeof pdfjsLib.getDocument>[0]);
       loadingTask.onPassword = (updatePassword: (password: string) => void, reason: number) => {
         const password = window.prompt(

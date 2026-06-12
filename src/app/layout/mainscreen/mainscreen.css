@@ -1325,16 +1325,27 @@ h2 {
 }
 
 @media (max-width: 760px) {
+/* Force grid-template-columns to turn off completely on phone screens */
+  main.workspace,
   .workspace {
-    display: grid;
-    grid-template-columns: 1fr;
-    height: auto;
-    min-height: 100vh;
-    overflow: visible;
-    padding: 16px 10px 92px;
-    background: #cfe8ff;
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important; /* Forces layout to stack nicely */
+    height: calc(var(--vh, 1vh) * 100) !important;
+    width: 100vw !important;
+    overflow-y: auto !important; /* Enables scrolling for empty-state drops */
+    overflow-x: hidden !important;
+    padding: 0 !important;
   }
 
+  /* Make sure the main panel stretches to fit the device width when empty */
+  .center-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    min-height: auto !important;
+    flex-grow: 1 !important;
+  }
   .left-panel,
   .right-panel {
     max-height: none;

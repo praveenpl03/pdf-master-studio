@@ -1,4 +1,4 @@
-<main class="workspace" [style.grid-template-columns]="!pages.length ? '350px minmax(420px,1fr)' : null">
+<main class="workspace" [style.grid-template-columns]="(!pages.length && !isMobileDevice) ? '350px minmax(420px,1fr)' : null">
   <aside class="left-panel">
     <div class="brand-row">
       <div>
@@ -169,7 +169,7 @@
                   [style.display]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? 'block' : 'none'"
                   [style.left.px]="textItem.x" [style.top.px]="textItem.y" [style.width.px]="textItem.width" [style.height.px]="textItem.height" [style.background-color]="textItem.backgroundColor"></div>
                 <textarea class="html-text-run" [class.selected]="textItem.id === selectedHtmlTextId"
-                  virtualkeyboardpolicy="manual"
+               
                   inputmode="text" autocapitalize="sentences" spellcheck="true"
                   [(ngModel)]="textItem.text"
                   [style.left.px]="textItem.x" [style.top.px]="textItem.y" [style.width.px]="textItem.width" [style.height.px]="textItem.height"
@@ -188,7 +188,7 @@
                     } @else if (item.kind === 'rectangle' || item.kind === 'highlight' || item.kind === 'ellipse' || item.kind === 'line') {
                       <span></span>
                     } @else {
-                      <input virtualkeyboardpolicy="manual" inputmode="text" autocapitalize="sentences" spellcheck="true" [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (pointerdown)="selectOverlay(item, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" (touchend)="selectOverlay(item, $event); focusTextField($event)" />
+                      <input inputmode="text" autocapitalize="sentences" spellcheck="true" [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (pointerdown)="selectOverlay(item, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" (touchend)="selectOverlay(item, $event); focusTextField($event)" />
                     }
                     @if (item.id === selectedOverlayId && !item.locked) {
                       <button type="button" class="remove-handle" title="Delete" (click)="removeOverlay(item, $event)">x</button>
@@ -245,7 +245,7 @@
                   } @else if (item.kind === 'rectangle' || item.kind === 'highlight' || item.kind === 'ellipse' || item.kind === 'line') {
                     <span></span>
                   } @else {
-                    <input virtualkeyboardpolicy="manual" inputmode="text" autocapitalize="sentences" spellcheck="true" [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (pointerdown)="selectOverlay(item, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" (touchend)="selectOverlay(item, $event); focusTextField($event)" />
+                    <input  inputmode="text" autocapitalize="sentences" spellcheck="true" [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (pointerdown)="selectOverlay(item, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" (touchend)="selectOverlay(item, $event); focusTextField($event)" />
                   }
                   @if (item.id === selectedOverlayId && !item.locked) {
                     <button type="button" class="remove-handle" title="Delete" (click)="removeOverlay(item, $event)">x</button>
