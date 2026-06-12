@@ -22,7 +22,7 @@
     </div>
     <input id="imageUpload" class="hidden-upload" type="file" accept="image/png,image/jpeg" (change)="addImageOverlay($event)" />
 
-    @if (selectedHtmlText; as htmlEdit) {
+    @if (pages.length && selectedHtmlText; as htmlEdit) {
       <section class="precision-panel">
         <div class="precision-head">
           <h2>HTML Text</h2>
@@ -34,6 +34,13 @@
           <label>Y <input type="number" [(ngModel)]="htmlEdit.y" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
           <label>W <input type="number" [(ngModel)]="htmlEdit.width" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
           <label>H <input type="number" [(ngModel)]="htmlEdit.height" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
+          <label class="wide">Font
+            <select [(ngModel)]="htmlEdit.fontFamily" (ngModelChange)="markHtmlTextEdit(htmlEdit)">
+              @for (font of fontChoices; track font.value) {
+                <option [ngValue]="font.value">{{ font.label }}</option>
+              }
+            </select>
+          </label>
           <label>Size <input type="number" [(ngModel)]="htmlEdit.size" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
           <label>Color <input type="color" [(ngModel)]="htmlEdit.color" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
         </div>
@@ -42,7 +49,7 @@
           <button type="button" (click)="run('htmlRebuildPdf')">Export HTML PDF</button>
         </div>
       </section>
-    } @else if (selectedOverlay; as edit) {
+    } @else if (pages.length && selectedOverlay; as edit) {
       <section class="precision-panel">
         <div class="precision-head">
           <h2>Precision Edit</h2>
@@ -62,6 +69,13 @@
           <label>H <input type="number" [(ngModel)]="edit.height" (ngModelChange)="markOverlayEdit(edit)" /></label>
           <label>Rotate <input type="number" [(ngModel)]="edit.rotation" (ngModelChange)="markOverlayEdit(edit)" /></label>
           @if (edit.kind !== 'image' && edit.kind !== 'rectangle' && edit.kind !== 'ellipse') {
+            <label class="wide">Font
+              <select [(ngModel)]="edit.fontFamily" (ngModelChange)="markOverlayEdit(edit)">
+                @for (font of fontChoices; track font.value) {
+                  <option [ngValue]="font.value">{{ font.label }}</option>
+                }
+              </select>
+            </label>
             <label>Size <input type="number" [(ngModel)]="edit.size" (ngModelChange)="markOverlayEdit(edit)" /></label>
             <label>Color <input type="color" [(ngModel)]="edit.color" (ngModelChange)="markOverlayEdit(edit)" /></label>
           }
@@ -112,12 +126,11 @@
         </div>
         @if (pages.length) {
         <div class="top-function-icons" aria-label="PDF editing menu">
+          <button type="button" title="Insert blank page before current page" (click)="insertBlankPageBeforeActive()" [disabled]="busy"><i class="fa-regular fa-file"></i><span>Blank</span></button>
           <button type="button" title="Text" (click)="run('addText')" [disabled]="busy"><i class="fa-solid fa-font"></i><span>Text</span><i class="fa-solid fa-caret-down caret"></i></button>
-          <button type="button" title="Links" (click)="run('reconstructHtml')" [disabled]="busy"><i class="fa-solid fa-link"></i><span>Links</span></button>
-          <button type="button" title="Forms" (click)="run('inspectText')" [disabled]="busy"><i class="fa-solid fa-list-check"></i><span>Forms</span><i class="fa-solid fa-caret-down caret"></i></button>
           <button type="button" title="Images" (click)="run('chooseImage')" [disabled]="busy"><i class="fa-regular fa-image"></i><span>Images</span><i class="fa-solid fa-caret-down caret"></i></button>
           <button type="button" title="Sign" (click)="run('addSignature')" [disabled]="busy"><i class="fa-solid fa-signature"></i><span>Sign</span><i class="fa-solid fa-caret-down caret"></i></button>
-          <button type="button" title="Whiteout" (click)="run('addRedaction')" [disabled]="busy"><i class="fa-solid fa-eraser"></i><span>Whiteout</span></button>
+          <button type="button" title="Whiteout" (click)="addWhiteout()" [disabled]="busy"><i class="fa-solid fa-eraser"></i><span>Whiteout</span></button>
           <button type="button" title="Annotate" (click)="run('addHighlight')" [disabled]="busy"><i class="fa-solid fa-pen"></i><span>Annotate</span><i class="fa-solid fa-caret-down caret"></i></button>
           <button type="button" title="Shapes" (click)="shapeMenuOpen = !shapeMenuOpen" [disabled]="busy"><i class="fa-solid fa-shapes"></i><span>Shapes</span><i class="fa-solid fa-caret-down caret"></i></button>
           <button type="button" title="Undo" (click)="undo()" [disabled]="busy || !canUndo"><i class="fa-solid fa-delete-left"></i><span>Undo</span></button>
@@ -125,9 +138,11 @@
             <div class="shape-popover top-shape-popover">
               <button type="button" class="popover-close" title="Close" (click)="shapeMenuOpen = false">x</button>
               <button type="button" class="shape-choice rectangle" (click)="addShape('rectangle')"><span></span>Box</button>
+              <button type="button" class="shape-choice square" (click)="addShape('square')"><span></span>Square</button>
               <button type="button" class="shape-choice highlight" (click)="addShape('highlight')"><span></span>Highlight</button>
               <button type="button" class="shape-choice ellipse" (click)="addShape('ellipse')"><span></span>Circle</button>
               <button type="button" class="shape-choice line" (click)="addShape('line')"><span></span>Line</button>
+              <button type="button" class="shape-choice whiteout" (click)="addWhiteout()"><span></span>White box</button>
             </div>
           }
         </div>
@@ -345,6 +360,13 @@
           <label>Y <input type="number" [(ngModel)]="htmlEdit.y" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
           <label>W <input type="number" [(ngModel)]="htmlEdit.width" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
           <label>H <input type="number" [(ngModel)]="htmlEdit.height" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
+          <label class="wide">Font
+            <select [(ngModel)]="htmlEdit.fontFamily" (ngModelChange)="markHtmlTextEdit(htmlEdit)">
+              @for (font of fontChoices; track font.value) {
+                <option [ngValue]="font.value">{{ font.label }}</option>
+              }
+            </select>
+          </label>
           <label>Size <input type="number" [(ngModel)]="htmlEdit.size" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
           <label>Color <input type="color" [(ngModel)]="htmlEdit.color" (ngModelChange)="markHtmlTextEdit(htmlEdit)" /></label>
         </div>
@@ -373,6 +395,13 @@
           <label>H <input type="number" [(ngModel)]="edit.height" (ngModelChange)="markOverlayEdit(edit)" /></label>
           <label>Rotate <input type="number" [(ngModel)]="edit.rotation" (ngModelChange)="markOverlayEdit(edit)" /></label>
           @if (edit.kind !== 'image' && edit.kind !== 'rectangle' && edit.kind !== 'ellipse') {
+            <label class="wide">Font
+              <select [(ngModel)]="edit.fontFamily" (ngModelChange)="markOverlayEdit(edit)">
+                @for (font of fontChoices; track font.value) {
+                  <option [ngValue]="font.value">{{ font.label }}</option>
+                }
+              </select>
+            </label>
             <label>Size <input type="number" [(ngModel)]="edit.size" (ngModelChange)="markOverlayEdit(edit)" /></label>
             <label>Color <input type="color" [(ngModel)]="edit.color" (ngModelChange)="markOverlayEdit(edit)" /></label>
           }

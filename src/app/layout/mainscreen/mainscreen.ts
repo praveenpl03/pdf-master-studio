@@ -3,6 +3,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, 
 import { FormsModule } from '@angular/forms';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, StandardFonts, degrees, rgb, PDFFont } from 'pdf-lib';
+import { FONT_CHOICES } from './fonts/font-catalog';
 
 type OperationGroup = 'organize' | 'convert' | 'edit' | 'optimize' | 'protect' | 'analyze';
 type MenuCategoryKey = 'organize' | 'convert' | 'edit' | 'more';
@@ -16,6 +17,7 @@ interface PageItem {
   thumb?: string;
   width: number;
   height: number;
+  blank?: boolean;
 }
 
 interface OverlayItem {
@@ -188,6 +190,7 @@ export class Mainscreen implements AfterViewInit {
   pageNumberPosition: 'bottom' | 'top' = 'bottom';
   searchTerm = '';
   toolSearchTerm = '';
+  readonly fontChoices = FONT_CHOICES;
   activeToolGroup: MenuCategoryKey | undefined;
   selectedOverlayId = '';
   textInspectMode = false;
@@ -581,7 +584,7 @@ export class Mainscreen implements AfterViewInit {
         case 'addHighlight': this.addOverlay('highlight'); break;
         case 'addEllipse': this.addOverlay('ellipse'); break;
         case 'addLine': this.addOverlay('line'); break;
-        case 'addRedaction': this.addOverlay('rectangle'); break;
+        case 'addRedaction': this.addWhiteout(); break;
         case 'stampPage': this.stampPage(); break;
         case 'watermarkAll': this.watermarkAll(); break;
         case 'pageNumbers': this.pageNumbers(); break;
@@ -791,6 +794,30 @@ export class Mainscreen implements AfterViewInit {
     this.fitZoomForMobile();
     this.queueActiveRender();
     if (this.isMobileScreen()) void this.ensureActiveHtmlRebuild();
+  }
+
+  insertBlankPageBeforeActive(): void {
+    const active = this.activePage;
+    if (!active) throw new Error('Load a PDF first.');
+    this.recordHistory();
+    const page: PageItem = {
+      id: this.createId(),
+      sourceIndex: -1,
+      rotation: 0,
+      selected: false,
+      width: active.width,
+      height: active.height,
+      blank: true,
+    };
+    page.thumb = this.createBlankThumb(page);
+    const index = Math.max(0, this.pages.findIndex((item) => item.id === active.id));
+    this.pages = [...this.pages.slice(0, index), page, ...this.pages.slice(index)];
+    this.activePageId = page.id;
+    this.closeActiveEditing();
+    this.status = 'Blank page inserted before the current page.';
+    this.refreshView();
+    this.queueActiveRender();
+    this.queueThumbRender();
   }
 
   togglePage(page: PageItem, event: Event): void {
@@ -1194,9 +1221,15 @@ export class Mainscreen implements AfterViewInit {
     this.status = 'HTML text fragment cleared and will be removed when saved.';
   }
 
-  addShape(kind: 'rectangle' | 'highlight' | 'ellipse' | 'line'): void {
+  addShape(kind: 'rectangle' | 'square' | 'highlight' | 'ellipse' | 'line'): void {
     this.recordHistory();
-    this.addOverlay(kind);
+    this.addOverlay(kind === 'square' ? 'rectangle' : kind, kind === 'square' ? 'square' : undefined);
+    this.shapeMenuOpen = false;
+  }
+
+  addWhiteout(): void {
+    this.recordHistory();
+    this.addOverlay('rectangle', 'whiteout');
     this.shapeMenuOpen = false;
   }
 
@@ -1725,16 +1758,20 @@ export class Mainscreen implements AfterViewInit {
     if (!active || !canvas || !this.currentBytes.length) return;
     this.activeRenderTask?.cancel();
     if (this.isMobileScreen()) this.clearCanvas(canvas);
-    const pdf = await this.openPdfJsDocument();
-    const page = await this.runPdfOutsideAngular(() => pdf.getPage(active.sourceIndex + 1));
     const requestedScale = window.innerWidth <= 760
       ? Math.min(2, Math.max(1.25, window.devicePixelRatio))
       : Math.min(4, Math.max(2.4, window.devicePixelRatio * 1.6));
     const renderScale = this.safePdfRenderScale(active.width, active.height, requestedScale);
-    const viewport = page.getViewport({ scale: renderScale, rotation: active.rotation });
     const context = canvas.getContext('2d');
     if (!context) return;
     if (token !== this.activeRenderToken) return;
+    if (active.blank) {
+      this.paintBlankCanvas(canvas, context, active, renderScale);
+      return;
+    }
+    const pdf = await this.openPdfJsDocument();
+    const page = await this.runPdfOutsideAngular(() => pdf.getPage(active.sourceIndex + 1));
+    const viewport = page.getViewport({ scale: renderScale, rotation: active.rotation });
     canvas.width = Math.floor(viewport.width);
     canvas.height = Math.floor(viewport.height);
     canvas.style.width = `${active.width * this.zoom}px`;
@@ -1762,10 +1799,15 @@ export class Mainscreen implements AfterViewInit {
       const item = this.pages[index];
       const canvas = canvases[index]?.nativeElement;
       if (!canvas) continue;
-      const page = await this.runPdfOutsideAngular(() => pdf.getPage(item.sourceIndex + 1));
-      const viewport = page.getViewport({ scale: 0.24, rotation: item.rotation });
       const context = canvas.getContext('2d');
       if (!context) continue;
+      if (item.blank) {
+        this.paintBlankCanvas(canvas, context, item, 0.24, false);
+        item.thumb = canvas.toDataURL('image/jpeg', 0.68);
+        continue;
+      }
+      const page = await this.runPdfOutsideAngular(() => pdf.getPage(item.sourceIndex + 1));
+      const viewport = page.getViewport({ scale: 0.24, rotation: item.rotation });
       canvas.width = Math.max(1, Math.floor(viewport.width));
       canvas.height = Math.max(1, Math.floor(viewport.height));
       await this.runPdfOutsideAngular(() => page.render({ canvas, canvasContext: context, viewport }).promise);
@@ -1831,6 +1873,25 @@ export class Mainscreen implements AfterViewInit {
     context?.clearRect(0, 0, canvas.width, canvas.height);
     canvas.width = 1;
     canvas.height = 1;
+  }
+
+  private paintBlankCanvas(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, page: PageItem, scale: number, applyDisplaySize = true): void {
+    canvas.width = Math.max(1, Math.floor(page.width * scale));
+    canvas.height = Math.max(1, Math.floor(page.height * scale));
+    if (applyDisplaySize) {
+      canvas.style.width = `${page.width * this.zoom}px`;
+      canvas.style.height = `${page.height * this.zoom}px`;
+    }
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  private createBlankThumb(page: PageItem): string {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) return '';
+    this.paintBlankCanvas(canvas, context, page, 0.24, false);
+    return canvas.toDataURL('image/jpeg', 0.68);
   }
 
   private runPdfOutsideAngular<T>(work: () => Promise<T>): Promise<T> {
@@ -2348,10 +2409,12 @@ export class Mainscreen implements AfterViewInit {
     this.status = `${name} exported.`;
   }
 
-  private addOverlay(kind: OverlayKind): void {
+  private addOverlay(kind: OverlayKind, preset?: 'square' | 'whiteout'): void {
     const page = this.activePage;
     if (!page) throw new Error('Load a PDF first.');
-    const isShape = kind === 'rectangle' || kind === 'ellipse';
+    const isShape = kind === 'rectangle' || kind === 'ellipse' || kind === 'line';
+    const isWhiteout = preset === 'whiteout';
+    const shapeColor = isWhiteout ? '#ffffff' : '#dc2626';
     this.overlays = [...this.overlays, {
       id: this.createId(),
       pageId: page.id,
@@ -2359,16 +2422,17 @@ export class Mainscreen implements AfterViewInit {
       text: kind === 'signature' ? 'Signed' : this.editText,
       x: Math.round(page.width * 0.16),
       y: Math.round(page.height * 0.18),
-      width: kind === 'text' || kind === 'signature' ? 160 : kind === 'line' ? 180 : 220,
-      height: kind === 'text' || kind === 'signature' ? 42 : kind === 'line' ? 4 : 58,
+      width: kind === 'text' || kind === 'signature' ? 160 : kind === 'line' ? 180 : preset === 'square' ? 96 : 220,
+      height: kind === 'text' || kind === 'signature' ? 42 : kind === 'line' ? 4 : preset === 'square' ? 96 : 58,
       size: kind === 'signature' ? 28 : 18,
-      color: isShape ? '#0f766e' : kind === 'highlight' ? '#facc15' : kind === 'signature' ? '#14532d' : '#111827',
-      fillColor: isShape ? '#ffffff' : kind === 'highlight' ? '#facc15' : undefined,
-      borderColor: isShape ? '#0f766e' : undefined,
-      fillEnabled: kind === 'highlight',
-      borderWidth: isShape ? 2 : undefined,
+      color: isShape ? shapeColor : kind === 'highlight' ? '#facc15' : kind === 'signature' ? '#14532d' : '#111827',
+      fillColor: kind === 'rectangle' || kind === 'ellipse' ? '#ffffff' : kind === 'highlight' ? '#facc15' : undefined,
+      borderColor: kind === 'rectangle' || kind === 'ellipse' ? shapeColor : undefined,
+      fillEnabled: kind === 'highlight' || isWhiteout,
+      borderWidth: kind === 'rectangle' || kind === 'ellipse' ? (isWhiteout ? 0 : 2) : undefined,
       opacity: kind === 'highlight' ? 0.35 : 1,
       rotation: 0,
+      fontFamily: kind === 'text' ? this.fontChoices[0].value : undefined,
     }];
     this.selectedOverlayId = this.overlays[this.overlays.length - 1].id;
     this.status = `${kind} added to active page.`;
@@ -2731,6 +2795,13 @@ export class Mainscreen implements AfterViewInit {
   }
 
   private async renderPageCanvas(pageItem: PageItem, scale: number): Promise<HTMLCanvasElement> {
+    if (pageItem.blank) {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Canvas unavailable.');
+      this.paintBlankCanvas(canvas, context, pageItem, scale, false);
+      return canvas;
+    }
     const pdf = await this.openPdfJsDocument();
     const sourcePage = await pdf.getPage(pageItem.sourceIndex + 1);
     const safeScale = this.safePdfRenderScale(pageItem.width, pageItem.height, scale);

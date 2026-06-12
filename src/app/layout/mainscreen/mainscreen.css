@@ -364,9 +364,9 @@ h2 {
   justify-content: space-between;
   gap: 12px;
   padding: 9px 18px;
-  background: #f3f4f6;
-  color: #1f2937;
-  border-bottom: 1px solid #d1d5db;
+  background: #202331;
+  color: #fffdf8;
+  border-bottom: 1px solid #111827;
 }
 
 .page-summary {
@@ -382,7 +382,7 @@ h2 {
 .page-summary > div:first-child span {
   display: block;
   margin-top: 3px;
-  color: #6b7280;
+  color: #cbd5c9;
   font-size: 12px;
 }
 
@@ -404,24 +404,13 @@ h2 {
   gap: 7px;
   height: 34px;
   min-width: max-content;
-  padding: 0 13px;
-  border: 1px solid #0082ff;
-  border-right-width: 0;
-  border-radius: 0;
-  background: #ffffff;
-  color: #0072e5;
+  padding: 0 9px;
+  border: 0;
+  background: transparent;
+  color: #fffdf8;
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
-}
-
-.top-function-icons > button:first-child {
-  border-radius: 4px 0 0 4px;
-}
-
-.top-function-icons > button:last-of-type {
-  border-right-width: 1px;
-  border-radius: 0 4px 4px 0;
 }
 
 .top-function-icons > button .caret {
@@ -435,8 +424,8 @@ h2 {
 }
 
 .top-function-icons > button:not(:disabled):hover {
-  background: #edf6ff;
-  color: #005ec2;
+  background: rgba(255, 255, 255, 0.08);
+  color: #7ec3ff;
 }
 
 .viewer-shell {
@@ -668,12 +657,12 @@ h2 {
   top: 36px;
   left: 8px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(112px, 1fr));
-  gap: 6px;
-  padding: 12px 10px 10px;
-  border: 1px solid #d4d1c8;
+  grid-template-columns: repeat(2, minmax(104px, 1fr));
+  gap: 4px;
+  padding: 12px 8px 8px;
+  border: 1px solid #374151;
   border-radius: 8px;
-  background: #fffefd;
+  background: #202331;
   box-shadow: 0 18px 42px rgba(32, 35, 49, 0.22);
   z-index: 30;
   animation: popupIn 140ms ease-out;
@@ -686,9 +675,9 @@ h2 {
   left: 18px;
   width: 12px;
   height: 12px;
-  border-top: 1px solid #d4d1c8;
-  border-left: 1px solid #d4d1c8;
-  background: #fffefd;
+  border-top: 1px solid #374151;
+  border-left: 1px solid #374151;
+  background: #202331;
   transform: rotate(45deg);
 }
 
@@ -715,10 +704,10 @@ h2 {
 }
 
 .shape-popover button {
-  border: 1px solid #e4dfd3;
-  border-radius: 6px;
-  background: #fbfaf7;
-  color: #202331;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #fffdf8;
   font-size: 12px;
 }
 
@@ -744,14 +733,19 @@ h2 {
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
-  min-height: 40px;
+  min-height: 32px;
+  padding: 4px 5px;
 }
 
 .shape-choice span {
   width: 22px;
   height: 16px;
-  border: 2px solid #0f766e;
-  background: rgba(15, 118, 110, 0.14);
+  border: 2px solid #dc2626;
+  background: rgba(220, 38, 38, 0.16);
+}
+
+.shape-choice:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .shape-choice.highlight span {
@@ -761,6 +755,11 @@ h2 {
 
 .shape-choice.ellipse span {
   border-radius: 50%;
+}
+
+.shape-choice.whiteout span {
+  border-color: #ffffff;
+  background: #ffffff;
 }
 
 .shape-choice.line span {
@@ -1219,7 +1218,8 @@ h2 {
   font-weight: 900;
 }
 
-.precision-grid input {
+.precision-grid input,
+.precision-grid select {
   min-width: 0;
   padding: 7px;
   border: 1px solid #cfe4ff;
