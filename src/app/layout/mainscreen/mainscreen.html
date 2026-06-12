@@ -1,4 +1,4 @@
-<main class="workspace">
+<main class="workspace" [style.grid-template-columns]="!pages.length ? '350px minmax(420px,1fr)' : null">
   <aside class="left-panel">
     <div class="brand-row">
       <div>
@@ -94,11 +94,13 @@
       </section>
     }
 
-    <div class="status-bar" [class.loading]="busy">{{ status }}</div>
-    <div class="side-quick-actions">
-      <button type="button" title="Compress PDF" (click)="run('compressedPdf')" [disabled]="busy"><i class="fa-solid fa-compress"></i><span>Compress</span></button>
-      <button type="button" title="Generate PDF" (click)="run('downloadPdf')" [disabled]="busy || !pages.length"><i class="fa-solid fa-file-pdf"></i><span>Generate PDF</span></button>
-    </div>
+    @if (pages.length) {
+      <div class="status-bar" [class.loading]="busy">{{ status }}</div>
+      <div class="side-quick-actions">
+        <button type="button" title="Compress PDF" (click)="run('compressedPdf')" [disabled]="busy"><i class="fa-solid fa-compress"></i><span>Compress</span></button>
+        <button type="button" title="Generate PDF" (click)="run('downloadPdf')" [disabled]="busy"><i class="fa-solid fa-file-pdf"></i><span>Generate PDF</span></button>
+      </div>
+    }
   </aside>
 
   <section class="center-panel">
@@ -108,11 +110,17 @@
           <strong>{{ pages.length }} pages</strong>
           <span>{{ selectedPages.length }} selected</span>
         </div>
-        <div class="top-function-icons" aria-label="Quick functions">
-          <button type="button" title="Undo" (click)="undo()" [disabled]="busy || !canUndo"><i class="fa-solid fa-rotate-left"></i></button>
-          <button type="button" title="Redo" (click)="redo()" [disabled]="busy || !canRedo"><i class="fa-solid fa-rotate-right"></i></button>
-          <button type="button" title="Shapes" (click)="shapeMenuOpen = !shapeMenuOpen" [disabled]="busy || !pages.length"><i class="fa-solid fa-shapes"></i></button>
-          <button type="button" title="Flatten" (click)="run('visualRebuild')" [disabled]="busy"><i class="fa-solid fa-layer-group"></i></button>
+        @if (pages.length) {
+        <div class="top-function-icons" aria-label="PDF editing menu">
+          <button type="button" title="Text" (click)="run('addText')" [disabled]="busy"><i class="fa-solid fa-font"></i><span>Text</span><i class="fa-solid fa-caret-down caret"></i></button>
+          <button type="button" title="Links" (click)="run('reconstructHtml')" [disabled]="busy"><i class="fa-solid fa-link"></i><span>Links</span></button>
+          <button type="button" title="Forms" (click)="run('inspectText')" [disabled]="busy"><i class="fa-solid fa-list-check"></i><span>Forms</span><i class="fa-solid fa-caret-down caret"></i></button>
+          <button type="button" title="Images" (click)="run('chooseImage')" [disabled]="busy"><i class="fa-regular fa-image"></i><span>Images</span><i class="fa-solid fa-caret-down caret"></i></button>
+          <button type="button" title="Sign" (click)="run('addSignature')" [disabled]="busy"><i class="fa-solid fa-signature"></i><span>Sign</span><i class="fa-solid fa-caret-down caret"></i></button>
+          <button type="button" title="Whiteout" (click)="run('addRedaction')" [disabled]="busy"><i class="fa-solid fa-eraser"></i><span>Whiteout</span></button>
+          <button type="button" title="Annotate" (click)="run('addHighlight')" [disabled]="busy"><i class="fa-solid fa-pen"></i><span>Annotate</span><i class="fa-solid fa-caret-down caret"></i></button>
+          <button type="button" title="Shapes" (click)="shapeMenuOpen = !shapeMenuOpen" [disabled]="busy"><i class="fa-solid fa-shapes"></i><span>Shapes</span><i class="fa-solid fa-caret-down caret"></i></button>
+          <button type="button" title="Undo" (click)="undo()" [disabled]="busy || !canUndo"><i class="fa-solid fa-delete-left"></i><span>Undo</span></button>
           @if (shapeMenuOpen) {
             <div class="shape-popover top-shape-popover">
               <button type="button" class="popover-close" title="Close" (click)="shapeMenuOpen = false">x</button>
@@ -123,6 +131,7 @@
             </div>
           }
         </div>
+        }
       </div>
     </header>
 
@@ -181,40 +190,20 @@
                 <button type="button" (click)="resizeSelectedHtmlText(-1)">A-</button>
                 <button type="button" (click)="resizeSelectedHtmlText(1)">A+</button>
                 <input type="color" [(ngModel)]="htmlEdit.color" />
-                <button type="button" (click)="shapeMenuOpen = !shapeMenuOpen">Shapes</button>
-                <button type="button" (click)="removeSelectedHtmlText()">Delete</button>
-                @if (shapeMenuOpen) {
-                  <div class="shape-popover">
-                    <button type="button" class="popover-close" title="Close" (click)="shapeMenuOpen = false">x</button>
-                    <button type="button" class="shape-choice rectangle" (click)="addShape('rectangle')"><span></span>Box</button>
-                    <button type="button" class="shape-choice highlight" (click)="addShape('highlight')"><span></span>Highlight</button>
-                    <button type="button" class="shape-choice ellipse" (click)="addShape('ellipse')"><span></span>Circle</button>
-                    <button type="button" class="shape-choice line" (click)="addShape('line')"><span></span>Line</button>
-                  </div>
-                }
+                <button type="button" title="Delete" (click)="removeSelectedHtmlText()"><i class="fa-solid fa-trash"></i></button>
               </div>
             }
             @if (selectedOverlay; as edit) {
               <div class="floating-toolbar" [style.left.px]="toolbarLeft(edit)" [style.top.px]="toolbarTop(edit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
-                <button type="button" (click)="rotateSelectedOverlay(-15)">Rot-</button>
-                <button type="button" (click)="rotateSelectedOverlay(15)">Rot+</button>
+                <button type="button" title="Rotate left" (click)="rotateSelectedOverlay(-15)"><i class="fa-solid fa-rotate-left"></i></button>
+                <button type="button" title="Rotate right" (click)="rotateSelectedOverlay(15)"><i class="fa-solid fa-rotate-right"></i></button>
                 @if (edit.kind === 'image') {
                   <button type="button" (click)="adjustSelectedImageCrop(2)">Crop +</button>
                   <button type="button" (click)="adjustSelectedImageCrop(-2)">Crop -</button>
                   <button type="button" (click)="resetSelectedImageCrop()">Reset crop</button>
                 }
-                <button type="button" (click)="shapeMenuOpen = !shapeMenuOpen">Shapes</button>
-                <button type="button" (click)="duplicateSelectedOverlay()">Copy</button>
-                <button type="button" (click)="removeSelectedOverlay()">Delete</button>
-                @if (shapeMenuOpen) {
-                  <div class="shape-popover">
-                    <button type="button" class="popover-close" title="Close" (click)="shapeMenuOpen = false">x</button>
-                    <button type="button" class="shape-choice rectangle" (click)="addShape('rectangle')"><span></span>Box</button>
-                    <button type="button" class="shape-choice highlight" (click)="addShape('highlight')"><span></span>Highlight</button>
-                    <button type="button" class="shape-choice ellipse" (click)="addShape('ellipse')"><span></span>Circle</button>
-                    <button type="button" class="shape-choice line" (click)="addShape('line')"><span></span>Line</button>
-                  </div>
-                }
+                <button type="button" title="Copy" (click)="duplicateSelectedOverlay()"><i class="fa-solid fa-copy"></i></button>
+                <button type="button" title="Delete" (click)="removeSelectedOverlay()"><i class="fa-solid fa-trash"></i></button>
               </div>
             }
           } @else {
@@ -263,10 +252,10 @@
                   <button type="button" (click)="resetSelectedImageCrop()">Reset crop</button>
                 }
                 <button type="button" (click)="selectAllOverlayText()">Ctrl+A</button>
-                <button type="button" (click)="duplicateSelectedOverlay()">Copy</button>
-                <button type="button" (click)="nudgeSelected(-1, 0)">Left</button>
-                <button type="button" (click)="nudgeSelected(1, 0)">Right</button>
-                <button type="button" (click)="removeSelectedOverlay()">Delete</button>
+                <button type="button" title="Copy" (click)="duplicateSelectedOverlay()"><i class="fa-solid fa-copy"></i></button>
+                <button type="button" title="Move left" (click)="nudgeSelected(-1, 0)"><i class="fa-solid fa-arrow-left"></i></button>
+                <button type="button" title="Move right" (click)="nudgeSelected(1, 0)"><i class="fa-solid fa-arrow-right"></i></button>
+                <button type="button" title="Delete" (click)="removeSelectedOverlay()"><i class="fa-solid fa-trash"></i></button>
               </div>
             }
           }
@@ -276,6 +265,7 @@
       }
     </div>
 
+    @if (pages.length) {
     <div class="page-strip">
       @for (page of pages; track page.id; let i = $index) {
         <div class="page-card" role="button" tabindex="0" [class.active]="page.id === activePageId" [class.selected]="page.selected" (click)="setActive(page)" (keydown.enter)="setActive(page)">
@@ -295,8 +285,10 @@
         </div>
       }
     </div>
+    }
   </section>
 
+  @if (pages.length) {
   <aside class="right-panel">
     <section class="services-menu" aria-label="PDF services">
       <div class="services-head">
@@ -417,22 +409,12 @@
     <div class="side-quick-actions">
       <button type="button" title="Undo" (click)="undo()" [disabled]="busy || !canUndo"><i class="fa-solid fa-rotate-left"></i><span>Undo</span></button>
       <button type="button" title="Redo" (click)="redo()" [disabled]="busy || !canRedo"><i class="fa-solid fa-rotate-right"></i><span>Redo</span></button>
-      <button type="button" title="Shapes" (click)="shapeMenuOpen = !shapeMenuOpen" [disabled]="busy || !pages.length"><i class="fa-solid fa-shapes"></i><span>Shapes</span></button>
-      <button type="button" title="Flatten" (click)="run('visualRebuild')" [disabled]="busy"><i class="fa-solid fa-layer-group"></i><span>Flatten</span></button>
       <button type="button" title="Compress PDF" (click)="run('compressedPdf')" [disabled]="busy"><i class="fa-solid fa-compress"></i><span>Compress</span></button>
-      <button type="button" title="Generate PDF" (click)="run('downloadPdf')" [disabled]="busy || !pages.length"><i class="fa-solid fa-file-pdf"></i><span>Generate PDF</span></button>
-      @if (shapeMenuOpen) {
-        <div class="shape-popover side-shape-popover">
-          <button type="button" class="popover-close" title="Close" (click)="shapeMenuOpen = false">x</button>
-          <button type="button" class="shape-choice rectangle" (click)="addShape('rectangle')"><span></span>Box</button>
-          <button type="button" class="shape-choice highlight" (click)="addShape('highlight')"><span></span>Highlight</button>
-          <button type="button" class="shape-choice ellipse" (click)="addShape('ellipse')"><span></span>Circle</button>
-          <button type="button" class="shape-choice line" (click)="addShape('line')"><span></span>Line</button>
-        </div>
-      }
+      <button type="button" title="Generate PDF" (click)="run('downloadPdf')" [disabled]="busy"><i class="fa-solid fa-file-pdf"></i><span>Generate PDF</span></button>
     </div>
 
   </aside>
+  }
 
   @if (toolOptions; as modal) {
     <div class="option-backdrop" (click)="closeToolOptions()">
@@ -464,7 +446,7 @@
         </div>
         <div class="option-actions">
           <button type="button" class="secondary" (click)="closeToolOptions()">Cancel</button>
-          <button type="button" (click)="confirmToolOptions()" [disabled]="busy">Run</button>
+          <button type="button" (click)="confirmToolOptions()" [disabled]="busy">{{ toolActionLabel(modal.action) }}</button>
         </div>
       </section>
     </div>

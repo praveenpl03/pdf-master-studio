@@ -621,6 +621,12 @@ export class Mainscreen implements AfterViewInit {
     await this.run(action, true);
   }
 
+  toolActionLabel(action: string): string {
+    if (/^add|stampPage|ownerStamp|pageNumbers/i.test(action)) return 'Insert';
+    if (/findText/i.test(action)) return 'Search';
+    return 'Generate';
+  }
+
   private openToolOptions(action: string): boolean {
     const fields = this.optionFieldsFor(action);
     if (!fields.length) return false;
@@ -1985,9 +1991,9 @@ export class Mainscreen implements AfterViewInit {
         }
         const textFont = this.fontForHtmlItem(item, fonts);
         const fontSize = Math.max(5, item.size * Math.min(scaleX, scaleY));
-        const lineHeight = fontSize * 1.12;
+        const lineHeight = fontSize * 1.08;
         item.text.split(/\r?\n/).forEach((line, lineIndex) => {
-          const y = boxY + boxHeight - fontSize - lineIndex * lineHeight;
+          const y = boxY + boxHeight - (fontSize * 0.86) - lineIndex * lineHeight;
           if (y < boxY - lineHeight) return;
           const textWidth = Math.min(boxWidth, textFont.widthOfTextAtSize(line, fontSize));
           const textX = item.textAlign === 'center' ? x + boxWidth / 2 - textWidth / 2 : x;
@@ -2697,7 +2703,7 @@ export class Mainscreen implements AfterViewInit {
     const weight = Number(item.fontWeight) >= 600 || item.fontWeight === 'bold' ? '700' : '400';
     const style = item.fontStyle === 'italic' ? 'italic' : 'normal';
     const family = item.fontFamily || 'Times New Roman, Georgia, serif';
-    const lineHeight = item.size * 1.05 * scale;
+    const lineHeight = item.size * 1.08 * scale;
     context.font = `${style} ${weight} ${item.size * scale}px ${family}`;
     context.fillStyle = item.color ?? '#111111';
     context.textBaseline = 'top';
