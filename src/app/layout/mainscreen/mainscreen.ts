@@ -213,7 +213,7 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   private readonly htmlBackgroundScale =   this.isMobileScreen() ? 1.0 : 2.4;;
   private activeRenderToken = 0;
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
-  private activeRenderTask?: { cancel: () => void; promise: Promise<unknown> };
+private activeRenderTask?: { cancel: () => void }; 
 
   constructor(private ngZone: NgZone, private changeDetector: ChangeDetectorRef) {}
 
@@ -782,20 +782,28 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     this.status = 'Redo applied.';
   }
 
-  setActive(page: PageItem): void {
-    this.activePageId = page.id;
-    this.selectedOverlayId = '';
-    this.selectedHtmlTextId = '';
-    this.inspectedTextItems = [];
-    this.textInspectMode = false;
-    if (this.isMobileScreen()) {
-      this.htmlPageBackgrounds = {};
-      this.releaseCanvasMemory();
-    }
-    this.fitZoomForMobile();
-    this.queueActiveRender();
-    if (this.isMobileScreen()) void this.ensureActiveHtmlRebuild();
+setActive(page: PageItem): void {
+  this.activePageId = page.id;
+  this.selectedOverlayId = '';
+  this.selectedHtmlTextId = '';
+  this.inspectedTextItems = [];
+  this.textInspectMode = false;
+  
+  if (this.isMobileScreen()) {
+    this.htmlPageBackgrounds = {};
+    this.releaseCanvasMemory();
   }
+  
+  this.fitZoomForMobile();
+  this.queueActiveRender();
+  
+  // Use a small delay to allow memory to stabilize on mobile
+  if (this.isMobileScreen()) {
+    setTimeout(() => {
+      void this.ensureActiveHtmlRebuild();
+    }, 300); // 300ms is usually sufficient for WebKit to settle
+  }
+}
 
   insertBlankPageBeforeActive(): void {
     const active = this.activePage;
@@ -1710,47 +1718,121 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     return items.length;
   }
 
-  private async ensureActiveHtmlRebuild(): Promise<void> {
-    const active = this.activePage;
-    if (!active || this.htmlTextItems.some((item) => item.pageId === active.id)) return;
-    try {
-      const pdf = await this.openPdfJsDocument();
-      const rebuilt = await this.reconstructActiveHtmlPage(pdf);
-      if (rebuilt) this.status = `HTML edit mode rebuilt ${rebuilt} editable line(s) on this page.`;
-      this.refreshView();
-    } catch {
-      this.status = 'This page rendered visually, but no editable text layer could be extracted.';
-      this.refreshView();
-    }
-  }
 
-  private async reconstructHtmlPageItem(pdf: { getPage: (pageNumber: number) => Promise<{ getViewport: (options: { scale: number; rotation?: number }) => PdfViewportLike; getTextContent: () => Promise<{ items: unknown[]; styles?: Record<string, PdfTextStyleLike> }>; getAnnotations: (options?: { intent: string }) => Promise<unknown[]> }> }, pageItem: PageItem): Promise<HtmlTextItem[]> {
-    let extractedItems: HtmlTextItem[] = [];
-    try {
-      const { viewport, content, annotations } = await this.runPdfOutsideAngular(async () => {
-        const page = await pdf.getPage(pageItem.sourceIndex + 1);
-        return {
-          viewport: page.getViewport({ scale: 1, rotation: pageItem.rotation }),
-          content: await page.getTextContent(),
-          annotations: await page.getAnnotations({ intent: 'display' }),
-        };
-      });
-      extractedItems = this.htmlItemsFromTextContent(content, viewport, pageItem.id, this.linkRectsFromAnnotations(annotations, viewport));
-      if (this.isMobileScreen()) {
-        delete this.htmlPageBackgrounds[pageItem.id];
-        return extractedItems;
-      }
-      const rebuildScale = this.effectiveHtmlBackgroundScale();
-      const backgroundCanvas = await this.runPdfOutsideAngular(() => this.renderPageCanvas(pageItem, rebuildScale));
-      const items = this.applyHtmlItemBackgrounds(extractedItems, backgroundCanvas, rebuildScale);
-      const graphicFilteredItems = this.replaceGraphicHtmlItemsWithImages(pageItem, items, backgroundCanvas, rebuildScale);
-      this.htmlPageBackgrounds[pageItem.id] = backgroundCanvas.toDataURL('image/png');
-      return graphicFilteredItems;
-    } catch {
-      delete this.htmlPageBackgrounds[pageItem.id];
-      return extractedItems;
+private isRendering = false; // Add this class variable
+
+private async ensureActiveHtmlRebuild(): Promise<void> {
+  // 1. Guard Clause: Prevent overlapping operations
+  if (this.isRendering) return;
+  
+  const active = this.activePage;
+  if (!active || this.htmlTextItems.some((item) => item.pageId === active.id)) return;
+
+  // 2. State setup
+  this.isRendering = true;
+  let isCancelled = false;
+  this.activeRenderTask = { cancel: () => { isCancelled = true; } };
+
+  try {
+    // 3. Mobile-specific memory settle delay
+    if (this.isMobileScreen()) {
+      await new Promise(r => setTimeout(r, 300));
     }
+    if (isCancelled) return;
+
+    const pdf = await this.openPdfJsDocument();
+    if (isCancelled) return;
+
+    // Use a try-catch for the specific rebuild logic
+    const rebuiltCount = await this.reconstructActiveHtmlPage(pdf);
+    
+    if (isCancelled) return;
+
+    if (rebuiltCount > 0) {
+      this.status = `HTML edit mode rebuilt ${rebuiltCount} editable line(s).`;
+    } else {
+      this.status = "Document loaded, but no editable text layer found.";
+    }
+    
+    this.refreshView();
+  } catch (err) {
+    console.error("Rebuild failed:", err);
+    this.status = "Rebuild failed: Memory limited.";
+  } finally {
+    // 4. Always reset state
+    this.isRendering = false;
+    this.activeRenderTask = undefined;
+    this.refreshView();
   }
+}
+// Helper method to asynchronously convert canvas to an Object URL
+private canvasToBlobUrl(canvas: HTMLCanvasElement): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // Using JPEG with 0.8 quality drastically reduces memory payload compared to PNG
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(URL.createObjectURL(blob));
+      } else {
+        reject(new Error('Canvas to Blob conversion failed'));
+      }
+    }, 'image/jpeg', 0.8); 
+  });
+}
+
+private async reconstructHtmlPageItem(
+  pdf: any, // Typed as per your original interface
+  pageItem: PageItem
+): Promise<HtmlTextItem[]> {
+  let extractedItems: HtmlTextItem[] = [];
+  
+  try {
+    const { viewport, content, annotations } = await this.runPdfOutsideAngular(async () => {
+      const page = await pdf.getPage(pageItem.sourceIndex + 1);
+      return {
+        viewport: page.getViewport({ scale: 1, rotation: pageItem.rotation }),
+        content: await page.getTextContent(),
+        annotations: await page.getAnnotations({ intent: 'display' }),
+      };
+    });
+
+    extractedItems = this.htmlItemsFromTextContent(
+      content, 
+      viewport, 
+      pageItem.id, 
+      this.linkRectsFromAnnotations(annotations, viewport)
+    );
+
+    // 1. Throttle the scale for mobile environments
+    let rebuildScale = this.effectiveHtmlBackgroundScale();
+    if (this.isMobileScreen()) {
+       // Cap scale on mobile to prevent Canvas area limits (e.g., iOS Safari limits)
+       rebuildScale = Math.min(rebuildScale, 1.2); 
+    }
+
+    // 2. Render the canvas
+    const backgroundCanvas = await this.runPdfOutsideAngular(() => 
+      this.renderPageCanvas(pageItem, rebuildScale)
+    );
+
+    const items = this.applyHtmlItemBackgrounds(extractedItems, backgroundCanvas, rebuildScale);
+    const graphicFilteredItems = this.replaceGraphicHtmlItemsWithImages(pageItem, items, backgroundCanvas, rebuildScale);
+
+    // 3. Use memory-safe Object URLs instead of massive Base64 strings
+    const backgroundUrl = await this.canvasToBlobUrl(backgroundCanvas);
+    this.htmlPageBackgrounds[pageItem.id] = backgroundUrl;
+
+    // Optional: Free the canvas memory explicitly if you no longer need it
+    backgroundCanvas.width = 0;
+    backgroundCanvas.height = 0;
+
+    return graphicFilteredItems;
+
+  } catch (error) {
+    console.error('Failed to reconstruct HTML page item:', error);
+    delete this.htmlPageBackgrounds[pageItem.id];
+    return extractedItems; // Return the text-only items as a fallback
+  }
+}
 
   private async renderActivePage(): Promise<void> {
     const token = ++this.activeRenderToken;
@@ -1791,11 +1873,12 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     }
   }
 
-private async renderThumbs(scale = 0.24): Promise<void> {
+private async renderThumbs(scale = this.isMobileScreen() ? 0.12 : 0.24): Promise<void> {
   if (!this.currentBytes.length) return;
 
   const pdf = await this.openPdfJsDocument();
   const canvases = this.thumbCanvases.toArray();
+  const quality = this.isMobileScreen() ? 0.5 : 0.68;
 
   for (let index = 0; index < this.pages.length; index += 1) {
     const item = this.pages[index];
@@ -1807,7 +1890,8 @@ private async renderThumbs(scale = 0.24): Promise<void> {
 
     if (item.blank) {
       this.paintBlankCanvas(canvas, context, item, scale, false);
-      item.thumb = canvas.toDataURL('image/jpeg', 0.68);
+      item.thumb = canvas.toDataURL('image/jpeg', quality);
+      this.refreshView();
       continue;
     }
 
@@ -1831,7 +1915,8 @@ private async renderThumbs(scale = 0.24): Promise<void> {
       }).promise
     );
 
-    item.thumb = canvas.toDataURL('image/jpeg', 0.68);
+    item.thumb = canvas.toDataURL('image/jpeg', quality);
+    this.refreshView();
   }
 }
   private queueActiveRender(): void {
@@ -1946,7 +2031,7 @@ private queueThumbRender(): void {
     this.renderThumbs(
       this.isMobileScreen() ? 0.12 : 0.24
     );
-  }, 140);
+  }, this.isMobileScreen() ? 520 : 140);
 }
 
   private async openPdfJsDocument(bytes = this.currentBytes): Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }> {
