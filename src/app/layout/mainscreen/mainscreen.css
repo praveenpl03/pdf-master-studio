@@ -512,15 +512,20 @@ h2 {
   position: absolute;
   z-index: 3;
   overflow: hidden;
+  box-sizing: border-box;
+  margin: 0;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 1px;
   outline: 0;
-  background: #ffffff;
+  background: transparent;
   resize: none;
-  line-height: 1.08;
+  line-height: 1.02;
   white-space: pre-wrap;
   text-align: left;
+  font-kerning: normal;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
   touch-action: manipulation;
   -webkit-user-select: text;
   user-select: text;
@@ -529,7 +534,7 @@ h2 {
 .html-text-mask {
   position: absolute;
   z-index: 2;
-  background: #ffffff;
+  background: transparent;
   pointer-events: none;
 }
 

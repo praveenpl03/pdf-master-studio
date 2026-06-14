@@ -3,6 +3,8 @@ import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, 
 import { FormsModule } from '@angular/forms';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, StandardFonts, degrees, rgb, PDFFont } from 'pdf-lib';
+import * as fontkit from '@pdf-lib/fontkit';
+import { createWorker } from 'tesseract.js';
 import { FONT_CHOICES } from './fonts/font-catalog';
 
 type OperationGroup = 'organize' | 'convert' | 'edit' | 'optimize' | 'protect' | 'analyze';
@@ -157,6 +159,14 @@ interface LinkRect {
   styleUrls: ['./mainscreen.css'],
 })
 export class Mainscreen implements AfterViewInit {
+  private readonly fontFamilyAliases = {
+    helvetica: ['helvetica', 'arial', 'sans-serif', 'sans serif'],
+    times: ['times', 'times new roman', 'georgia', 'serif'],
+    courier: ['courier', 'courier new', 'mono', 'monospace'],
+  } as const;
+
+  constructor(private ngZone: NgZone, private changeDetector: ChangeDetectorRef) {}
+
   @ViewChild('mainCanvas') mainCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('nativeTextLayer') nativeTextLayer?: ElementRef<HTMLDivElement>;
   @ViewChildren('thumbCanvas') thumbCanvases!: QueryList<ElementRef<HTMLCanvasElement>>;
@@ -214,8 +224,6 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   private activeRenderToken = 0;
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
 private activeRenderTask?: { cancel: () => void }; 
-
-  constructor(private ngZone: NgZone, private changeDetector: ChangeDetectorRef) {}
 
   readonly toolGroups: { key: MenuCategoryKey; title: string; hint?: string }[] = [
     { key: 'organize', title: 'Organize' },
@@ -973,7 +981,16 @@ setActive(page: PageItem): void {
     if (!item) return;
     this.recordHistory();
     item.size = Math.max(6, item.size + amount);
-    item.height = Math.max(item.height, item.size * 1.25);
+    item.height = Math.max(item.height, item.size * 1.18);
+  }
+
+  nudgeSelectedHtmlText(dx: number, dy: number): void {
+    const item = this.selectedHtmlText;
+    const page = this.activePage;
+    if (!item || !page) return;
+    this.recordHistory();
+    item.x = Math.max(0, Math.min(page.width - item.width, item.x + dx));
+    item.y = Math.max(0, Math.min(page.height - item.height, item.y + dy));
   }
 
   htmlToolbarTop(item: HtmlTextItem): number {
@@ -1186,6 +1203,14 @@ setActive(page: PageItem): void {
   markHtmlTextEdit(item: HtmlTextItem): void {
     if (this.trackingHtmlEditId === item.id) return;
     this.recordHistory();
+    const page = this.activePage;
+    const textWidth = this.measureHtmlTextWidth(item) + 12;
+    const nextWidth = Math.max(item.width, textWidth);
+    item.width = page ? Math.min(page.width - item.x, Math.max(40, nextWidth)) : Math.max(40, nextWidth);
+    item.height = Math.max(item.height, item.size * 1.15);
+    if (page && item.x + item.width > page.width) {
+      item.x = Math.max(0, page.width - item.width);
+    }
     this.trackingHtmlEditId = item.id;
   }
 
@@ -1355,8 +1380,11 @@ setActive(page: PageItem): void {
       .map((item, index) => {
         const transform = util.transform(viewport.transform, item.transform);
         const size = Math.max(8, Math.hypot(transform[2], transform[3]));
-        const width = Math.max(10, item.width || item.str.length * size * 0.45);
-        const height = Math.max(10, item.height || size);
+        const heightFromText = item.height || size * 1.05;
+        const sizeFromHeight = Math.max(8, heightFromText * 0.82);
+        const fontSize = Math.max(size, sizeFromHeight);
+        const width = Math.max(10, item.width || item.str.length * fontSize * 0.55);
+        const height = Math.max(10, item.height || fontSize * 1.08);
         const style = item.fontName ? content.styles?.[item.fontName] : undefined;
         const fontLabel = `${item.fontName ?? ''} ${style?.fontFamily ?? ''}`;
         return {
@@ -1366,7 +1394,7 @@ setActive(page: PageItem): void {
           y: transform[5] - height,
           width,
           height,
-          size,
+          size: fontSize,
           fontFamily: this.pdfFontFamily(style?.fontFamily, item.fontName),
           fontWeight: /bold|black|heavy|demi|semi/i.test(fontLabel) ? '700' : '400',
           fontStyle: /italic|oblique/i.test(fontLabel) ? 'italic' : 'normal',
@@ -1392,7 +1420,7 @@ setActive(page: PageItem): void {
 
     return lines.flatMap((line, lineIndex) => {
       const ordered = line.sort((a, b) => a.x - b.x);
-      const size = Math.max(...ordered.map((item) => item.size));
+      const size = Math.max(8, Math.round(Math.max(...ordered.map((item) => item.size)) * 0.97));
       const segments: InspectTextItem[][] = [];
       let current: InspectTextItem[] = [];
       let previousEnd = ordered[0]?.x ?? 0;
@@ -1441,7 +1469,7 @@ setActive(page: PageItem): void {
         x: first.x,
         y: Math.min(...ordered.map((item) => item.y)),
         width: Math.max(18, last.x + last.width - first.x),
-        height: Math.max(size * 1.25, ...ordered.map((item) => item.height)),
+        height: Math.max(size * 1.12, ...ordered.map((item) => item.height)),
         size,
         fontFamily: first.fontFamily ?? 'Times New Roman, Georgia, serif',
         fontWeight: first.fontWeight,
@@ -1462,17 +1490,13 @@ setActive(page: PageItem): void {
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) return items;
     return items.map((item) => {
-      const backgroundColor = item.textDecoration === 'underline' || this.isColoredText(item.color)
-        ? '#ffffff'
-        : this.sampleCanvasColor(context, item, scale);
-      const darkBackground = this.isDarkColor(backgroundColor);
-      const textColor = darkBackground ? '#ffffff' : item.color;
+      const backgroundColor = this.sampleCanvasColor(context, item, scale);
       return {
         ...item,
-        color: textColor,
-        originalColor: textColor,
+        color: item.color ?? '#111111',
+        originalColor: item.color ?? '#111111',
         backgroundColor,
-        textAlign: darkBackground ? 'center' : 'left',
+        textAlign: 'left',
       };
     });
   }
@@ -1628,10 +1652,10 @@ setActive(page: PageItem): void {
   }
 
   private pdfFontFamily(fontFamily?: string, fontName?: string): string {
-    const label = `${fontFamily ?? ''} ${fontName ?? ''}`;
-    if (/arial|helvetica/i.test(label)) return 'Arial, Helvetica, sans-serif';
-    if (/courier|mono/i.test(label)) return 'Courier New, Courier, monospace';
-    if (/times|serif|georgia/i.test(label)) return 'Times New Roman, Georgia, serif';
+    const label = `${fontFamily ?? ''} ${fontName ?? ''}`.toLowerCase();
+    if (this.fontFamilyAliases.helvetica.some((alias) => label.includes(alias))) return 'Arial, Helvetica, sans-serif';
+    if (this.fontFamilyAliases.courier.some((alias) => label.includes(alias))) return 'Courier New, Courier, monospace';
+    if (this.fontFamilyAliases.times.some((alias) => label.includes(alias))) return 'Times New Roman, Georgia, serif';
     return fontFamily || 'Times New Roman, Georgia, serif';
   }
 
@@ -1802,22 +1826,24 @@ private async reconstructHtmlPageItem(
       this.linkRectsFromAnnotations(annotations, viewport)
     );
 
-    // 1. Throttle the scale for mobile environments
-    let rebuildScale = this.effectiveHtmlBackgroundScale();
-    if (this.isMobileScreen()) {
-       // Cap scale on mobile to prevent Canvas area limits (e.g., iOS Safari limits)
-       rebuildScale = Math.min(rebuildScale, 1.2); 
-    }
+    // 1. Use a mobile-safe render scale to avoid out-of-memory page snapshots.
+    const rebuildScale = this.isMobileScreen()
+      ? Math.min(this.effectiveHtmlBackgroundScale(), this.safePdfRenderScale(pageItem.width, pageItem.height, 1.15))
+      : this.effectiveHtmlBackgroundScale();
 
-    // 2. Render the canvas
-    const backgroundCanvas = await this.runPdfOutsideAngular(() => 
-      this.renderPageCanvas(pageItem, rebuildScale)
-    );
+    // 2. Render a compact canvas used for both the HTML background and OCR fallback.
+    const backgroundCanvas = await this.runPdfOutsideAngular(() => this.renderPageCanvas(pageItem, rebuildScale));
 
     const items = this.applyHtmlItemBackgrounds(extractedItems, backgroundCanvas, rebuildScale);
     const graphicFilteredItems = this.replaceGraphicHtmlItemsWithImages(pageItem, items, backgroundCanvas, rebuildScale);
 
-    // 3. Use memory-safe Object URLs instead of massive Base64 strings
+    // 3. OCR fallback for scanned or image-heavy pages on mobile where PDF text extraction is empty.
+    let fallbackItems = graphicFilteredItems;
+    if (!fallbackItems.length && this.isMobileScreen()) {
+      fallbackItems = await this.ocrCanvasToHtmlItems(backgroundCanvas, pageItem.id);
+    }
+
+    // 4. Use memory-safe Object URLs instead of massive Base64 strings.
     const backgroundUrl = await this.canvasToBlobUrl(backgroundCanvas);
     this.htmlPageBackgrounds[pageItem.id] = backgroundUrl;
 
@@ -1825,7 +1851,7 @@ private async reconstructHtmlPageItem(
     backgroundCanvas.width = 0;
     backgroundCanvas.height = 0;
 
-    return graphicFilteredItems;
+    return fallbackItems.length ? fallbackItems : graphicFilteredItems;
 
   } catch (error) {
     console.error('Failed to reconstruct HTML page item:', error);
@@ -1833,6 +1859,47 @@ private async reconstructHtmlPageItem(
     return extractedItems; // Return the text-only items as a fallback
   }
 }
+
+  private async ocrCanvasToHtmlItems(canvas: HTMLCanvasElement, pageId: string): Promise<HtmlTextItem[]> {
+    try {
+      const worker = await createWorker('eng', 1, { logger: () => undefined });
+      const { data } = await worker.recognize(canvas);
+      await worker.terminate();
+
+      const lines = data.text
+        .split(/\r?\n/)
+        .map((line) => line.replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
+
+      if (!lines.length) return [];
+
+      const lineHeight = Math.max(18, Math.min(28, canvas.height / 24));
+      return lines.map((line, index) => ({
+        id: `${pageId}-ocr-${index}`,
+        pageId,
+        text: line,
+        x: 8,
+        y: 8 + index * lineHeight,
+        width: Math.max(160, canvas.width * 0.72),
+        height: lineHeight,
+        size: Math.max(14, Math.min(18, lineHeight)),
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        fontWeight: '400',
+        fontStyle: 'normal',
+        color: '#111111',
+        backgroundColor: '#ffffff',
+        originalText: line,
+        originalSize: Math.max(14, Math.min(18, lineHeight)),
+        originalColor: '#111111',
+        originalFontWeight: '400',
+        originalFontStyle: 'normal',
+        textAlign: 'left',
+      }));
+    } catch (error) {
+      console.warn('OCR fallback failed:', error);
+      return [];
+    }
+  }
 
   private async renderActivePage(): Promise<void> {
     const token = ++this.activeRenderToken;
@@ -2122,6 +2189,7 @@ private queueThumbRender(): void {
     if (!this.currentBytes.length) throw new Error('Load a PDF first.');
     const source = await this.loadSourcePdfDocument();
     const output = await PDFDocument.create();
+    output.registerFontkit(fontkit);
     for (const page of this.pages) {
       const [copied] = await output.copyPages(source, [page.sourceIndex]);
       copied.setRotation(degrees((copied.getRotation().angle + page.rotation + 360) % 360));
@@ -2164,10 +2232,11 @@ private queueThumbRender(): void {
         const isLinkedText = item.textDecoration === 'underline';
         const x = item.x * scaleX;
         const topY = item.y * scaleY;
-        const boxWidth = Math.max(1, item.width * scaleX);
+        const boxWidth = Math.max(1, this.measureHtmlTextWidth(item) * scaleX);
         const boxHeight = Math.max(item.size * 1.25, item.height) * scaleY;
         const boxY = height - topY - boxHeight;
-        if (!isLinkedText || item.text !== item.originalText) {
+        const hasBackground = !this.isTransparentColor(item.backgroundColor) && !this.isWhiteColor(item.backgroundColor);
+        if (hasBackground && (!isLinkedText || item.text !== item.originalText)) {
           page.drawRectangle({
             x: x - 1,
             y: boxY - 1,
@@ -2178,10 +2247,10 @@ private queueThumbRender(): void {
           });
         }
         const textFont = this.fontForHtmlItem(item, fonts);
-        const fontSize = Math.max(5, item.size * Math.min(scaleX, scaleY));
-        const lineHeight = fontSize * 1.08;
+        const fontSize = this.effectiveHtmlFontSize(item, scaleX, scaleY);
+        const lineHeight = Math.max(fontSize * 1.02, boxHeight / Math.max(1, item.text.split(/\r?\n/).length));
         item.text.split(/\r?\n/).forEach((line, lineIndex) => {
-          const y = boxY + boxHeight - (fontSize * 0.86) - lineIndex * lineHeight;
+          const y = boxY + boxHeight - fontSize * 1.02 - lineIndex * lineHeight;
           if (y < boxY - lineHeight) return;
           const textWidth = Math.min(boxWidth, textFont.widthOfTextAtSize(line, fontSize));
           const textX = item.textAlign === 'center' ? x + boxWidth / 2 - textWidth / 2 : x;
@@ -2215,6 +2284,12 @@ private queueThumbRender(): void {
         || (item.fontWeight ?? '400') !== (item.originalFontWeight ?? '400')
         || (item.fontStyle ?? 'normal') !== (item.originalFontStyle ?? 'normal')
       ));
+  }
+
+  private effectiveHtmlFontSize(item: HtmlTextItem, scaleX: number, scaleY: number): number {
+    const baseSize = Math.max(6, item.size || item.height || 12);
+    const scaled = baseSize * Math.min(scaleX, scaleY) * 1.02;
+    return Math.max(6, Math.min(48, scaled));
   }
 
   private fontForHtmlItem(item: HtmlTextItem, fonts: Record<string, PDFFont>): PDFFont {
@@ -2891,23 +2966,29 @@ private queueThumbRender(): void {
 
   private paintHtmlTextToCanvas(context: CanvasRenderingContext2D, item: HtmlTextItem, scale: number): void {
     context.save();
-    const weight = Number(item.fontWeight) >= 600 || item.fontWeight === 'bold' ? '700' : '400';
+    const weight = this.htmlFontWeight(item.fontWeight);
     const style = item.fontStyle === 'italic' ? 'italic' : 'normal';
     const family = item.fontFamily || 'Times New Roman, Georgia, serif';
-    const lineHeight = item.size * 1.08 * scale;
-    context.font = `${style} ${weight} ${item.size * scale}px ${family}`;
+    const fontSize = Math.max(6, item.size * scale * 0.98);
+    const lineHeight = Math.max(fontSize * 1.05, (item.height || item.size * 1.15) * scale * 0.98);
+    const boxWidth = Math.max(item.width, this.measureHtmlTextWidth(item));
+    const boxHeight = Math.max(item.height, item.size * 1.12);
+    context.font = `${style} ${weight} ${fontSize}px ${family}`;
     context.fillStyle = item.color ?? '#111111';
-    context.textBaseline = 'top';
+    context.textBaseline = 'alphabetic';
     context.textAlign = item.textAlign === 'center' ? 'center' : 'left';
     item.text.split(/\r?\n/).forEach((line, index) => {
-      const x = item.textAlign === 'center' ? (item.x + item.width / 2) * scale : item.x * scale;
-      const y = item.y * scale + index * lineHeight;
-      context.fillStyle = item.backgroundColor || '#ffffff';
-      context.fillRect(item.x * scale - 1, y - 1, item.width * scale + 2, lineHeight + 2);
+      const x = item.textAlign === 'center' ? (item.x + boxWidth / 2) * scale : item.x * scale;
+      const y = item.y * scale + index * lineHeight + fontSize * 0.82;
+      const hasBackground = !this.isTransparentColor(item.backgroundColor);
+      if (hasBackground) {
+        context.fillStyle = item.backgroundColor || '#ffffff';
+        context.fillRect(item.x * scale - 2, y - 2, boxWidth * scale + 4, boxHeight * scale + 4);
+      }
       context.fillStyle = item.color ?? '#111111';
-      context.fillText(line, x, y, item.width * scale);
+      context.fillText(line, x, y, boxWidth * scale);
       if (item.textDecoration === 'underline') {
-        const underlineY = y + item.size * scale * 1.02;
+        const underlineY = y + fontSize * 0.98;
         const textWidth = Math.min(context.measureText(line).width, item.width * scale);
         const underlineStart = item.textAlign === 'center' ? x - textWidth / 2 : x;
         context.beginPath();
@@ -3107,6 +3188,30 @@ private queueThumbRender(): void {
       image.onerror = () => reject(new Error('Could not load image.'));
       image.src = src;
     });
+  }
+
+  private measureHtmlTextWidth(item: HtmlTextItem): number {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) return Math.max(40, item.text.length * (item.size * 0.55));
+    const weight = this.htmlFontWeight(item.fontWeight);
+    const style = item.fontStyle === 'italic' ? 'italic' : 'normal';
+    const family = item.fontFamily || 'Times New Roman, Georgia, serif';
+    context.font = `${style} ${weight} ${item.size}px ${family}`;
+    return Math.max(40, context.measureText(item.text || 'M').width + 6);
+  }
+
+  private htmlFontWeight(fontWeight?: string): string {
+    return Number(fontWeight) >= 600 || fontWeight === 'bold' ? '700' : '400';
+  }
+
+  private isWhiteColor(color?: string): boolean {
+    const normalized = (color ?? '').toLowerCase();
+    return normalized === '#ffffff' || normalized === 'white' || normalized === 'transparent';
+  }
+
+  private isTransparentColor(color?: string): boolean {
+    return !color || color.toLowerCase() === 'transparent';
   }
 
   private hexToRgb(hex: string): ReturnType<typeof rgb> {

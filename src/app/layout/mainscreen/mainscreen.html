@@ -204,6 +204,10 @@
                 <button type="button" (click)="toggleSelectedHtmlItalic()"><i>I</i></button>
                 <button type="button" (click)="resizeSelectedHtmlText(-1)">A-</button>
                 <button type="button" (click)="resizeSelectedHtmlText(1)">A+</button>
+                <button type="button" title="Move up" (click)="nudgeSelectedHtmlText(0, -1)"><i class="fa-solid fa-arrow-up"></i></button>
+                <button type="button" title="Move down" (click)="nudgeSelectedHtmlText(0, 1)"><i class="fa-solid fa-arrow-down"></i></button>
+                <button type="button" title="Move left" (click)="nudgeSelectedHtmlText(-1, 0)"><i class="fa-solid fa-arrow-left"></i></button>
+                <button type="button" title="Move right" (click)="nudgeSelectedHtmlText(1, 0)"><i class="fa-solid fa-arrow-right"></i></button>
                 <input type="color" [(ngModel)]="htmlEdit.color" />
                 <button type="button" title="Delete" (click)="removeSelectedHtmlText()"><i class="fa-solid fa-trash"></i></button>
               </div>

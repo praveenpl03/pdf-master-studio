@@ -18,11 +18,13 @@
     "@angular/platform-browser": "^21.2.0",
     "@angular/router": "^21.2.0",
     "@fortawesome/fontawesome-free": "^7.2.0",
+    "@pdf-lib/fontkit": "^1.1.1",
     "fabric": "^7.4.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.0.227",
     "qpdf-wasm": "^0.1.0",
     "rxjs": "~7.8.0",
+    "tesseract.js": "^7.0.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
@@ -30,6 +32,7 @@
     "@angular/cli": "^21.2.14",
     "@angular/compiler-cli": "^21.2.0",
     "@tailwindcss/postcss": "^4.1.12",
+    "@types/tesseract.js": "^0.0.2",
     "jsdom": "^28.0.0",
     "postcss": "^8.5.3",
     "prettier": "^3.8.1",
