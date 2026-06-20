@@ -107,7 +107,7 @@ interface HtmlTextItem extends InspectTextItem {
   originalColor?: string;
   originalFontWeight?: string;
   originalFontStyle?: string;
-  textAlign?: 'left' | 'center';
+  textAlign?: 'left' | 'center' | 'right';
 }
 
 interface EditorSnapshot {
@@ -165,7 +165,9 @@ export class Mainscreen implements AfterViewInit {
     courier: ['courier', 'courier new', 'mono', 'monospace'],
   } as const;
 
-  constructor(private ngZone: NgZone, private changeDetector: ChangeDetectorRef) {}
+  constructor(private ngZone: NgZone, private changeDetector: ChangeDetectorRef) {
+
+  }
 
   @ViewChild('mainCanvas') mainCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('nativeTextLayer') nativeTextLayer?: ElementRef<HTMLDivElement>;
@@ -314,6 +316,7 @@ private activeRenderTask?: { cancel: () => void };
   }
 
   get selectedPages(): PageItem[] {
+   
     return this.pages.filter((page) => page.selected);
   }
 
@@ -323,6 +326,7 @@ private activeRenderTask?: { cancel: () => void };
   }
 
   get activeHtmlTextItems(): HtmlTextItem[] {
+
     const id = this.activePage?.id;
     return id ? this.htmlTextItems.filter((item) => item.pageId === id) : [];
   }
@@ -497,6 +501,7 @@ private activeRenderTask?: { cancel: () => void };
   }
 
   handleViewerWheel(event: WheelEvent): void {
+    
     if (!this.pages.length || Math.abs(event.deltaY) < 16) return;
     const shell = event.currentTarget as HTMLElement;
     const currentIndex = this.pages.findIndex((page) => page.id === this.activePageId);
@@ -525,6 +530,7 @@ private activeRenderTask?: { cancel: () => void };
     if (!file) return;
     await this.loadBytes(new Uint8Array(await file.arrayBuffer()), file.name);
     input.value = '';
+   
   }
 
   async addMergeFiles(event: Event): Promise<void> {
@@ -1135,6 +1141,7 @@ setActive(page: PageItem): void {
   }
 
   async reconstructAllHtmlFromCurrentPdf(): Promise<void> {
+  
     if (!this.currentBytes.length) throw new Error('Load a PDF first.');
     const pdf = await this.openPdfJsDocument();
     const rebuilt = await this.reconstructAllHtmlPages(pdf);
@@ -1289,6 +1296,8 @@ setActive(page: PageItem): void {
   }
 
   private createInlineTextReplacement(item: InspectTextItem): void {
+    
+
     const page = this.activePage;
     if (!page) return;
     const cover: OverlayItem = {
@@ -1378,6 +1387,7 @@ setActive(page: PageItem): void {
     return content.items
       .filter((item): item is PdfTextItemLike => this.isPdfTextItem(item))
       .map((item, index) => {
+      //  console.log('item', item);
         const transform = util.transform(viewport.transform, item.transform);
         const size = Math.max(8, Math.hypot(transform[2], transform[3]));
         const heightFromText = item.height || size * 1.05;
@@ -1405,6 +1415,7 @@ setActive(page: PageItem): void {
   }
 
   private htmlItemsFromTextContent(content: { items: unknown[]; styles?: Record<string, PdfTextStyleLike> }, viewport: PdfViewportLike, pageId: string, links: LinkRect[] = []): HtmlTextItem[] {
+
     const runs = this.rawItemsFromTextContent(content, viewport, pageId)
       .sort((a, b) => Math.abs(a.y - b.y) < Math.max(a.size, b.size) * 0.45 ? a.x - b.x : a.y - b.y);
     const lines: InspectTextItem[][] = [];
@@ -1445,6 +1456,7 @@ setActive(page: PageItem): void {
   }
 
   private htmlItemFromLineSegment(ordered: InspectTextItem[], links: LinkRect[], pageId: string, lineIndex: number, segmentIndex: number): HtmlTextItem {
+    console.log('ordered', ordered);
       const first = ordered[0];
       const last = ordered[ordered.length - 1];
       const size = Math.max(...ordered.map((item) => item.size));
@@ -1491,6 +1503,7 @@ setActive(page: PageItem): void {
     if (!context) return items;
     return items.map((item) => {
       const backgroundColor = this.sampleCanvasColor(context, item, scale);
+
       return {
         ...item,
         color: item.color ?? '#111111',
@@ -1652,6 +1665,7 @@ setActive(page: PageItem): void {
   }
 
   private pdfFontFamily(fontFamily?: string, fontName?: string): string {
+    //console.log('pdfFontFamily called with:', { fontFamily, fontName });
     const label = `${fontFamily ?? ''} ${fontName ?? ''}`.toLowerCase();
     if (this.fontFamilyAliases.helvetica.some((alias) => label.includes(alias))) return 'Arial, Helvetica, sans-serif';
     if (this.fontFamilyAliases.courier.some((alias) => label.includes(alias))) return 'Courier New, Courier, monospace';
@@ -1681,7 +1695,7 @@ setActive(page: PageItem): void {
     this.refreshView();
     this.releaseCanvasMemory();
     this.currentBytes = bytes;
-    this.fileName = name;
+    setTimeout(() => { this.fileName = name; });
     this.overlays = [];
     this.htmlTextItems = [];
     this.htmlPageBackgrounds = {};
@@ -1721,6 +1735,7 @@ setActive(page: PageItem): void {
   }
 
   private async reconstructAllHtmlPages(pdf: { getPage: (pageNumber: number) => Promise<{ getViewport: (options: { scale: number; rotation?: number }) => PdfViewportLike; getTextContent: () => Promise<{ items: unknown[]; styles?: Record<string, PdfTextStyleLike> }>; getAnnotations: (options?: { intent: string }) => Promise<unknown[]> }> }): Promise<number> {
+        
     const allItems: HtmlTextItem[] = [];
     for (const pageItem of this.pages) {
       allItems.push(...await this.reconstructHtmlPageItem(pdf, pageItem));
@@ -1731,6 +1746,7 @@ setActive(page: PageItem): void {
   }
 
   private async reconstructActiveHtmlPage(pdf: { getPage: (pageNumber: number) => Promise<{ getViewport: (options: { scale: number; rotation?: number }) => PdfViewportLike; getTextContent: () => Promise<{ items: unknown[]; styles?: Record<string, PdfTextStyleLike> }>; getAnnotations: (options?: { intent: string }) => Promise<unknown[]> }> }): Promise<number> {
+
     const active = this.activePage;
     if (!active) return 0;
     const items = await this.reconstructHtmlPageItem(pdf, active);
@@ -1825,6 +1841,7 @@ private async reconstructHtmlPageItem(
       pageItem.id, 
       this.linkRectsFromAnnotations(annotations, viewport)
     );
+
 
     // 1. Use a mobile-safe render scale to avoid out-of-memory page snapshots.
     const rebuildScale = this.isMobileScreen()
@@ -2186,6 +2203,8 @@ private queueThumbRender(): void {
   }
 
   private async createHtmlEditedPdf(applyMetadata = true): Promise<PDFDocument> {
+    
+   // console.log('Mainscreen component initialized.');
     if (!this.currentBytes.length) throw new Error('Load a PDF first.');
     const source = await this.loadSourcePdfDocument();
     const output = await PDFDocument.create();
@@ -2205,76 +2224,110 @@ private queueThumbRender(): void {
     return this.createHtmlEditedPdf(applyMetadata);
   }
 
-  private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
-    const fonts = {
-      helvetica: await pdf.embedFont(StandardFonts.Helvetica),
-      helveticaBold: await pdf.embedFont(StandardFonts.HelveticaBold),
-      helveticaItalic: await pdf.embedFont(StandardFonts.HelveticaOblique),
-      helveticaBoldItalic: await pdf.embedFont(StandardFonts.HelveticaBoldOblique),
-      times: await pdf.embedFont(StandardFonts.TimesRoman),
-      timesBold: await pdf.embedFont(StandardFonts.TimesRomanBold),
-      timesItalic: await pdf.embedFont(StandardFonts.TimesRomanItalic),
-      timesBoldItalic: await pdf.embedFont(StandardFonts.TimesRomanBoldItalic),
-      courier: await pdf.embedFont(StandardFonts.Courier),
-      courierBold: await pdf.embedFont(StandardFonts.CourierBold),
-      courierItalic: await pdf.embedFont(StandardFonts.CourierOblique),
-      courierBoldItalic: await pdf.embedFont(StandardFonts.CourierBoldOblique),
-    };
-    const pdfPages = pdf.getPages();
-    for (const [pageIndex, pageItem] of this.pages.entries()) {
-      const page = pdfPages[pageIndex];
-      const { width, height } = page.getSize();
-      const scaleX = width / pageItem.width;
-      const scaleY = height / pageItem.height;
-      const editedItems = this.htmlTextItems
-        .filter((item) => item.pageId === pageItem.id && this.htmlTextChanged(item));
-      for (const item of editedItems) {
-        const isLinkedText = item.textDecoration === 'underline';
-        const x = item.x * scaleX;
-        const topY = item.y * scaleY;
-        const boxWidth = Math.max(1, this.measureHtmlTextWidth(item) * scaleX);
-        const boxHeight = Math.max(item.size * 1.25, item.height) * scaleY;
-        const boxY = height - topY - boxHeight;
-        const hasBackground = !this.isTransparentColor(item.backgroundColor) && !this.isWhiteColor(item.backgroundColor);
-        if (hasBackground && (!isLinkedText || item.text !== item.originalText)) {
-          page.drawRectangle({
-            x: x - 1,
-            y: boxY - 1,
-            width: boxWidth + 2,
-            height: boxHeight + 2,
-            color: this.hexToRgb(item.backgroundColor || '#ffffff'),
-            opacity: 1,
-          });
-        }
-        const textFont = this.fontForHtmlItem(item, fonts);
-        const fontSize = this.effectiveHtmlFontSize(item, scaleX, scaleY);
-        const lineHeight = Math.max(fontSize * 1.02, boxHeight / Math.max(1, item.text.split(/\r?\n/).length));
-        item.text.split(/\r?\n/).forEach((line, lineIndex) => {
-          const y = boxY + boxHeight - fontSize * 1.02 - lineIndex * lineHeight;
-          if (y < boxY - lineHeight) return;
-          const textWidth = Math.min(boxWidth, textFont.widthOfTextAtSize(line, fontSize));
-          const textX = item.textAlign === 'center' ? x + boxWidth / 2 - textWidth / 2 : x;
-          page.drawText(line || ' ', {
-            x: textX,
-            y,
-            size: fontSize,
-            font: textFont,
-            color: this.hexToRgb(item.color ?? '#111111'),
-            maxWidth: boxWidth,
-          });
-          if (item.textDecoration === 'underline') {
-            const underlineY = y - Math.max(1, fontSize * 0.12);
-            page.drawLine({
-              start: { x: textX, y: underlineY },
-              end: { x: textX + textWidth, y: underlineY },
-              thickness: Math.max(0.5, fontSize * 0.04),
-              color: this.hexToRgb(item.color ?? '#0000ee'),
-            });
-          }
+private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
+  const fonts = {
+    helvetica: await pdf.embedFont(StandardFonts.Helvetica),
+    helveticaBold: await pdf.embedFont(StandardFonts.HelveticaBold),
+    helveticaItalic: await pdf.embedFont(StandardFonts.HelveticaOblique),
+    helveticaBoldItalic: await pdf.embedFont(StandardFonts.HelveticaBoldOblique),
+    times: await pdf.embedFont(StandardFonts.TimesRoman),
+    timesBold: await pdf.embedFont(StandardFonts.TimesRomanBold),
+    timesItalic: await pdf.embedFont(StandardFonts.TimesRomanItalic),
+    timesBoldItalic: await pdf.embedFont(StandardFonts.TimesRomanBoldItalic),
+    courier: await pdf.embedFont(StandardFonts.Courier),
+    courierBold: await pdf.embedFont(StandardFonts.CourierBold),
+    courierItalic: await pdf.embedFont(StandardFonts.CourierOblique),
+    courierBoldItalic: await pdf.embedFont(StandardFonts.CourierBoldOblique),
+  };
+
+  const pdfPages = pdf.getPages();
+
+  for (const [pageIndex, pageItem] of this.pages.entries()) {
+    const page = pdfPages[pageIndex];
+    if (!page) continue; // Safety check
+
+    const { width, height } = page.getSize();
+    const scaleX = width / pageItem.width;
+    const scaleY = height / pageItem.height;
+
+    const editedItems = this.htmlTextItems.filter(
+      (item) => item.pageId === pageItem.id && this.htmlTextChanged(item)
+    );
+
+    for (const item of editedItems) {
+      const isLinkedText = item.textDecoration === 'underline';
+      const x = item.x * scaleX;
+      const topY = item.y * scaleY;
+
+      const boxWidth = Math.max(1, this.measureHtmlTextWidth(item) * scaleX);
+      const boxHeight = Math.max(item.size * 1.25, item.height) * scaleY;
+      const boxY = height - topY - boxHeight;
+
+      // 1. Draw Background Mask
+      const hasBackground = !this.isTransparentColor(item.backgroundColor) && !this.isWhiteColor(item.backgroundColor);
+      if (hasBackground && (!isLinkedText || item.text !== item.originalText)) {
+        page.drawRectangle({
+          x: x - 1,
+          y: boxY - 1,
+          width: boxWidth + 2,
+          height: boxHeight + 2,
+          color: this.hexToRgb(item.backgroundColor || '#ffffff'),
+          opacity: 1,
         });
       }
+
+      const textFont = this.fontForHtmlItem(item, fonts);
+      const fontSize = this.effectiveHtmlFontSize(item, scaleX, scaleY);
+      
+      // 2. Derive Proportional Typographic Heights
+      // Use PDF-Lib's built-in font metrics helper to calculate perfect scaling line positions
+      const fontHeight = textFont.heightAtSize(fontSize);
+      const lines = item.text.split(/\r?\n/);
+      
+      // Use standard typography line-height scale (1.2x) instead of mapping to bounding box heights
+      const lineHeight = fontSize * 1.20; 
+
+      lines.forEach((line, lineIndex) => {
+        // Calculate baseline: Start from top margin of box, drop down per line index, subtract font ascent height
+        const y = boxY + boxHeight - fontHeight - (lineIndex * lineHeight);
+        
+        // Don't render text layers that drop below the element box boundary
+        if (y < boxY - (fontSize * 0.2)) return;
+
+        const cleanLine = line || ' ';
+        const textWidth = Math.min(boxWidth, textFont.widthOfTextAtSize(cleanLine, fontSize));
+        
+        // Calculate alignments
+        let textX = x;
+        if (item.textAlign === 'center') {
+          textX = x + (boxWidth / 2) - (textWidth / 2);
+        } else if (item.textAlign === 'right') {
+          textX = x + boxWidth - textWidth;
+        }
+
+        // Write String line layer
+        page.drawText(cleanLine, {
+          x: textX,
+          y: y,
+          size: fontSize,
+          font: textFont,
+          color: this.hexToRgb(item.color ?? '#111111'),
+        });
+
+        // 3. Draw Clean Underlines
+        if (item.textDecoration === 'underline') {
+          const underlineY = y - (fontSize * 0.10); // Standard typographical baseline gap
+          page.drawLine({
+            start: { x: textX, y: underlineY },
+            end: { x: textX + textWidth, y: underlineY },
+            thickness: Math.max(0.75, fontSize * 0.05),
+            color: this.hexToRgb(item.color ?? '#0000ee'),
+          });
+        }
+      });
     }
   }
+}
 
   htmlTextChanged(item: HtmlTextItem): boolean {
     return item.text !== item.originalText
@@ -2294,6 +2347,7 @@ private queueThumbRender(): void {
 
   private fontForHtmlItem(item: HtmlTextItem, fonts: Record<string, PDFFont>): PDFFont {
     const family = (item.fontFamily ?? '').toLowerCase();
+   // console.log('Determining font for item:', { family, weight: item.fontWeight, style: item.fontStyle });
     const bold = Number(item.fontWeight) >= 600 || item.fontWeight === 'bold';
     const italic = item.fontStyle === 'italic';
     const prefix = family.includes('courier') || family.includes('mono')
