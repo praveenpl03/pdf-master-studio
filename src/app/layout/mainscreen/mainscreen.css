@@ -507,7 +507,6 @@ h2 {
   background-size: 100% 100%;
   transform-origin: top left;
 }
-
 .html-text-run {
   position: absolute;
   z-index: 3;
@@ -520,8 +519,12 @@ h2 {
   outline: 0;
   background: transparent;
   resize: none;
-  line-height: 1.02;
+  
+  /* ─── CRITICAL VISUAL LAYOUT ADJUSTMENTS ─── */
+  line-height: 1.25;            /* 1. INCREASED: Provides vital breathing room for multi-line font scales */
   white-space: pre-wrap;
+  word-break: break-word;       /* 2. ADDED: Enforces clear breaks on clean word divisions */
+  
   text-align: left;
   font-kerning: normal;
   font-synthesis: none;
@@ -545,6 +548,7 @@ h2 {
   background: #ffffff;
   box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.16);
 }
+
 
 .pdf-text-item {
   position: absolute;

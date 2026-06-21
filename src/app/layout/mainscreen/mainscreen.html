@@ -168,13 +168,31 @@
                 <div class="html-text-mask"
                   [style.display]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? 'block' : 'none'"
                   [style.left.px]="textItem.x" [style.top.px]="textItem.y" [style.width.px]="textItem.width" [style.height.px]="textItem.height" [style.background-color]="textItem.backgroundColor"></div>
-                <textarea class="html-text-run" [class.selected]="textItem.id === selectedHtmlTextId"
-               
-                  inputmode="text" autocapitalize="sentences" spellcheck="true"
-                  [(ngModel)]="textItem.text"
-                  [style.left.px]="textItem.x" [style.top.px]="textItem.y" [style.width.px]="textItem.width" [style.height.px]="textItem.height"
-                  [style.font-size.px]="textItem.size" [style.font-family]="textItem.fontFamily" [style.font-weight]="textItem.fontWeight" [style.font-style]="textItem.fontStyle" [style.color]="!activeHtmlBackground || htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.color : 'transparent'" [style.text-decoration]="textItem.textDecoration" [style.background-color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.backgroundColor : 'transparent'" [style.text-align]="textItem.textAlign || 'left'"
-                  (ngModelChange)="markHtmlTextEdit(textItem)" (click)="selectHtmlText(textItem, $event); focusTextField($event)" (pointerdown)="selectHtmlText(textItem, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectHtmlText(textItem, $event); focusTextField($event)" (touchend)="selectHtmlText(textItem, $event); focusTextField($event)"></textarea>
+   <textarea class="html-text-run" [class.selected]="textItem.id === selectedHtmlTextId"
+          inputmode="text" autocapitalize="sentences" spellcheck="true"
+          [(ngModel)]="textItem.text"
+          [style.left.px]="textItem.x" 
+          [style.top.px]="textItem.y" 
+          [style.width.px]="textItem.width" 
+          [style.height.px]="textItem.height"
+          [style.font-size.px]="textItem.size" 
+          [style.font-family]="textItem.fontFamily" 
+          [style.font-weight]="textItem.fontWeight" 
+          [style.font-style]="textItem.fontStyle" 
+                    [style.color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.color : 'transparent'" 
+          
+          [style.text-decoration]="textItem.textDecoration" 
+          [style.background-color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.backgroundColor : 'transparent'" 
+          [style.text-align]="textItem.textAlign || 'left'"
+          (ngModelChange)="markHtmlTextEdit(textItem)" 
+          (click)="selectHtmlText(textItem, $event); focusTextField($event)" 
+          (pointerdown)="selectHtmlText(textItem, $event); focusTextField($event)" 
+          (pointerup)="focusTextField($event)" 
+          (touchstart)="selectHtmlText(textItem, $event); focusTextField($event)" 
+          (touchend)="focusTextField($event)">
+</textarea>
+
+
               }
               <div class="html-overlay-layer">
                 @for (item of pageOverlays; track item.id) {
@@ -199,18 +217,32 @@
               </div>
             </div>
             @if (selectedHtmlText; as htmlEdit) {
-              <div class="floating-toolbar" [style.left.px]="htmlToolbarLeft(htmlEdit)" [style.top.px]="htmlToolbarTop(htmlEdit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
-                <button type="button" (click)="toggleSelectedHtmlBold()">B</button>
-                <button type="button" (click)="toggleSelectedHtmlItalic()"><i>I</i></button>
-                <button type="button" (click)="resizeSelectedHtmlText(-1)">A-</button>
-                <button type="button" (click)="resizeSelectedHtmlText(1)">A+</button>
-                <button type="button" title="Move up" (click)="nudgeSelectedHtmlText(0, -1)"><i class="fa-solid fa-arrow-up"></i></button>
-                <button type="button" title="Move down" (click)="nudgeSelectedHtmlText(0, 1)"><i class="fa-solid fa-arrow-down"></i></button>
-                <button type="button" title="Move left" (click)="nudgeSelectedHtmlText(-1, 0)"><i class="fa-solid fa-arrow-left"></i></button>
-                <button type="button" title="Move right" (click)="nudgeSelectedHtmlText(1, 0)"><i class="fa-solid fa-arrow-right"></i></button>
-                <input type="color" [(ngModel)]="htmlEdit.color" />
-                <button type="button" title="Delete" (click)="removeSelectedHtmlText()"><i class="fa-solid fa-trash"></i></button>
-              </div>
+<div class="floating-toolbar" [style.left.px]="htmlToolbarLeft(htmlEdit)" [style.top.px]="htmlToolbarTop(htmlEdit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
+    <button type="button" [class.active]="isBoldActive" (click)="toggleSelectedHtmlBold()">B</button>
+    <button type="button" [class.active]="isItalicActive" (click)="toggleSelectedHtmlItalic()"><i>I</i></button>
+    <button type="button" (click)="resizeSelectedHtmlText(-1)">A-</button>
+    <button type="button" (click)="resizeSelectedHtmlText(1)">A+</button>
+    
+    <button type="button" title="Move up" (click)="nudgeSelectedHtmlText(0, -1)"><i class="fa-solid fa-arrow-up"></i></button>
+    <button type="button" title="Move down" (click)="nudgeSelectedHtmlText(0, 1)"><i class="fa-solid fa-arrow-down"></i></button>
+    <button type="button" title="Move left" (click)="nudgeSelectedHtmlText(-1, 0)"><i class="fa-solid fa-arrow-left"></i></button>
+    <button type="button" title="Move right" (click)="nudgeSelectedHtmlText(1, 0)"><i class="fa-solid fa-arrow-right"></i></button>
+    
+    <!-- 1. Text Fill Color Picker (Currently bound to #111111) -->
+    <span class="toolbar-picker-group">
+      <i class="fa-solid fa-font" title="Text Color"></i>
+      <input type="color" [(ngModel)]="htmlEdit.color" />
+    </span>
+
+    <!-- 2. THE BACKGROUND COLOR FIX: Bind directly to your background data color property! -->
+    <span class="toolbar-picker-group">
+      <i class="fa-solid fa-fill-drip" title="Background Color"></i>
+      <input type="color" [(ngModel)]="htmlEdit.backgroundColor" />
+    </span>
+    
+    <button type="button" title="Delete" (click)="removeSelectedHtmlText()"><i class="fa-solid fa-trash"></i></button>
+</div>
+
             }
             @if (selectedOverlay; as edit) {
               <div class="floating-toolbar" [style.left.px]="toolbarLeft(edit)" [style.top.px]="toolbarTop(edit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">

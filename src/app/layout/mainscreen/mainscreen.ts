@@ -10,7 +10,30 @@ import { FONT_CHOICES } from './fonts/font-catalog';
 type OperationGroup = 'organize' | 'convert' | 'edit' | 'optimize' | 'protect' | 'analyze';
 type MenuCategoryKey = 'organize' | 'convert' | 'edit' | 'more';
 type OverlayKind = 'text' | 'rectangle' | 'signature' | 'highlight' | 'image' | 'ellipse' | 'line';
-
+interface EnhancedFontFields {
+  cleanText: string;
+  exactFont: string;
+}
+type EnhancedTextItem = {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  size: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  fontStyle?: string;
+  color?: string;
+} & TypographyStyles;
+interface TypographyStyles {
+  cleanText: string;
+  exactFont: string;
+  fontWeight: string;
+  fontStyle: string;
+  color: string;
+}
 interface PageItem {
   id: string;
   sourceIndex: number;
@@ -168,7 +191,12 @@ export class Mainscreen implements AfterViewInit {
   constructor(private ngZone: NgZone, private changeDetector: ChangeDetectorRef) {
 
   }
-
+  // ─── ADD THESE NEW TOOLBAR TRACKING STATE FIELDS HERE ───
+  isBoldActive: boolean = false;
+  isItalicActive: boolean = false;
+  activeFontFamily: string = 'Times New Roman';
+  activeBackgroundColor: string = '#ffffff';
+  activeTextColor: string = '#111111';
   @ViewChild('mainCanvas') mainCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('nativeTextLayer') nativeTextLayer?: ElementRef<HTMLDivElement>;
   @ViewChildren('thumbCanvas') thumbCanvases!: QueryList<ElementRef<HTMLCanvasElement>>;
@@ -337,6 +365,7 @@ private activeRenderTask?: { cancel: () => void };
   }
 
   get selectedHtmlText(): HtmlTextItem | undefined {
+    
     return this.htmlTextItems.find((item) => item.id === this.selectedHtmlTextId);
   }
 
@@ -1152,13 +1181,68 @@ setActive(page: PageItem): void {
     this.status = `HTML edit mode rebuilt all pages with ${rebuilt} editable line(s).`;
   }
 
-  selectHtmlText(item: HtmlTextItem, event?: Event): void {
-    event?.stopPropagation();
-    this.selectedOverlayId = '';
-    this.selectedHtmlTextId = item.id;
-    this.trackingHtmlEditId = '';
-    this.trackingOverlayEditId = '';
+selectHtmlText(item: HtmlTextItem, event?: Event): void {
+  event?.stopPropagation();
+  this.selectedOverlayId = '';
+  this.selectedHtmlTextId = item.id;
+  this.trackingHtmlEditId = '';
+  this.trackingOverlayEditId = '';
+
+  let boldState = item.fontWeight === '700' || item.originalFontWeight === '700';
+  let italicState = item.fontStyle === 'italic' || item.originalFontStyle === 'italic';
+  
+  // Clean default fallback value
+  let fontFamilyState = (item.fontFamily || 'Arial').split(',')[0].replace(/['"]/g, '').trim();
+  let bgColorState = item.backgroundColor || '#ffffff';
+
+  if (event?.currentTarget) {
+    const textareaElement = event.currentTarget as HTMLTextAreaElement;
+    const computedStyle = window.getComputedStyle(textareaElement);
+
+    boldState = computedStyle.fontWeight === '700' || computedStyle.fontWeight === 'bold' || boldState;
+    italicState = computedStyle.fontStyle === 'italic' || italicState;
+    
+    // ─── CRITICAL CORE FIX: NORMALIZE BROWSER FONT FAMILY STACK ───
+    // Takes '"Times New Roman", Times, serif' and extracts strictly 'Times New Roman'
+    const rawBrowserFont = computedStyle.fontFamily || '';
+    fontFamilyState = rawBrowserFont.split(',')[0].replace(/['"]/g, '').trim();
+
+    const currentBg = computedStyle.backgroundColor;
+    if (currentBg && currentBg !== 'transparent' && currentBg !== 'rgba(0,0,0,0)') {
+      bgColorState = this.convertToHex(currentBg);
+    }
   }
+
+  // Assign clean values straight to your component view state properties
+  this.isBoldActive = boldState;
+  this.isItalicActive = italicState;
+  
+  // This value will now accurately match your side panel dropdown options!
+  this.activeFontFamily = fontFamilyState; 
+  this.activeBackgroundColor = bgColorState;
+
+  console.log('Side Panel Font Selection Normalized:', this.activeFontFamily);
+}
+
+
+// ─── ADD THIS RGB TO HEX HELPER METHOD INSIDE YOUR COMPONENT CLASS ───
+private convertToHex(rgbString: string): string {
+  if (rgbString.startsWith('#')) return rgbString;
+  
+  const match = rgbString.match(/\d+/g);
+  if (!match || match.length < 3) return '#ffffff';
+  
+  const r = parseInt(match[0], 10);
+  const g = parseInt(match[1], 10);
+  const b = parseInt(match[2], 10);
+  
+  return '#' + [r, g, b].map(x => {
+    const hex = x.toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  }).join('');
+}
+
+
 
   focusTextField(event: Event): void {
     event.stopPropagation();
@@ -1350,153 +1434,327 @@ setActive(page: PageItem): void {
     });
   }
 
-  private inspectItemsFromRenderedTextLayer(host: HTMLElement, pageId: string): InspectTextItem[] {
-    const hostRect = host.getBoundingClientRect();
-    return Array.from(host.querySelectorAll<HTMLElement>('span[role="presentation"], span'))
-      .map((span, index) => {
-        const text = span.textContent?.trim() ?? '';
-        const rect = span.getBoundingClientRect();
-        const style = getComputedStyle(span);
-        const color = this.normalizedCssColor(style.color);
-        const width = rect.width;
-        const height = rect.height;
-        return {
-          id: `${pageId}-native-${index}`,
-          text,
-          x: rect.left - hostRect.left,
-          y: rect.top - hostRect.top,
-          width,
-          height,
-          size: Math.max(8, height * 0.82),
-          fontFamily: style.fontFamily,
-          fontWeight: style.fontWeight,
-          fontStyle: style.fontStyle,
-          color,
-        };
-      })
-      .filter((item) => item.text.length > 0 && item.width > 2 && item.height > 2);
-  }
+
 
   private inspectItemsFromTextContent(content: { items: unknown[]; styles?: Record<string, PdfTextStyleLike> }, viewport: PdfViewportLike, pageId: string): InspectTextItem[] {
     return this.rawItemsFromTextContent(content, viewport, pageId)
       .flatMap((item) => this.splitTextForInspection(item.text, item.x, item.y, item.width, item.height, item.size, item.id));
   }
 
-  private rawItemsFromTextContent(content: { items: unknown[]; styles?: Record<string, PdfTextStyleLike> }, viewport: PdfViewportLike, pageId: string): InspectTextItem[] {
-    const util = (pdfjsLib as unknown as { Util: { transform: (m1: number[], m2: number[]) => number[] } }).Util;
-    return content.items
-      .filter((item): item is PdfTextItemLike => this.isPdfTextItem(item))
-      .map((item, index) => {
-      //  console.log('item', item);
-        const transform = util.transform(viewport.transform, item.transform);
-        const size = Math.max(8, Math.hypot(transform[2], transform[3]));
-        const heightFromText = item.height || size * 1.05;
-        const sizeFromHeight = Math.max(8, heightFromText * 0.82);
-        const fontSize = Math.max(size, sizeFromHeight);
-        const width = Math.max(10, item.width || item.str.length * fontSize * 0.55);
-        const height = Math.max(10, item.height || fontSize * 1.08);
-        const style = item.fontName ? content.styles?.[item.fontName] : undefined;
-        const fontLabel = `${item.fontName ?? ''} ${style?.fontFamily ?? ''}`;
-        return {
-          id: `${pageId}-run-${index}`,
-          text: item.str,
-          x: transform[4],
-          y: transform[5] - height,
-          width,
-          height,
-          size: fontSize,
-          fontFamily: this.pdfFontFamily(style?.fontFamily, item.fontName),
-          fontWeight: /bold|black|heavy|demi|semi/i.test(fontLabel) ? '700' : '400',
-          fontStyle: /italic|oblique/i.test(fontLabel) ? 'italic' : 'normal',
-          color: '#111111',
-        };
-      })
-      .filter((item) => item.text.trim().length > 0 && item.width > 2 && item.height > 2);
-  }
+private rawItemsFromTextContent(
+  content: { items: unknown[]; styles?: Record<string, PdfTextStyleLike> }, 
+  viewport: PdfViewportLike, 
+  pageId: string,
+  operatorList?: any // Injected operator tracking stream object
+): InspectTextItem[] {
+  const util = (pdfjsLib as unknown as { Util: { transform: (m1: number[], m2: number[]) => number[] } }).Util;
+  
+  // Build a lookup map of text color profiles indexed by active stream position keys
+  const operatorColorMap: Record<number, string> = {};
+  let activeColorCode = '#111111'; // Core base fallback template tint
 
-  private htmlItemsFromTextContent(content: { items: unknown[]; styles?: Record<string, PdfTextStyleLike> }, viewport: PdfViewportLike, pageId: string, links: LinkRect[] = []): HtmlTextItem[] {
+  if (operatorList && operatorList.fnArray) {
+    for (let i = 0; i < operatorList.fnArray.length; i++) {
+      const fnId = operatorList.fnArray[i];
+      const args = operatorList.argsArray[i];
 
-    const runs = this.rawItemsFromTextContent(content, viewport, pageId)
-      .sort((a, b) => Math.abs(a.y - b.y) < Math.max(a.size, b.size) * 0.45 ? a.x - b.x : a.y - b.y);
-    const lines: InspectTextItem[][] = [];
-
-    for (const run of runs) {
-      const line = lines.find((items) => Math.abs(items[0].y - run.y) <= Math.max(items[0].size, run.size) * 0.55);
-      if (line) {
-        line.push(run);
-      } else {
-        lines.push([run]);
+      // Detect PDF canvas text-painting brush configurations (e.g. setFillRGBColor)
+      if (fnId === (pdfjsLib as any).OPS?.setFillRGBColor && args) {
+        const r = args[0], g = args[1], b = args[2];
+        activeColorCode = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+      } else if (fnId === (pdfjsLib as any).OPS?.showText || fnId === (pdfjsLib as any).OPS?.showTextGLYPHS) {
+        operatorColorMap[i] = activeColorCode;
       }
     }
-
-    return lines.flatMap((line, lineIndex) => {
-      const ordered = line.sort((a, b) => a.x - b.x);
-      const size = Math.max(8, Math.round(Math.max(...ordered.map((item) => item.size)) * 0.97));
-      const segments: InspectTextItem[][] = [];
-      let current: InspectTextItem[] = [];
-      let previousEnd = ordered[0]?.x ?? 0;
-
-      for (const item of ordered) {
-        const clean = item.text.replace(/\s+/g, ' ').trim();
-        if (!clean) continue;
-        const averageCharWidth = Math.max(2, item.width / Math.max(clean.length, 1));
-        const gap = current.length ? item.x - previousEnd : 0;
-        const tableGap = Math.max(size * 0.85, averageCharWidth * 2.2);
-        if (current.length && gap > tableGap) {
-          segments.push(current);
-          current = [];
-        }
-        current.push(item);
-        previousEnd = item.x + item.width;
-      }
-      if (current.length) segments.push(current);
-
-      return segments.map((segment, segmentIndex) => this.htmlItemFromLineSegment(segment, links, pageId, lineIndex, segmentIndex));
-    }).filter((item) => item.text.trim().length > 0);
   }
+  
+  return content.items
+    .filter((item): item is PdfTextItemLike => this.isPdfTextItem(item))
+    .map((item, index) => {
+      const transform = util.transform(viewport.transform, item.transform);
+      const size = Math.max(8, Math.hypot(transform[2], transform[3]));
+      const heightFromText = item.height || size * 1.05;
+      const sizeFromHeight = Math.max(8, heightFromText * 0.82);
+      const fontSize = Math.max(size, sizeFromHeight);
+      const width = Math.max(10, item.width || item.str.length * fontSize * 0.55);
+      const height = Math.max(10, item.height || fontSize * 1.08);
+      
+      const style = item.fontName ? content.styles?.[item.fontName] : undefined;
+      const fontLabel = `${item.fontName ?? ''} ${style?.fontFamily ?? ''}`;
+      const isBold = /bold|black|heavy|demi|semi|w00/i.test(fontLabel);
 
-  private htmlItemFromLineSegment(ordered: InspectTextItem[], links: LinkRect[], pageId: string, lineIndex: number, segmentIndex: number): HtmlTextItem {
-    console.log('ordered', ordered);
-      const first = ordered[0];
-      const last = ordered[ordered.length - 1];
-      const size = Math.max(...ordered.map((item) => item.size));
-      let text = '';
-      let previousEnd = first.x;
-      for (const item of ordered) {
-        const clean = item.text.replace(/\s+/g, ' ').trim();
-        if (!clean) continue;
-        const averageCharWidth = Math.max(2, item.width / Math.max(clean.length, 1));
-        const gap = item.x - previousEnd;
-        if (text && gap > averageCharWidth * 0.35) {
-          text += ' '.repeat(Math.max(1, Math.min(8, Math.round(gap / averageCharWidth))));
-        }
-        text += clean;
-        previousEnd = item.x + item.width;
-      }
-      const isLinked = ordered.some((item) => links.some((link) => this.rectsOverlap(item, link)));
+      // Extract the precise font text color from the matching vector graphics state index
+      const finalTextColor = operatorColorMap[index] || (item as any).color || '#111111';
+
       return {
-        id: `${pageId}-html-line-${lineIndex}-${segmentIndex}`,
-        pageId,
-        text,
-        x: first.x,
-        y: Math.min(...ordered.map((item) => item.y)),
-        width: Math.max(18, last.x + last.width - first.x),
-        height: Math.max(size * 1.12, ...ordered.map((item) => item.height)),
-        size,
-        fontFamily: first.fontFamily ?? 'Times New Roman, Georgia, serif',
-        fontWeight: first.fontWeight,
-        fontStyle: first.fontStyle,
-        color: isLinked ? '#0000ee' : first.color ?? '#111111',
-        textDecoration: isLinked ? 'underline' : undefined,
-        backgroundColor: '#ffffff',
-        originalText: text,
-        originalSize: size,
-        originalColor: isLinked ? '#0000ee' : first.color ?? '#111111',
-        originalFontWeight: first.fontWeight,
-        originalFontStyle: first.fontStyle,
-        textAlign: 'left',
+        id: `${pageId}-run-${index}`,
+        text: item.str,
+        x: transform[4],
+        y: transform[5] - height,
+        width,
+        height,
+        size: fontSize,
+        fontName: item.fontName, 
+        fontFamily: this.pdfFontFamily(style?.fontFamily, item.fontName),
+        fontWeight: isBold ? '700' : '400',
+        fontStyle: /italic|oblique/i.test(fontLabel) ? 'italic' : 'normal',
+        color: finalTextColor,              // Navy blue (#08466f) applies here correctly
+        backgroundColor: 'transparent'      // Preserves text rendering transparency bounds
       };
+    })
+    .filter((item) => item.text.trim().length > 0 && item.width > 2 && item.height > 2);
+}
+
+private htmlItemsFromTextContent(
+  content: { items: unknown[]; styles?: Record<string, PdfTextStyleLike> }, 
+  viewport: PdfViewportLike, 
+  pageId: string, 
+  links: LinkRect[] = [],
+  operatorList?: any
+): HtmlTextItem[] {
+  const rawItems = this.rawItemsFromTextContent(content, viewport, pageId, operatorList);
+  if (!rawItems.length) return [];
+
+  // 1. Core Geometric Spatial Deduplication Layer
+  // Eliminates duplicate hidden text boxes before grouping to fix the text collision bug
+  const spatialDeduplicatedItems: typeof rawItems = [];
+
+  for (const currentItem of rawItems) {
+    const isSpatialCollision = spatialDeduplicatedItems.some(existingItem => {
+      const verticalOverlap = Math.abs(existingItem.y - currentItem.y) < Math.max(existingItem.size, currentItem.size) * 0.3;
+      const horizontalOverlap = Math.abs(existingItem.x - currentItem.x) < 5;
+      
+      if (verticalOverlap && horizontalOverlap) {
+        return true;
+      }
+      
+      const xOverlap = (currentItem.x >= existingItem.x && currentItem.x <= (existingItem.x + existingItem.width)) ||
+                       (existingItem.x >= currentItem.x && existingItem.x <= (currentItem.x + currentItem.width));
+                       
+      const yOverlap = Math.abs(existingItem.y - currentItem.y) < 3;
+
+      if (xOverlap && yOverlap) {
+        if (existingItem.text.length >= currentItem.text.length) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (!isSpatialCollision) {
+      spatialDeduplicatedItems.push(currentItem);
+    }
   }
+
+  // 2. Map items safely with clean internal typography parameters
+  const processedItems: EnhancedTextItem[] = spatialDeduplicatedItems.map((item, index) => {
+    const rawItem = item as any;
+    const nativeItem = content.items[index] as any;
+    const fontKey = nativeItem?.fontName || '';
+    const matchedStyle = (content.styles && fontKey) ? content.styles[fontKey] : null;
+    const trueFontFamily = matchedStyle?.fontFamily || rawItem.fontFamily || 'sans-serif';
+
+    const textStr = (item.text || '').replace(/\s+/g, ' ').trim();
+
+    const isHeaderSize = item.size >= 14 || item.height >= 14;
+    const hasBoldKeyword = /bold|black|heavy|w00/i.test(trueFontFamily) || /bold|black|heavy/i.test(fontKey);
+    const isNumberedSection = /^\d+[\d\.]*\s*[A-Z]/.test(textStr);
+    const isAllCapsHeading = textStr.length > 3 && textStr.length < 50 && textStr === textStr.toUpperCase() && /[A-Z]/.test(textStr);
+
+    const verifyBoldThickness = hasBoldKeyword || isHeaderSize || isNumberedSection || isAllCapsHeading;
+
+    let primaryFontFamily = trueFontFamily.split(',')[0].replace(/['"]/g, '').trim();
+    if (primaryFontFamily === 'serif' || primaryFontFamily === 'sans-serif') {
+      primaryFontFamily = rawItem.fontFamily?.split(',')[0].replace(/['"]/g, '').trim() || primaryFontFamily;
+    }
+
+    return {
+      ...item,
+      fontFamily: primaryFontFamily || 'sans-serif',
+      fontWeight: verifyBoldThickness ? '700' : '400',
+      fontStyle: (/italic|oblique/i.test(trueFontFamily) || rawItem.fontStyle === 'italic') ? 'italic' : 'normal',
+      cleanText: textStr,
+      exactFont: primaryFontFamily || 'sans-serif',
+      color: rawItem.color || '#111111'
+    };
+  });
+
+  // Strict Top-to-Bottom, Left-to-Right layout sorting
+  processedItems.sort((a, b) => {
+    const yBucketA = Math.round(a.y * 10) / 10;
+    const yBucketB = Math.round(b.y * 10) / 10;
+    const rowDiff = yBucketA - yBucketB;
+    if (Math.abs(rowDiff) > Math.max(a.size, b.size) * 0.45) {
+      return rowDiff;
+    }
+    return a.x - b.x;
+  });
+
+  // 3. Assemble Line Rows with Text Boundary Checking
+  const lines: EnhancedTextItem[][] = [];
+  for (const item of processedItems) {
+    if (!item.cleanText) continue;
+
+    let added = false;
+    const lookbackLimit = Math.max(0, lines.length - 4);
+    for (let i = lines.length - 1; i >= lookbackLimit; i--) {
+      const activeLine = lines[i];
+      const referenceItem = activeLine[0]; 
+      
+      if (referenceItem && Math.abs(referenceItem.y - item.y) <= Math.max(referenceItem.size, item.size) * 0.55) {
+        activeLine.push(item);
+        added = true;
+        break;
+      }
+    }
+    if (!added) {
+      lines.push([item]);
+    }
+  }
+
+  // 4. Flatten grouped line components into distinct horizontal text chunks
+  const finalItems = lines.flatMap((line, lineIndex) => {
+    line.sort((a, b) => a.x - b.x);
+    const maxLineSize = Math.max(...line.map(item => item.size));
+    const normalizedSize = Math.max(8, Math.round(maxLineSize * 0.97));
+    
+    const segments: EnhancedTextItem[][] = [];
+    let currentSegment: EnhancedTextItem[] = [];
+    let previousXEnd = line[0]?.x ?? 0;
+
+    for (const item of line) {
+      const gap = currentSegment.length ? item.x - previousXEnd : 0;
+      const averageCharWidth = Math.max(2, item.width / Math.max(item.cleanText.length, 1));
+      const adaptiveGapThreshold = Math.max(normalizedSize * 0.85, averageCharWidth * 2.2);
+
+      if (currentSegment.length && gap > adaptiveGapThreshold) {
+        segments.push(currentSegment);
+        currentSegment = [];
+      }
+      currentSegment.push(item);
+      previousXEnd = item.x + item.width;
+    }
+    if (currentSegment.length) segments.push(currentSegment);
+
+    return segments.map((segment, segmentIndex) => 
+      this.htmlItemFromLineSegment(segment, links, pageId, lineIndex, segmentIndex)
+    );
+  });
+
+  // 5. Universal Inversion Adjustment Filter Layer
+  return finalItems.map(item => {
+    const bg = (item.backgroundColor || '').replace(/\s+/g, '').toLowerCase();
+    const textFill = (item.color || '').replace(/\s+/g, '').toLowerCase();
+
+    const isInvertedProblemColor = bg !== 'transparent' && bg !== '#ffffff' && bg !== 'rgba(0,0,0,0)';
+    const isDarkDefaultText = /^(#111111|#000000|rgb\(17,17,17\)|rgb\(0,0,0\))$/.test(textFill);
+
+    if (isInvertedProblemColor && isDarkDefaultText) {
+      const realTextColor = item.backgroundColor;
+      return {
+        ...item,
+        color: realTextColor,
+        backgroundColor: '#ffffff', // Applies the crisp solid white canvas masking layer
+        originalColor: realTextColor,
+      };
+    }
+
+    return item;
+  }).filter(item => item.text.trim().length > 0);
+}
+
+
+
+
+
+
+private htmlItemFromLineSegment(
+  ordered: InspectTextItem[], 
+  links: LinkRect[], 
+  pageId: string, 
+  lineIndex: number, 
+  segmentIndex: number
+): HtmlTextItem {
+  const first = ordered[0]; 
+  const last = ordered[ordered.length - 1];
+  const size = Math.max(...ordered.map((item) => item.size));
+  
+  let text = '';
+  let previousEnd = first.x;
+  
+  for (const item of ordered) {
+    const clean = item.text.replace(/\s+/g, ' ').trim();
+    if (!clean) continue;
+    const averageCharWidth = Math.max(2, item.width / Math.max(clean.length, 1));
+    const gap = item.x - previousEnd;
+    if (text && gap > averageCharWidth * 0.35) {
+      text += ' ';
+    }
+    text += clean;
+    previousEnd = item.x + item.width;
+  }
+  
+  const isLinked = ordered.some((item) => links.some((link) => this.rectsOverlap(item, link)));
+  const textStr = text.trim();
+  const enhancedFirst = first as any;
+
+  // ─── NON-DESTRUCTIVE UNIVERSAL FONT RESOLVER ───
+  // Preserves genuine fonts (like Times New Roman) so your dropdown side panel highlights it perfectly on-click
+  let finalFontFamily = enhancedFirst?.exactFont || first?.fontFamily || '';
+  
+  if (finalFontFamily) {
+    finalFontFamily = finalFontFamily.split(',')[0].replace(/['"]/g, '').trim();
+  }
+
+  // Force clean standard fallbacks only if fields are completely broken, missing, or plain generic strings
+  if (!finalFontFamily || finalFontFamily.toLowerCase() === 'serif' || finalFontFamily.toLowerCase() === 'sans-serif') {
+    finalFontFamily = 'Arial'; 
+  }
+
+  // Headings & Bold rules text heuristics
+  const isHeaderSize = size >= 14 || Math.max(...ordered.map(i => i.height)) >= 14;
+  const hasBoldKeyword = /bold|black|heavy|w00/i.test(finalFontFamily) || first?.fontWeight === '700';
+  const isNumberedSection = /^\d+[\d\.]*\s*[A-Z]/.test(textStr);
+  const isAllCapsHeading = textStr.length > 3 && textStr.length < 60 && textStr === textStr.toUpperCase() && /[A-Z]/.test(textStr);
+
+  const verifyBoldThickness = hasBoldKeyword || isHeaderSize || isNumberedSection || isAllCapsHeading;
+  const finalFontWeight = verifyBoldThickness ? '700' : '400';
+  const finalFontStyle = enhancedFirst?.fontStyle || first?.fontStyle || 'normal';
+
+  // Sizing matrix constraints: Adds a small padding buffer to accommodate bold letter expansions without clipping
+  const calculatedWidth = last.x + last.width - first.x;
+  const dynamicBoundingWidth = Math.max(24, calculatedWidth + 6); 
+  const dynamicBoundingHeight = Math.max(size * 1.35, ...ordered.map((item) => item.height));
+
+  return {
+    id: `${pageId}-html-line-${lineIndex}-${segmentIndex}`,
+    pageId,
+    text: textStr,
+    x: first.x,
+    y: Math.min(...ordered.map((item) => item.y)),
+    width: dynamicBoundingWidth,
+    height: dynamicBoundingHeight,
+    size,
+    
+    fontFamily: finalFontFamily,      // Clean isolated naming passed directly to view models
+    fontWeight: finalFontWeight,
+    fontStyle: finalFontStyle,
+    
+    color: isLinked ? '#0000ee' : first.color ?? '#111111',
+    textDecoration: isLinked ? 'underline' : undefined,
+    backgroundColor: '#ffffff',       // 👈 Enforces solid white background to mask fuzzy canvas duplicates underneath
+    
+    originalText: textStr,
+    originalSize: size,
+    originalColor: isLinked ? '#0000ee' : first.color ?? '#111111',
+    originalFontWeight: finalFontWeight,
+    originalFontStyle: finalFontStyle,
+    textAlign: 'left',
+  };
+}
+
+
+
 
   private applyHtmlItemBackgrounds(items: HtmlTextItem[], canvas: HTMLCanvasElement, scale: number): HtmlTextItem[] {
     const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -1741,6 +1999,7 @@ setActive(page: PageItem): void {
       allItems.push(...await this.reconstructHtmlPageItem(pdf, pageItem));
     }
     this.htmlTextItems = allItems;
+    console.log('Reconstructed all HTML pages with items:', allItems);
     this.refreshView();
     return allItems.length;
   }
@@ -1820,18 +2079,19 @@ private canvasToBlobUrl(canvas: HTMLCanvasElement): Promise<string> {
 }
 
 private async reconstructHtmlPageItem(
-  pdf: any, // Typed as per your original interface
+  pdf: any,
   pageItem: PageItem
 ): Promise<HtmlTextItem[]> {
   let extractedItems: HtmlTextItem[] = [];
-  
+
   try {
-    const { viewport, content, annotations } = await this.runPdfOutsideAngular(async () => {
+    const { viewport, content, annotations, operatorList } = await this.runPdfOutsideAngular(async () => {
       const page = await pdf.getPage(pageItem.sourceIndex + 1);
       return {
         viewport: page.getViewport({ scale: 1, rotation: pageItem.rotation }),
         content: await page.getTextContent(),
         annotations: await page.getAnnotations({ intent: 'display' }),
+        operatorList: await page.getOperatorList()
       };
     });
 
@@ -1839,43 +2099,87 @@ private async reconstructHtmlPageItem(
       content, 
       viewport, 
       pageItem.id, 
-      this.linkRectsFromAnnotations(annotations, viewport)
+      this.linkRectsFromAnnotations(annotations, viewport),
+      operatorList
     );
 
-
-    // 1. Use a mobile-safe render scale to avoid out-of-memory page snapshots.
     const rebuildScale = this.isMobileScreen()
       ? Math.min(this.effectiveHtmlBackgroundScale(), this.safePdfRenderScale(pageItem.width, pageItem.height, 1.15))
       : this.effectiveHtmlBackgroundScale();
 
-    // 2. Render a compact canvas used for both the HTML background and OCR fallback.
-    const backgroundCanvas = await this.runPdfOutsideAngular(() => this.renderPageCanvas(pageItem, rebuildScale));
+    // 1. Render the clean base canvas for the visible background layout
+    const visibleBackgroundCanvas = await this.runPdfOutsideAngular(() => this.renderPageCanvas(pageItem, rebuildScale));
 
-    const items = this.applyHtmlItemBackgrounds(extractedItems, backgroundCanvas, rebuildScale);
-    const graphicFilteredItems = this.replaceGraphicHtmlItemsWithImages(pageItem, items, backgroundCanvas, rebuildScale);
-
-    // 3. OCR fallback for scanned or image-heavy pages on mobile where PDF text extraction is empty.
-    let fallbackItems = graphicFilteredItems;
-    if (!fallbackItems.length && this.isMobileScreen()) {
-      fallbackItems = await this.ocrCanvasToHtmlItems(backgroundCanvas, pageItem.id);
+    // 2. CRITICAL FIX: Create a temporary clone canvas for post-processing and analysis
+    // This blocks downstream methods from stamping duplicate text paths onto your visible background image
+    const processingCanvas = document.createElement('canvas');
+    processingCanvas.width = visibleBackgroundCanvas.width;
+    processingCanvas.height = visibleBackgroundCanvas.height;
+    
+    const processingCtx = processingCanvas.getContext('2d');
+    if (processingCtx) {
+      processingCtx.drawImage(visibleBackgroundCanvas, 0, 0);
     }
 
-    // 4. Use memory-safe Object URLs instead of massive Base64 strings.
-    const backgroundUrl = await this.canvasToBlobUrl(backgroundCanvas);
+    // 3. Feed the temporary processing canvas to your downstream functions
+    const items = this.applyHtmlItemBackgrounds(extractedItems, processingCanvas, rebuildScale);
+    const graphicFilteredItems = this.replaceGraphicHtmlItemsWithImages(pageItem, items, processingCanvas, rebuildScale);
+
+    let fallbackItems = graphicFilteredItems;
+    if (!fallbackItems.length && this.isMobileScreen()) {
+      fallbackItems = await this.ocrCanvasToHtmlItems(processingCanvas, pageItem.id);
+    }
+
+    // 4. Convert the pristine, unmodified base canvas to the background URL
+    const backgroundUrl = await this.canvasToBlobUrl(visibleBackgroundCanvas);
     this.htmlPageBackgrounds[pageItem.id] = backgroundUrl;
 
-    // Optional: Free the canvas memory explicitly if you no longer need it
-    backgroundCanvas.width = 0;
-    backgroundCanvas.height = 0;
+    // 5. Explicitly clear all canvas memory buffers to prevent leaks
+    visibleBackgroundCanvas.width = 0;
+    visibleBackgroundCanvas.height = 0;
+    processingCanvas.width = 0;
+    processingCanvas.height = 0;
 
-    return fallbackItems.length ? fallbackItems : graphicFilteredItems;
+    // ─── FINAL PIPELINE INTERCEPT ───
+    const activeOutputItems = fallbackItems.length ? fallbackItems : graphicFilteredItems;
+
+    // ─── UPDATE THIS INSIDE THE FINAL RETURN OF reconstructHtmlPageItem ───
+    const universallyCorrectedItems = activeOutputItems.map(item => {
+      const bg = (item.backgroundColor || '').replace(/\s+/g, '').toLowerCase();
+      const textFill = (item.color || '').replace(/\s+/g, '').toLowerCase();
+
+      const hasActiveBackground = bg !== 'transparent' && bg !== '#ffffff' && bg !== 'rgba(0,0,0,0)';
+      const isDarkDefaultText = /^(#111111|#000000|rgb\(17,17,17\)|rgb\(0,0,0\))$/.test(textFill);
+
+      if (hasActiveBackground && isDarkDefaultText) {
+        const realTextColor = item.backgroundColor;
+        
+        return {
+          ...item,
+          color: realTextColor,
+          backgroundColor: '#ffffff', // 👈 CHANGE THIS FROM 'transparent' TO '#ffffff'
+          originalColor: realTextColor,
+          originalFontWeight: item.fontWeight || '700'
+        };
+      }
+      
+      // Also catch anything else defaulting to transparent and force it white
+      if (!item.backgroundColor || item.backgroundColor === 'transparent' || item.backgroundColor === 'rgba(0,0,0,0)') {
+        item.backgroundColor = '#ffffff'; // 👈 FORCE ALL STANDARD BACKGROUNDS WHITE
+      }
+      return item;
+    });
+
+
+    return universallyCorrectedItems;
 
   } catch (error) {
     console.error('Failed to reconstruct HTML page item:', error);
     delete this.htmlPageBackgrounds[pageItem.id];
-    return extractedItems; // Return the text-only items as a fallback
+    return extractedItems; 
   }
 }
+
 
   private async ocrCanvasToHtmlItems(canvas: HTMLCanvasElement, pageId: string): Promise<HtmlTextItem[]> {
     try {
