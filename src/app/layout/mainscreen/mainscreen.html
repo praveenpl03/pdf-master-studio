@@ -164,36 +164,44 @@
           <div #nativeTextLayer class="native-text-layer textLayer" [style.width.px]="activePage.width" [style.height.px]="activePage.height"></div>
           @if (htmlEditMode) {
             <div class="html-rebuild-layer" [style.width.px]="activePage.width" [style.height.px]="activePage.height" [style.transform]="'scale(' + zoom + ')'" [style.background-color]="activeHtmlBackground ? '#ffffff' : 'transparent'" [style.background-image]="activeHtmlBackground ? 'url(' + activeHtmlBackground + ')' : null">
-              @for (textItem of activeHtmlTextItems; track textItem.id) {
-                <div class="html-text-mask"
-                  [style.display]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? 'block' : 'none'"
-                  [style.left.px]="textItem.x" [style.top.px]="textItem.y" [style.width.px]="textItem.width" [style.height.px]="textItem.height" [style.background-color]="textItem.backgroundColor"></div>
-   <textarea class="html-text-run" [class.selected]="textItem.id === selectedHtmlTextId"
-          inputmode="text" autocapitalize="sentences" spellcheck="true"
-          [(ngModel)]="textItem.text"
-          [style.left.px]="textItem.x" 
-          [style.top.px]="textItem.y" 
-          [style.width.px]="textItem.width" 
-          [style.height.px]="textItem.height"
-          [style.font-size.px]="textItem.size" 
-          [style.font-family]="textItem.fontFamily" 
-          [style.font-weight]="textItem.fontWeight" 
-          [style.font-style]="textItem.fontStyle" 
-                    [style.color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.color : 'transparent'" 
-          
-          [style.text-decoration]="textItem.textDecoration" 
-          [style.background-color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.backgroundColor : 'transparent'" 
-          [style.text-align]="textItem.textAlign || 'left'"
-          (ngModelChange)="markHtmlTextEdit(textItem)" 
-          (click)="selectHtmlText(textItem, $event); focusTextField($event)" 
-          (pointerdown)="selectHtmlText(textItem, $event); focusTextField($event)" 
-          (pointerup)="focusTextField($event)" 
-          (touchstart)="selectHtmlText(textItem, $event); focusTextField($event)" 
-          (touchend)="focusTextField($event)">
-</textarea>
+    
+@for (textItem of activeHtmlTextItems; track textItem.id) {
+  <div class="html-text-mask"
+    [style.display]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? 'block' : 'none'"
+    [style.left.px]="textItem.x" 
+    [style.top.px]="textItem.y" 
+    [style.width.px]="textItem.width" 
+    [style.height.px]="textItem.height" 
+    [style.background-color]="textItem.backgroundColor">
+  </div>
+
+  <textarea class="html-text-run" [class.selected]="textItem.id === selectedHtmlTextId"
+    inputmode="text" 
+    autocapitalize="sentences" 
+    spellcheck="true"
+    [(ngModel)]="textItem.text"
+    [style.left.px]="textItem.x" 
+    [style.top.px]="textItem.y" 
+    [style.width.px]="textItem.width" 
+    [style.height.px]="textItem.height"
+    [style.font-size.px]="textItem.size" 
+    [style.font-family]="textItem.fontFamily" 
+    [style.font-weight]="textItem.fontWeight" 
+    [style.font-style]="textItem.fontStyle" 
+    [style.color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.color : 'transparent'" 
+    [style.text-decoration]="textItem.textDecoration" 
+    [style.background-color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.backgroundColor : 'transparent'" 
+    [style.text-align]="textItem.textAlign || 'left'"
+    (ngModelChange)="markHtmlTextEdit(textItem)" 
+    (click)="selectHtmlText(textItem, $event); focusTextField($event)" 
+    (pointerdown)="selectHtmlText(textItem, $event); focusTextField($event)" 
+    (pointerup)="focusTextField($event)" 
+    (touchstart)="selectHtmlText(textItem, $event); focusTextField($event)" 
+    (touchend)="focusTextField($event)">
+  </textarea>
+}
 
 
-              }
               <div class="html-overlay-layer">
                 @for (item of pageOverlays; track item.id) {
                   <div class="overlay-item" [class.selected]="item.id === selectedOverlayId" [class.box]="item.kind === 'rectangle'" [class.locked]="item.locked" [class.highlight]="item.kind === 'highlight'" [class.signature]="item.kind === 'signature'" [class.image-item]="item.kind === 'image'" [class.ellipse]="item.kind === 'ellipse'" [class.line]="item.kind === 'line'"
