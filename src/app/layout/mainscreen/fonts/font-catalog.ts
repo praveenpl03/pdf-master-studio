@@ -1,114 +1,89 @@
-export interface FontChoice {
-  label: string;
-  value: string;
+import { Injectable, Inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { DOCUMENT } from '@angular/common';
+import { Observable } from 'rxjs';
+import { tap, map } from 'rxjs/operators';
+
+export interface GoogleFontItem {
+  family: string;
+  variants: string[];
+  subsets: string[];
+  version: string;
+  lastModified: string;
+  files: Record<string, string>;
+  category: string;
+  kind: string;
 }
 
-export const FONT_CHOICES: FontChoice[] = [
-  { label: 'Arial / Helvetica', value: 'Arial, Helvetica, sans-serif' },
-  { label: 'Times New Roman', value: 'Times New Roman, Georgia, serif' },
-  { label: 'Courier New', value: 'Courier New, Courier, monospace' },
-  { label: 'Georgia', value: 'Georgia, serif' },
-  { label: 'Segoe UI', value: '"Segoe UI", Arial, sans-serif' },
-  { label: 'Roboto', value: 'Roboto, Arial, sans-serif' },
-  { label: 'Open Sans', value: '"Open Sans", Arial, sans-serif' },
-  { label: 'Lato', value: 'Lato, Arial, sans-serif' },
-  { label: 'Montserrat', value: 'Montserrat, Arial, sans-serif' },
-  { label: 'Poppins', value: 'Poppins, Arial, sans-serif' },
-  { label: 'Inter', value: 'Inter, Arial, sans-serif' },
-  { label: 'Source Sans 3', value: '"Source Sans 3", Arial, sans-serif' },
-  { label: 'Nunito', value: 'Nunito, Arial, sans-serif' },
-  { label: 'Work Sans', value: '"Work Sans", Arial, sans-serif' },
-  { label: 'Raleway', value: 'Raleway, Arial, sans-serif' },
-  { label: 'Ubuntu', value: 'Ubuntu, Arial, sans-serif' },
-  { label: 'Merriweather Sans', value: '"Merriweather Sans", Arial, sans-serif' },
-  { label: 'Mulish', value: 'Mulish, Arial, sans-serif' },
-  { label: 'Quicksand', value: 'Quicksand, Arial, sans-serif' },
-  { label: 'Karla', value: 'Karla, Arial, sans-serif' },
-  { label: 'Barlow', value: 'Barlow, Arial, sans-serif' },
-  { label: 'Manrope', value: 'Manrope, Arial, sans-serif' },
-  { label: 'DM Sans', value: '"DM Sans", Arial, sans-serif' },
-  { label: 'IBM Plex Sans', value: '"IBM Plex Sans", Arial, sans-serif' },
-  { label: 'Libre Franklin', value: '"Libre Franklin", Arial, sans-serif' },
-  { label: 'Josefin Sans', value: '"Josefin Sans", Arial, sans-serif' },
-  { label: 'Fira Sans', value: '"Fira Sans", Arial, sans-serif' },
-  { label: 'Public Sans', value: '"Public Sans", Arial, sans-serif' },
-  { label: 'Rubik', value: 'Rubik, Arial, sans-serif' },
-  { label: 'Noto Sans', value: '"Noto Sans", Arial, sans-serif' },
-  { label: 'Merriweather', value: 'Merriweather, Georgia, serif' },
-  { label: 'Lora', value: 'Lora, Georgia, serif' },
-  { label: 'Libre Baskerville', value: '"Libre Baskerville", Georgia, serif' },
-  { label: 'Playfair Display', value: '"Playfair Display", Georgia, serif' },
-  { label: 'Cormorant Garamond', value: '"Cormorant Garamond", Georgia, serif' },
-  { label: 'EB Garamond', value: '"EB Garamond", Georgia, serif' },
-  { label: 'Crimson Text', value: '"Crimson Text", Georgia, serif' },
-  { label: 'Bitter', value: 'Bitter, Georgia, serif' },
-  { label: 'Spectral', value: 'Spectral, Georgia, serif' },
-  { label: 'Source Serif 4', value: '"Source Serif 4", Georgia, serif' },
-  { label: 'Roboto Slab', value: '"Roboto Slab", Georgia, serif' },
-  { label: 'Arvo', value: 'Arvo, Georgia, serif' },
-  { label: 'Zilla Slab', value: '"Zilla Slab", Georgia, serif' },
-  { label: 'Alegreya', value: 'Alegreya, Georgia, serif' },
-  { label: 'PT Serif', value: '"PT Serif", Georgia, serif' },
-  { label: 'Noto Serif', value: '"Noto Serif", Georgia, serif' },
-  { label: 'Fira Code', value: '"Fira Code", "Courier New", monospace' },
-  { label: 'JetBrains Mono', value: '"JetBrains Mono", "Courier New", monospace' },
-  { label: 'Source Code Pro', value: '"Source Code Pro", "Courier New", monospace' },
-  { label: 'IBM Plex Mono', value: '"IBM Plex Mono", "Courier New", monospace' },
-  { label: 'Roboto Mono', value: '"Roboto Mono", "Courier New", monospace' },
-  { label: 'Inconsolata', value: 'Inconsolata, "Courier New", monospace' },
-  { label: 'Space Mono', value: '"Space Mono", "Courier New", monospace' },
-  { label: 'Noto Sans Mono', value: '"Noto Sans Mono", "Courier New", monospace' },
-  { label: 'Noto Sans Arabic', value: '"Noto Sans Arabic", Arial, sans-serif' },
-  { label: 'Noto Naskh Arabic', value: '"Noto Naskh Arabic", Arial, sans-serif' },
-  { label: 'Noto Kufi Arabic', value: '"Noto Kufi Arabic", Arial, sans-serif' },
-  { label: 'Noto Sans Hebrew', value: '"Noto Sans Hebrew", Arial, sans-serif' },
-  { label: 'Noto Serif Hebrew', value: '"Noto Serif Hebrew", Georgia, serif' },
-  { label: 'Noto Sans Devanagari', value: '"Noto Sans Devanagari", Arial, sans-serif' },
-  { label: 'Noto Serif Devanagari', value: '"Noto Serif Devanagari", Georgia, serif' },
-  { label: 'Noto Sans Bengali', value: '"Noto Sans Bengali", Arial, sans-serif' },
-  { label: 'Noto Serif Bengali', value: '"Noto Serif Bengali", Georgia, serif' },
-  { label: 'Noto Sans Tamil', value: '"Noto Sans Tamil", Arial, sans-serif' },
-  { label: 'Noto Serif Tamil', value: '"Noto Serif Tamil", Georgia, serif' },
-  { label: 'Noto Sans Telugu', value: '"Noto Sans Telugu", Arial, sans-serif' },
-  { label: 'Noto Sans Kannada', value: '"Noto Sans Kannada", Arial, sans-serif' },
-  { label: 'Noto Sans Malayalam', value: '"Noto Sans Malayalam", Arial, sans-serif' },
-  { label: 'Noto Sans Gujarati', value: '"Noto Sans Gujarati", Arial, sans-serif' },
-  { label: 'Noto Sans Gurmukhi', value: '"Noto Sans Gurmukhi", Arial, sans-serif' },
-  { label: 'Noto Sans Oriya', value: '"Noto Sans Oriya", Arial, sans-serif' },
-  { label: 'Noto Sans Sinhala', value: '"Noto Sans Sinhala", Arial, sans-serif' },
-  { label: 'Noto Sans Thai', value: '"Noto Sans Thai", Arial, sans-serif' },
-  { label: 'Noto Serif Thai', value: '"Noto Serif Thai", Georgia, serif' },
-  { label: 'Noto Sans Lao', value: '"Noto Sans Lao", Arial, sans-serif' },
-  { label: 'Noto Sans Khmer', value: '"Noto Sans Khmer", Arial, sans-serif' },
-  { label: 'Noto Sans Myanmar', value: '"Noto Sans Myanmar", Arial, sans-serif' },
-  { label: 'Noto Sans Ethiopic', value: '"Noto Sans Ethiopic", Arial, sans-serif' },
-  { label: 'Noto Sans Armenian', value: '"Noto Sans Armenian", Arial, sans-serif' },
-  { label: 'Noto Sans Georgian', value: '"Noto Sans Georgian", Arial, sans-serif' },
-  { label: 'Noto Sans SC', value: '"Noto Sans SC", Arial, sans-serif' },
-  { label: 'Noto Serif SC', value: '"Noto Serif SC", Georgia, serif' },
-  { label: 'Noto Sans TC', value: '"Noto Sans TC", Arial, sans-serif' },
-  { label: 'Noto Serif TC', value: '"Noto Serif TC", Georgia, serif' },
-  { label: 'Noto Sans JP', value: '"Noto Sans JP", Arial, sans-serif' },
-  { label: 'Noto Serif JP', value: '"Noto Serif JP", Georgia, serif' },
-  { label: 'Noto Sans KR', value: '"Noto Sans KR", Arial, sans-serif' },
-  { label: 'Noto Serif KR', value: '"Noto Serif KR", Georgia, serif' },
-  { label: 'Noto Sans Tibetan', value: '"Noto Sans Tibetan", Arial, sans-serif' },
-  { label: 'Noto Sans Mongolian', value: '"Noto Sans Mongolian", Arial, sans-serif' },
-  { label: 'Noto Sans Symbols', value: '"Noto Sans Symbols", Arial, sans-serif' },
-  { label: 'Noto Sans Math', value: '"Noto Sans Math", Arial, sans-serif' },
-  { label: 'Noto Color Emoji', value: '"Noto Color Emoji", "Segoe UI Emoji", sans-serif' },
-  { label: 'Hind', value: 'Hind, Arial, sans-serif' },
-  { label: 'Mukta', value: 'Mukta, Arial, sans-serif' },
-  { label: 'Tiro Devanagari Hindi', value: '"Tiro Devanagari Hindi", Georgia, serif' },
-  { label: 'Baloo 2', value: '"Baloo 2", Arial, sans-serif' },
-  { label: 'Cairo', value: 'Cairo, Arial, sans-serif' },
-  { label: 'Tajawal', value: 'Tajawal, Arial, sans-serif' },
-  { label: 'Amiri', value: 'Amiri, Georgia, serif' },
-  { label: 'Scheherazade New', value: '"Scheherazade New", Georgia, serif' },
-  { label: 'Vazirmatn', value: 'Vazirmatn, Arial, sans-serif' },
-  { label: 'Chakra Petch', value: '"Chakra Petch", Arial, sans-serif' },
-  { label: 'Sarabun', value: 'Sarabun, Arial, sans-serif' },
-  { label: 'Kanit', value: 'Kanit, Arial, sans-serif' },
-  { label: 'Prompt', value: 'Prompt, Arial, sans-serif' },
-  { label: 'Bai Jamjuree', value: '"Bai Jamjuree", Arial, sans-serif' },
-];
+@Injectable({
+  providedIn: 'root'
+})
+export class GoogleFontService {
+  private fontsMap = new Map<string, GoogleFontItem>();
+  private loadedFontsToDOM = new Set<string>();
+
+  constructor(
+    private http: HttpClient,
+    @Inject(DOCUMENT) private document: Document
+  ) {}
+
+  /**
+   * Streams and indexes the large assets file efficiently
+   */
+  public loadFontsFromAssets(): Observable<GoogleFontItem[]> {
+    return this.http.get<GoogleFontItem[]>('assets/fonts-metadata.json').pipe(
+      tap(fontsList => {
+        this.fontsMap.clear();
+        for (let i = 0; i < fontsList.length; i++) {
+          const font = fontsList[i];
+          this.fontsMap.set(font.family.toLowerCase().trim(), font);
+        }
+      }),
+      map(fontsList => fontsList.sort((a, b) => a.family.localeCompare(b.family)))
+    );
+  }
+
+  public findFontMatch(fontName: string): GoogleFontItem | null {
+    const cleanKey = fontName.split('+').pop()?.replace(/['"]/g, '').toLowerCase().trim() || '';
+    return this.fontsMap.get(cleanKey) || null;
+  }
+
+  /**
+   * Generates crisp multi-weight axis parameters for the Google CDN
+   */
+  public loadFontToDOM(fontFamily: string): void {
+    const lookupKey = fontFamily.toLowerCase().trim();
+    const fontData = this.fontsMap.get(lookupKey);
+
+    if (!fontData || this.loadedFontsToDOM.has(lookupKey)) return;
+
+    const weights = fontData.variants
+      .map(v => v.replace('italic', ''))
+      .map(v => v === 'regular' ? '400' : v);
+    
+    const uniqueWeights = Array.from(new Set(weights)).sort();
+    const hasItalic = fontData.variants.some(v => v.includes('italic') || v === 'italic');
+    const familyParam = fontData.family.replace(/\s+/g, '+');
+    let axisString = '';
+    
+    if (hasItalic && uniqueWeights.length) {
+      axisString = `:ital,wght@${uniqueWeights.map(w => `0,${w};1,${w}`).join(';')}`;
+    } else if (uniqueWeights.length) {
+      axisString = `:wght@${uniqueWeights.join(';')}`;
+    }
+
+    const fontUrl = `https://fonts.googleapis.com/css2?family=${familyParam}:${axisString}&display=swap`;
+    const elementId = `gf-runtime-${lookupKey.replace(/\s+/g, '-')}`;
+
+    try {
+      const link = this.document.createElement('link');
+      link.id = elementId;
+      link.rel = 'stylesheet';
+      link.href = fontUrl;
+      this.document.head.appendChild(link);
+      this.loadedFontsToDOM.add(lookupKey);
+    } catch (error) {
+      console.error(`Failed loading layout weights for ${fontFamily}`, error);
+    }
+  }
+}
