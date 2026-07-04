@@ -27,7 +27,12 @@
                 "glob": "qpdf.*",
                 "input": "node_modules/qpdf-wasm",
                 "output": "/assets"
-              }
+              },
+  {
+    "glob": "mupdf-wasm.wasm",
+    "input": "node_modules/mupdf/dist",
+    "output": "."
+  }
             ],
             "styles": [
               "src/styles.css"

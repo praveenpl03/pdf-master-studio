@@ -190,7 +190,7 @@
     [style.font-style]="textItem.fontStyle" 
     [style.color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.color : 'transparent'" 
     [style.text-decoration]="textItem.textDecoration" 
-    [style.background-color]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? textItem.backgroundColor : 'transparent'" 
+[style.background-color]="'transparent'"
     [style.text-align]="textItem.textAlign || 'left'"
     (ngModelChange)="markHtmlTextEdit(textItem)" 
     (click)="selectHtmlText(textItem, $event); focusTextField($event)" 

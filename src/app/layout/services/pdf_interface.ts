@@ -39,6 +39,7 @@ export interface PageItem {
   width: number;
   height: number;
   blank?: boolean;
+  pageNumber?: number;
 }
 
 export interface OverlayItem {
@@ -127,6 +128,10 @@ export interface HtmlTextItem extends InspectTextItem {
   originalFontWeight?: string;
   originalFontStyle?: string;
   textAlign?: 'left' | 'center' | 'right';
+    originalX:number;
+  originalY:number;
+  originalWidth:number;
+  originalHeight:number;
 }
 
 export interface EditorSnapshot {

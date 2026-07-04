@@ -24,14 +24,14 @@
     "fabric": "^7.4.0",
     "pdf-lib": "^1.17.1",
     "pdfium-wasm": "^0.0.2",
-    "pdfjs-dist": "^6.0.227",
+    "pdfjs-dist": "^6.1.200",
     "qpdf-wasm": "^0.1.0",
     "rxjs": "~7.8.0",
     "tesseract.js": "^7.0.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
-    "@angular/build": "^21.2.14",
+    "@angular/build": "^21.2.3",
     "@angular/cli": "^21.2.14",
     "@angular/compiler-cli": "^21.2.0",
     "@tailwindcss/postcss": "^4.1.12",
