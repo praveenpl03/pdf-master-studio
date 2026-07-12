@@ -1151,49 +1151,295 @@ private readonly toolbarGap = 8;
   }
 
 selectHtmlText(item: HtmlTextItem, event?: Event): void {
+
   event?.stopPropagation();
+
   this.selectedOverlayId = '';
   this.selectedHtmlTextId = item.id;
   this.trackingHtmlEditId = '';
   this.trackingOverlayEditId = '';
 
-  let boldState = item.fontWeight === '700' || item.originalFontWeight === '700';
-  let italicState = item.fontStyle === 'italic' || item.originalFontStyle === 'italic';
-  
-  // Clean default fallback value
-  let fontFamilyState = (item.fontFamily || 'Arial').split(',')[0].replace(/['"]/g, '').trim();
-  let bgColorState = item.backgroundColor || '#ffffff';
 
-  if (event?.currentTarget) {
-    const textareaElement = event.currentTarget as HTMLTextAreaElement;
-    const computedStyle = window.getComputedStyle(textareaElement);
 
-    boldState = computedStyle.fontWeight === '700' || computedStyle.fontWeight === 'bold' || boldState;
-    italicState = computedStyle.fontStyle === 'italic' || italicState;
-    
-    // ─── CRITICAL CORE FIX: NORMALIZE BROWSER FONT FAMILY STACK ───
-    // Takes '"Times New Roman", Times, serif' and extracts strictly 'Times New Roman'
-    const rawBrowserFont = computedStyle.fontFamily || '';
-    fontFamilyState = rawBrowserFont.split(',')[0].replace(/['"]/g, '').trim();
+  // =====================================
+  // CAPTURE REAL PDF BACKGROUND COLOR
+  // before editing
+  // =====================================
 
-    const currentBg = computedStyle.backgroundColor;
-    if (currentBg && currentBg !== 'transparent' && currentBg !== 'rgba(0,0,0,0)') {
-      bgColorState = this.convertToHex(currentBg);
+  if (!item.eraseColor) {
+
+
+    const textarea =
+      event?.currentTarget as HTMLElement;
+
+
+    const pageElement =
+      textarea?.closest('.pdf-page');
+
+
+    const canvas =
+      pageElement?.querySelector(
+        'canvas'
+      ) as HTMLCanvasElement;
+
+
+
+    if (canvas) {
+
+
+      item.eraseColor =
+        this.samplePdfBackground(
+          canvas,
+          item
+        );
+
+
+      console.log(
+        'PDF erase background:',
+        item.eraseColor
+      );
+
     }
+
+
   }
 
-  // Assign clean values straight to your component view state properties
-  this.isBoldActive = boldState;
-  this.isItalicActive = italicState;
-  
-  // This value will now accurately match your side panel dropdown options!
-  this.activeFontFamily = fontFamilyState; 
-  this.activeBackgroundColor = bgColorState;
 
-  console.log('Side Panel Font Selection Normalized:', this.activeFontFamily);
+
+  let boldState =
+    item.fontWeight === '700' ||
+    item.originalFontWeight === '700';
+
+
+
+  let italicState =
+    item.fontStyle === 'italic' ||
+    item.originalFontStyle === 'italic';
+
+
+
+  let fontFamilyState =
+    (item.fontFamily || 'Arial')
+      .split(',')[0]
+      .replace(/['"]/g,'')
+      .trim();
+
+
+
+  let bgColorState =
+    item.backgroundColor || '#ffffff';
+
+
+
+
+
+  if(event?.currentTarget){
+
+
+    const textareaElement =
+      event.currentTarget as HTMLTextAreaElement;
+
+
+    const computedStyle =
+      window.getComputedStyle(
+        textareaElement
+      );
+
+
+
+    boldState =
+      computedStyle.fontWeight === '700' ||
+      computedStyle.fontWeight === 'bold' ||
+      boldState;
+
+
+
+    italicState =
+      computedStyle.fontStyle === 'italic' ||
+      italicState;
+
+
+
+
+    const rawBrowserFont =
+      computedStyle.fontFamily || '';
+
+
+
+    fontFamilyState =
+      rawBrowserFont
+      .split(',')[0]
+      .replace(/['"]/g,'')
+      .trim();
+
+
+
+
+    const currentBg =
+      computedStyle.backgroundColor;
+
+
+
+    if(
+      currentBg &&
+      currentBg !== 'transparent' &&
+      currentBg !== 'rgba(0, 0, 0, 0)'
+    ){
+
+
+      bgColorState =
+        this.convertToHex(
+          currentBg
+        );
+
+
+    }
+
+  }
+
+
+
+
+  this.isBoldActive =
+    boldState;
+
+
+  this.isItalicActive =
+    italicState;
+
+
+  this.activeFontFamily =
+    fontFamilyState;
+
+
+  this.activeBackgroundColor =
+    bgColorState;
+
+
+
+  console.log(
+    'Side Panel Font Selection Normalized:',
+    this.activeFontFamily
+  );
+
 }
+private samplePdfBackground(
+ canvas:HTMLCanvasElement,
+ item:HtmlTextItem
+):string {
 
 
+ const ctx =
+   canvas.getContext('2d');
+
+
+ if(!ctx)
+   return '#ffffff';
+
+
+
+ const x =
+   Math.floor(
+    item.originalX ?? item.x
+   );
+
+
+ const y =
+   Math.floor(
+    item.originalY ?? item.y
+   );
+
+
+ const w =
+   Math.max(
+    2,
+    Math.floor(
+      item.originalWidth ?? item.width
+    )
+   );
+
+
+ const h =
+   Math.max(
+    2,
+    Math.floor(
+      item.originalHeight ?? item.height
+    )
+   );
+
+
+
+ const data =
+   ctx.getImageData(
+     x,
+     y,
+     w,
+     h
+   ).data;
+
+
+
+
+ let r=0,g=0,b=0,c=0;
+
+
+
+ for(
+   let i=0;
+   i<data.length;
+   i+=4
+ ){
+
+   const pr=data[i];
+   const pg=data[i+1];
+   const pb=data[i+2];
+
+
+   const brightness =
+     (pr+pg+pb)/3;
+
+
+
+   // ignore text pixels
+
+   if(brightness > 180){
+
+     r+=pr;
+     g+=pg;
+     b+=pb;
+
+     c++;
+
+   }
+
+
+ }
+
+
+
+ if(!c)
+   return '#ffffff';
+
+
+
+ r=Math.round(r/c);
+ g=Math.round(g/c);
+ b=Math.round(b/c);
+
+
+
+ return (
+   '#' +
+   [r,g,b]
+   .map(
+     v =>
+     v.toString(16)
+      .padStart(2,'0')
+   )
+   .join('')
+ );
+
+}
 // ─── ADD THIS RGB TO HEX HELPER METHOD INSIDE YOUR COMPONENT CLASS ───
 private convertToHex(rgbString: string): string {
   if (rgbString.startsWith('#')) return rgbString;
@@ -1516,13 +1762,13 @@ markHtmlTextEdit(
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) return items;
     return items.map((item) => {
-      const backgroundColor = this.sampleCanvasColor(context, item, scale);
+     // const backgroundColor = this.sampleCanvasColor(context, item, scale);
 
       return {
         ...item,
         color: item.color ?? '#111111',
         originalColor: item.color ?? '#111111',
-        backgroundColor,
+        backgroundColor:'transparent',
         textAlign: 'left',
       };
     });
@@ -2582,168 +2828,8 @@ private async applyHtmlTextEdits(
 
 
 
+
     for(const item of editedItems){
-
-
-      //
-      // TEXT POSITION
-      //
-
-      const x =
-        item.x * scaleX;
-
-
-      const topY =
-        item.y * scaleY;
-
-
-
-      const boxHeight =
-        Math.max(
-          item.height,
-          item.size * 1.25
-        )
-        * scaleY;
-
-
-
-      const boxWidth =
-        Math.max(
-          item.width * scaleX,
-          this.measureHtmlTextWidth(item)
-          * scaleX
-        );
-
-
-
-      const boxY =
-        height
-        - topY
-        - boxHeight;
-
-
-
-
-      // ============================
-      // 1. ERASE ORIGINAL PDF TEXT
-      //    using MuPDF bbox only
-      // ============================
-
-
-      const originalX =
-        (item.originalX ?? item.x)
-        * scaleX;
-
-
-
-      const originalY =
-        (item.originalY ?? item.y)
-        * scaleY;
-
-
-
-      const originalWidth =
-        (item.originalWidth ?? item.width)
-        * scaleX;
-
-
-
-      const originalHeight =
-        (item.originalHeight ?? item.height)
-        * scaleY;
-
-
-
-    
-
-
-const oldText =
-  item.originalText ?? '';
-
-
-const newText =
-  item.text ?? '';
-
-
-// find common prefix
-let same = 0;
-
-while(
-  same < oldText.length &&
-  same < newText.length &&
-  oldText[same] === newText[same]
-){
-  same++;
-}
-
-
-// estimate removed part position
-const oldCharWidth =
-  originalWidth /
-  Math.max(
-    oldText.length,
-    1
-  );
-
-
-// only erase changed characters area
-const eraseStartX =
-  originalX +
-  same * oldCharWidth;
-
-
-const eraseWidth =
-  Math.max(
-    1,
-    (oldText.length - same)
-    * oldCharWidth
-  );
-
-
-const eraseY =
-  height
-  -
-  originalY
-  -
-  originalHeight;
-
-
-
-page.drawRectangle({
-
-  x:
-    eraseStartX,
-
-
-  y:
-    eraseY,
-
-
-  width:
-    eraseWidth + 1,
-
-
-  height:
-    originalHeight,
-
-
-  color:
-    this.hexToRgb('#ffffff'),
-
-
-  opacity:
-    1
-
-});
-
-
-
-
-
-
-      // ============================
-      // 2. DRAW NEW TEXT
-      // ============================
 
 
 
@@ -2764,15 +2850,118 @@ page.drawRectangle({
 
 
 
-      const lines =
-        item.text.split(/\r?\n/);
+
+      // ======================
+      // ORIGINAL PDF POSITION
+      // ======================
+
+
+      const pdfX =
+        (item.originalX ?? item.x)
+        *
+        scaleX;
 
 
 
-      const fontHeight =
-        textFont.heightAtSize(
+      const pdfTop =
+        (item.originalY ?? item.y)
+        *
+        scaleY;
+
+
+
+const pdfBoxHeight =
+  Math.max(
+    item.originalHeight ?? 0,
+    fontSize * 0.9
+  )
+  * scaleY;
+
+
+
+      const pdfY =
+        height
+        -
+        pdfTop
+        -
+        pdfBoxHeight;
+
+
+
+
+      // ======================
+      // ERASE OLD TEXT
+      // ======================
+
+
+      const originalTextWidth =
+        textFont.widthOfTextAtSize(
+          item.originalText ?? item.text,
           fontSize
         );
+
+
+
+      const eraseWidth =
+        Math.max(
+
+          (item.originalWidth ?? 0)
+          *
+          scaleX,
+
+          originalTextWidth
+
+        );
+
+const onlyStyleChange =
+  item.text === item.originalText;
+
+
+if(!onlyStyleChange){
+
+
+ page.drawRectangle({
+
+   x:
+    pdfX - 0.5,
+
+
+   y:
+    pdfY + fontSize * 0.15,
+
+
+   width:
+    eraseWidth + 1,
+
+
+   height:
+    pdfBoxHeight * 0.85,
+
+
+ color:
+ this.hexToRgb(
+   item.eraseColor ?? '#ffffff'
+ ),
+
+
+   opacity:
+    1
+
+ });
+
+
+}
+
+
+
+      // ======================
+      // DRAW EDITED TEXT
+      // ======================
+
+
+
+      const lines =
+        item.text.split(/\r?\n/);
 
 
 
@@ -2789,76 +2978,170 @@ page.drawRectangle({
         )=>{
 
 
-          const y =
-            boxY
-            + boxHeight
-            - fontHeight
+
+        const clean =
+          line || ' ';
+
+
+// PDF baseline correction
+
+const y =
+ pdfY
+ +
+ fontSize * 0.18
+ -
+ lineIndex * lineHeight;
+
+
+
+
+        let drawX =
+          pdfX;
+
+
+
+        const normalWidth =
+          textFont.widthOfTextAtSize(
+            clean,
+            fontSize
+          );
+
+
+
+        if(
+          item.textAlign === 'right'
+        ){
+
+          drawX =
+            pdfX
+            +
+            eraseWidth
             -
+            normalWidth;
+
+        }
+
+
+        else if(
+          item.textAlign === 'center'
+        ){
+
+          drawX =
+            pdfX
+            +
+            eraseWidth/2
+            -
+            normalWidth/2;
+
+        }
+
+
+
+
+
+        // ======================
+        // CHARACTER SPACING FIX
+        // ======================
+
+
+        const targetWidth =
+          Math.max(
+            (item.originalWidth ?? item.width)
+            *
+            scaleX,
+            normalWidth
+          );
+
+
+
+        if(
+          clean.length > 1 &&
+          Math.abs(
+            targetWidth-normalWidth
+          ) > 1
+        ){
+
+
+
+          const extra =
             (
-              lineIndex *
-              lineHeight
+              targetWidth
+              -
+              normalWidth
+            )
+            /
+            (
+              clean.length-1
             );
 
 
 
-          if(
-            y < boxY - fontSize
-          )
-          return;
+          let cursorX =
+            drawX;
 
 
 
-          const cleanLine =
-            line || ' ';
+          for(
+            const ch of clean
+          ){
 
 
+            page.drawText(
+              ch,
+              {
 
-          const textWidth =
-            textFont
-            .widthOfTextAtSize(
-              cleanLine,
-              fontSize
+                x:
+                  cursorX,
+
+
+                y,
+
+
+                size:
+                  fontSize,
+
+
+                font:
+                  textFont,
+
+
+                color:
+                  this.hexToRgb(
+                    item.color ?? '#111111'
+                  )
+
+              }
             );
 
 
 
-          let textX =
-            x;
+            cursorX +=
 
+              textFont.widthOfTextAtSize(
+                ch,
+                fontSize
+              )
 
+              +
 
-          if(
-            item.textAlign === 'center'
-          ){
+              extra;
 
-            textX =
-              x
-              + boxWidth/2
-              - textWidth/2;
 
           }
 
 
-          else if(
-            item.textAlign === 'right'
-          ){
 
-            textX =
-              x
-              + boxWidth
-              - textWidth;
+        }
 
-          }
-
-
+        else{
 
 
           page.drawText(
-            cleanLine,
+            clean,
             {
 
               x:
-                textX,
+                drawX,
 
 
               y,
@@ -2881,52 +3164,47 @@ page.drawRectangle({
           );
 
 
+        }
 
 
 
-          if(
-            item.textDecoration === 'underline'
-          ){
+
+        // underline
+        if(
+          item.textDecoration === 'underline'
+        ){
 
 
-            const underlineY =
-              y -
-              fontSize * 0.1;
+          page.drawLine({
+
+            start:{
+              x:drawX,
+              y:y-1
+            },
 
 
-
-            page.drawLine({
-
-              start:{
-                x:textX,
-                y:underlineY
-              },
+            end:{
+              x:
+                drawX+targetWidth,
+              y:y-1
+            },
 
 
-              end:{
-                x:
-                 textX + textWidth,
-
-                y:
-                 underlineY
-              },
+            thickness:
+              Math.max(
+                .5,
+                fontSize*.05
+              ),
 
 
-              thickness:
-                Math.max(
-                  .75,
-                  fontSize*.05
-                ),
+            color:
+              this.hexToRgb(
+                item.color ?? '#0000ee'
+              )
 
+          });
 
-              color:
-                this.hexToRgb(
-                  item.color ?? '#0000ee'
-                )
-
-            });
-
-          }
+        }
 
 
       });

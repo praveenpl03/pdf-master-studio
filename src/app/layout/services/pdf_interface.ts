@@ -132,6 +132,7 @@ export interface HtmlTextItem extends InspectTextItem {
   originalY:number;
   originalWidth:number;
   originalHeight:number;
+   eraseColor?: string;
 }
 
 export interface EditorSnapshot {
