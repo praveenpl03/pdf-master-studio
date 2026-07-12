@@ -523,7 +523,7 @@ h2 {
   /* ─── CRITICAL VISUAL LAYOUT ADJUSTMENTS ─── */
   line-height: 1;            /* 1. INCREASED: Provides vital breathing room for multi-line font scales */
   white-space: pre-wrap;
-
+background-color: transparent;
   text-align: left;
   font-kerning: normal;
   font-synthesis: none;

@@ -442,7 +442,7 @@ async openPdf(file:File){
    );
 
 
- console.table(fonts);
+ //console.table(fonts);
 
 }
   async addMergeFiles(event: Event): Promise<void> {
@@ -1543,7 +1543,7 @@ markHtmlTextEdit(
 
 
   const measuredWidth =
-    this.measureHtmlTextWidth(item) + 6;
+    this.measureHtmlTextWidth(item);
 
 
 
@@ -1609,10 +1609,7 @@ markHtmlTextEdit(
 
 
   item.height =
-    Math.max(
-      item.originalHeight ?? item.height,
-      item.size * 1.2
-    );
+item.originalHeight;
 
 
 }
@@ -2470,51 +2467,81 @@ const mupdfRuns =
     }
   }
 
-private async renderThumbs(scale = this.isMobileScreen() ? 0.12 : 0.24): Promise<void> {
-  if (!this.currentBytes.length) return;
+private async renderThumbs(
+  scale = this.isMobileScreen() ? 0.18 : 0.24
+): Promise<void> {
+  if (!this.currentBytes?.length) {
+    return;
+  }
 
   const pdf = await this.openPdfJsDocument();
   const canvases = this.thumbCanvases.toArray();
+
+  if (canvases.length !== this.pages.length) {
+    console.warn(
+      `Thumbnail canvas mismatch. Pages=${this.pages.length}, Canvases=${canvases.length}`
+    );
+    return;
+  }
+
   const quality = this.isMobileScreen() ? 0.5 : 0.68;
+  const dpr = window.devicePixelRatio || 1;
 
-  for (let index = 0; index < this.pages.length; index += 1) {
+  for (let index = 0; index < this.pages.length; index++) {
     const item = this.pages[index];
-    const canvas = canvases[index]?.nativeElement;
-    if (!canvas) continue;
-
+    const canvas = canvases[index].nativeElement;
     const context = canvas.getContext('2d');
-    if (!context) continue;
 
-    if (item.blank) {
-      this.paintBlankCanvas(canvas, context, item, scale, false);
-      item.thumb = canvas.toDataURL('image/jpeg', quality);
-      this.refreshView();
+    if (!context) {
       continue;
     }
 
-    const page = await this.runPdfOutsideAngular(
-      () => pdf.getPage(item.sourceIndex + 1)
-    );
+    try {
+      if (item.blank) {
+        this.paintBlankCanvas(canvas, context, item, scale, false);
+        item.thumb = canvas.toDataURL('image/jpeg', quality);
+        continue;
+      }
 
-    const viewport = page.getViewport({
-      scale,
-      rotation: item.rotation
-    });
+      const page = await this.runPdfOutsideAngular(() =>
+        pdf.getPage(item.sourceIndex + 1)
+      );
 
-    canvas.width = Math.max(1, Math.floor(viewport.width));
-    canvas.height = Math.max(1, Math.floor(viewport.height));
+      const viewport = page.getViewport({
+        scale,
+        rotation: item.rotation
+      });
 
-    await this.runPdfOutsideAngular(
-      () => page.render({
-        canvas,
+      // High-DPI canvas
+      canvas.width = Math.ceil(viewport.width * dpr);
+      canvas.height = Math.ceil(viewport.height * dpr);
+
+      canvas.style.width = `${Math.ceil(viewport.width)}px`;
+      canvas.style.height = `${Math.ceil(viewport.height)}px`;
+
+      // Reset transform
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Scale for Retina displays
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const renderTask = page.render({
         canvasContext: context,
         viewport
-      }).promise
-    );
+      });
 
-    item.thumb = canvas.toDataURL('image/jpeg', quality);
-    this.refreshView();
+      await this.runPdfOutsideAngular(() => renderTask.promise);
+
+      item.thumb = canvas.toDataURL('image/jpeg', quality);
+
+      page.cleanup();
+    } catch (err) {
+      console.error(`Thumbnail render failed for page ${index + 1}`, err);
+    }
   }
+
+  this.refreshView();
 }
   private queueActiveRender(): void {
     if (this.renderTimer) clearTimeout(this.renderTimer);
