@@ -128,11 +128,24 @@ public buildFontApiUrl(fontData: GoogleFontItem): string {
     axisString = `:wght@${uniqueWeights.join(';')}`;
   }
 
-  return `https://googleapis.com{familyParam}${axisString}&display=swap`;
+  return `https://fonts.googleapis.com/css2?family=${familyParam}${axisString}&display=swap`;
 }
 
 
 
-  // Blank stub since styles are now combined into the single layout style sheet header element
-  public loadFontToDOM(fontFamily: string): void {}
+  /** Loads the selected Google Font stylesheet once, so CSS font-family can use it immediately. */
+  public loadFontToDOM(fontFamily: string): void {
+    const normalizedFamily = fontFamily.replace(/["']/g, '').trim();
+    if (!normalizedFamily || this.loadedFontsToDOM.has(normalizedFamily)) return;
+
+    const fontData = this.fontsMap.get(normalizedFamily.toLowerCase());
+    if (!fontData) return; // Keep system fonts such as Arial available without a remote stylesheet.
+
+    const link = this.document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = this.buildFontApiUrl(fontData);
+    link.dataset['googleFont'] = normalizedFamily;
+    this.document.head.appendChild(link);
+    this.loadedFontsToDOM.add(normalizedFamily);
+  }
 }

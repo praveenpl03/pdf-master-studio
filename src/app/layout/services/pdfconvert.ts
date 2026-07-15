@@ -19,7 +19,7 @@ import {
  * 4. Better font-family preservation from PDF metadata
  * 5. Proper text spacing reconstruction using item positions
  */
-export class PdfToHtmlConverter {
+ class PdfToHtmlConverter {
   /**
    * Convert raw pdfjs text content into HtmlTextItems with improved
    * line clustering and column detection.

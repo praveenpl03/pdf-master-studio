@@ -52,7 +52,14 @@ export class Mainscreen implements AfterViewInit {
        private mupdfService: MuPdfService
     ) {
 this.fontService.loadFontsFromAssets().subscribe({
-    next: (fonts) => console.log(` Loaded ${fonts.length} fonts into metadata registry map.`),
+    next: (fonts) => {
+      this.fontChoices = [
+        { value: 'Arial', label: 'Arial' },
+        ...fonts
+          .filter((font) => font.family.toLowerCase() !== 'arial')
+          .map((font) => ({ value: font.family, label: font.family })),
+      ];
+    },
     error: (err) => console.error('Failed to pre-fetch fonts-metadata.json', err)
   });
   }
@@ -3242,7 +3249,7 @@ const y =
   }
 
 }
-  htmlTextChanged(item: HtmlTextItem): boolean {
+   htmlTextChanged(item: HtmlTextItem): boolean {
     return item.text !== item.originalText
       || (item.textDecoration !== 'underline' && (
         Math.abs(item.size - item.originalSize) > 0.2
@@ -3579,6 +3586,16 @@ const y =
   }
   public selectedFontFamily: string = 'Arial';
   public fontChoices = [{ value: 'Arial', label: 'Arial' }];
+
+  public onHtmlFontChange(item: HtmlTextItem): void {
+    this.fontService.loadFontToDOM(item.fontFamily ?? 'Arial');
+    this.markHtmlTextEdit(item);
+  }
+
+  public onOverlayFontChange(item: OverlayItem): void {
+    this.fontService.loadFontToDOM(item.fontFamily ?? 'Arial');
+    this.markOverlayEdit(item);
+  }
 private addOverlay(kind: OverlayKind, preset?: 'square' | 'whiteout'): void {
   const page = this.activePage;
   if (!page) throw new Error('Load a PDF first.');
