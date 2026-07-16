@@ -71,8 +71,7 @@ export class Textconverter {
       )
     );
 
-console.log( run.size * 1.45,
-    run.bbox.h + 4);
+
 
    const font =
      this.cleanMuPdfFont(
@@ -81,7 +80,7 @@ console.log( run.size * 1.45,
 
 
 
-
+console.log(text, run.bbox,run.bbox.w);
    items.push({
 
     id:
@@ -99,12 +98,12 @@ console.log( run.size * 1.45,
 
 
     y:
-     run.bbox.y,
+     run.bbox.y+run.bbox.y*0.005,
 
 width:
   Math.max(
     30,
-    run.bbox.w + 10
+    run.bbox.w +10
   ),
 
 height:
