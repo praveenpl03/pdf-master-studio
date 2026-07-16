@@ -71,7 +71,8 @@ export class Textconverter {
       )
     );
 
-
+console.log( run.size * 1.45,
+    run.bbox.h + 4);
 
    const font =
      this.cleanMuPdfFont(
@@ -107,10 +108,10 @@ width:
   ),
 
 height:
-  Math.max(
+  Math.min(
     run.size * 1.45,
-    run.bbox.h + 4
-  ),
+    run.bbox.h + 4)
+  * 0.75,
 
 
 // keep original PDF area
