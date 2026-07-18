@@ -119,9 +119,9 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   undoStack: EditorSnapshot[] = [];
   redoStack: EditorSnapshot[] = [];
   private dragState?: { id: string; startX: number; startY: number; originalX: number; originalY: number };
-  private resizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number; originalSize?: number };
+  private resizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number };
   private htmlTextDragState?: { id: string; startX: number; startY: number; originalX: number; originalY: number };
-  private htmlTextResizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number; originalSize: number };
+  private htmlTextResizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number };
   private trackingHtmlEditId = '';
   private trackingOverlayEditId = '';
   private lastWheelPageTurn = 0;
@@ -433,28 +433,13 @@ private activeRenderTask?: { cancel: () => void };
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    await this.openPdf(file);
+  
 
     await this.loadBytes(new Uint8Array(await file.arrayBuffer()), file.name);
     input.value = '';
    
   }
-async openPdf(file:File){
 
-
- const buffer =
-   await file.arrayBuffer();
-
-
- const fonts =
-   await this.mupdfService.extractFonts(
-     new Uint8Array(buffer)
-   );
-
-
- //console.table(fonts);
-
-}
   async addMergeFiles(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
@@ -1082,7 +1067,7 @@ private readonly toolbarGap = 8;
     if (item.locked) return;
     this.selectOverlay(item, event);
     this.recordHistory();
-    this.resizeState = { id: item.id, startX: event.clientX, startY: event.clientY, originalWidth: item.width, originalHeight: item.height, originalSize: item.size };
+    this.resizeState = { id: item.id, startX: event.clientX, startY: event.clientY, originalWidth: item.width, originalHeight: item.height };
   }
 
   startOverlayMove(item: OverlayItem, event: PointerEvent): void {
@@ -1121,7 +1106,6 @@ private readonly toolbarGap = 8;
       startY: event.clientY,
       originalWidth: item.width,
       originalHeight: item.height,
-      originalSize: item.size,
     };
     (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
   }
@@ -1134,12 +1118,8 @@ private readonly toolbarGap = 8;
       if (!item) return;
       const width = this.htmlTextResizeState.originalWidth + (event.clientX - this.htmlTextResizeState.startX) / this.zoom;
       const height = this.htmlTextResizeState.originalHeight + (event.clientY - this.htmlTextResizeState.startY) / this.zoom;
-      const nextWidth = Math.max(24, Math.min(Math.round(width), Math.round(page.width - item.x)));
-      const nextHeight = Math.max(16, Math.min(Math.round(height), Math.round(page.height - item.y)));
-      const scale = Math.max(nextWidth / this.htmlTextResizeState.originalWidth, nextHeight / this.htmlTextResizeState.originalHeight);
-      item.size = Math.max(6, Math.round(this.htmlTextResizeState.originalSize * scale));
-      item.width = nextWidth;
-      item.height = Math.max(Math.ceil(item.size * 1.05), nextHeight);
+      item.width = Math.max(24, Math.min(Math.round(width), Math.round(page.width - item.x)));
+      item.height = Math.max(Math.ceil(item.size * 1.05), Math.min(Math.round(height), Math.round(page.height - item.y)));
       return;
     }
     if (this.htmlTextDragState) {
@@ -1156,14 +1136,8 @@ private readonly toolbarGap = 8;
       if (!item) return;
       const nextWidth = this.resizeState.originalWidth + (event.clientX - this.resizeState.startX) / this.zoom;
       const nextHeight = this.resizeState.originalHeight + (event.clientY - this.resizeState.startY) / this.zoom;
-      const finalWidth = Math.max(16, Math.min(Math.round(nextWidth), Math.round(page.width - item.x)));
-      const finalHeight = Math.max(16, Math.min(Math.round(nextHeight), Math.round(page.height - item.y)));
-      if (item.kind === 'text' || item.kind === 'signature') {
-        const scale = Math.max(finalWidth / this.resizeState.originalWidth, finalHeight / this.resizeState.originalHeight);
-        item.size = Math.max(6, Math.round((this.resizeState.originalSize ?? item.size) * scale));
-      }
-      item.width = finalWidth;
-      item.height = finalHeight;
+      item.width = Math.max(16, Math.min(Math.round(nextWidth), Math.round(page.width - item.x)));
+      item.height = Math.max(16, Math.min(Math.round(nextHeight), Math.round(page.height - item.y)));
       return;
     }
     if (!this.dragState) return;
@@ -2055,12 +2029,14 @@ private async loadBytes(bytes: Uint8Array, name: string): Promise<void> {
   }
 
 this.pdfFonts = await this.pdfFontDictionary.extract(bytes);
+
 this.pdfFontDictionary.compileGlobalDocumentFontHeaderStyle(this.pdfFonts);
   const pdf = await this.openPdfJsDocument(bytes);
-
+//console.log('PDF loaded:', pdf);
   this.pages = [];
   for (let index = 1; index <= pdf.numPages; index += 1) {
     const page = await pdf.getPage(index);
+
     const viewport = page.getViewport({ scale: 1 });
     this.pages.push({
       id: this.createId(),
@@ -2077,10 +2053,8 @@ this.pdfFontDictionary.compileGlobalDocumentFontHeaderStyle(this.pdfFonts);
   this.refreshView();
 
   // Reconstruct engines now have a fully primed font registry map to process elements
-  const rebuilt = this.isMobileScreen()
-    ? await this.reconstructActiveHtmlPage(pdf)
-    : await this.reconstructAllHtmlPages();
-    
+  const rebuilt =  await this.reconstructAllHtmlPages();
+
   this.status = `${name} loaded with ${this.pages.length} page(s). HTML rebuilt ${rebuilt} editable line(s).`;
   this.busy = false;
   this.busyLabel = '';
@@ -2092,17 +2066,7 @@ this.pdfFontDictionary.compileGlobalDocumentFontHeaderStyle(this.pdfFonts);
 }
 
 
-  // private async reconstructAllHtmlPages(pdf: { getPage: (pageNumber: number) => Promise<{ getViewport: (options: { scale: number; rotation?: number }) => PdfViewportLike; getTextContent: () => Promise<{ items: unknown[]; styles?: Record<string, PdfTextStyleLike> }>; getAnnotations: (options?: { intent: string }) => Promise<unknown[]> }> }): Promise<number> {
-        
-  //   const allItems: HtmlTextItem[] = [];
-  //   for (const pageItem of this.pages) {
-  //     allItems.push(...await this.reconstructHtmlPageItem(pdf, pageItem));
-  //   }
-  //   this.htmlTextItems = allItems;
-  //   console.log('Reconstructed all HTML pages with items:', allItems);
-  //   this.refreshView();
-  //   return allItems.length;
-  // }
+
 private async reconstructAllHtmlPages(): Promise<number> {
 
 
@@ -2742,6 +2706,7 @@ private queueThumbRender(): void {
     );
   }, this.isMobileScreen() ? 520 : 140);
 }
+
 
   private async openPdfJsDocument(bytes = this.currentBytes): Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }> {
     return this.runPdfOutsideAngular(async () => {

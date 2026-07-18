@@ -721,7 +721,37 @@ background-color: transparent;
 .floating-toolbar button:hover {
   background: #edf6ff;
 }
+/* Mobile */
+@media (max-width: 768px) {
 
+  .floating-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+  }
+
+  .floating-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .floating-toolbar button,
+  .floating-toolbar input {
+    flex: 0 0 auto;
+    height: 42px;
+    min-width: 42px;
+    padding: 0 10px;
+    font-size: 14px;
+    border-right: 1px solid #cfe4ff;
+  }
+
+  .floating-toolbar input {
+    width: 52px;
+  }
+}
 .shape-popover {
   position: absolute;
   top: 36px;

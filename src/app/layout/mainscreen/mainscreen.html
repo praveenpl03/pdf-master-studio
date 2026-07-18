@@ -239,7 +239,7 @@
               </div>
             </div>
             @if (selectedHtmlText; as htmlEdit) {
-<div class="floating-toolbar" [style.left.px]="htmlToolbarLeft(htmlEdit)" [style.top.px]="htmlToolbarTop(htmlEdit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
+<div class="floating-toolbar"  [style.left.px]="htmlToolbarLeft(htmlEdit)" [style.top.px]="htmlToolbarTop(htmlEdit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
     <button type="button" [class.active]="isBoldActive" (click)="toggleSelectedHtmlBold()">B</button>
     <button type="button" [class.active]="isItalicActive" (click)="toggleSelectedHtmlItalic()"><i>I</i></button>
     <button type="button" (click)="resizeSelectedHtmlText(-1)">A-</button>

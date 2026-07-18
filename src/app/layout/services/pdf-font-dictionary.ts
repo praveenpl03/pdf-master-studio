@@ -217,7 +217,7 @@ compileGlobalDocumentFontHeaderStyle(extractedFonts: any[]): void {
     const combinedFamiliesUrl = "https://fonts.googleapis.com/css2?" + googleFamilyQueries.join('&') + "&display=swap";
     finalImportStatement = "@import url('" + combinedFamiliesUrl + "');\n";
     
-    console.log('Generated Multi-Family API Link String:', combinedFamiliesUrl);
+   // console.log('Generated Multi-Family API Link String:', combinedFamiliesUrl);
   }
 
   try {
@@ -226,7 +226,7 @@ compileGlobalDocumentFontHeaderStyle(extractedFonts: any[]): void {
     styleElement.innerHTML = finalImportStatement + "\n" + localRulesCssBlock;
     this.document.head.appendChild(styleElement);
     
-    console.log('✅ Success: Clean unified stylesheet header mounted.');
+   // console.log('✅ Success: Clean unified stylesheet header mounted.');
   } catch (error) {
     console.error('Failed generating layout document style header element blocks.', error);
   }
