@@ -119,9 +119,9 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   undoStack: EditorSnapshot[] = [];
   redoStack: EditorSnapshot[] = [];
   private dragState?: { id: string; startX: number; startY: number; originalX: number; originalY: number };
-  private resizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number };
+  private resizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number; originalSize?: number };
   private htmlTextDragState?: { id: string; startX: number; startY: number; originalX: number; originalY: number };
-  private htmlTextResizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number };
+  private htmlTextResizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number; originalSize: number };
   private trackingHtmlEditId = '';
   private trackingOverlayEditId = '';
   private lastWheelPageTurn = 0;
@@ -1082,7 +1082,7 @@ private readonly toolbarGap = 8;
     if (item.locked) return;
     this.selectOverlay(item, event);
     this.recordHistory();
-    this.resizeState = { id: item.id, startX: event.clientX, startY: event.clientY, originalWidth: item.width, originalHeight: item.height };
+    this.resizeState = { id: item.id, startX: event.clientX, startY: event.clientY, originalWidth: item.width, originalHeight: item.height, originalSize: item.size };
   }
 
   startOverlayMove(item: OverlayItem, event: PointerEvent): void {
@@ -1121,6 +1121,7 @@ private readonly toolbarGap = 8;
       startY: event.clientY,
       originalWidth: item.width,
       originalHeight: item.height,
+      originalSize: item.size,
     };
     (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
   }
@@ -1133,8 +1134,12 @@ private readonly toolbarGap = 8;
       if (!item) return;
       const width = this.htmlTextResizeState.originalWidth + (event.clientX - this.htmlTextResizeState.startX) / this.zoom;
       const height = this.htmlTextResizeState.originalHeight + (event.clientY - this.htmlTextResizeState.startY) / this.zoom;
-      item.width = Math.max(24, Math.min(Math.round(width), Math.round(page.width - item.x)));
-      item.height = Math.max(Math.ceil(item.size * 1.05), Math.min(Math.round(height), Math.round(page.height - item.y)));
+      const nextWidth = Math.max(24, Math.min(Math.round(width), Math.round(page.width - item.x)));
+      const nextHeight = Math.max(16, Math.min(Math.round(height), Math.round(page.height - item.y)));
+      const scale = Math.max(nextWidth / this.htmlTextResizeState.originalWidth, nextHeight / this.htmlTextResizeState.originalHeight);
+      item.size = Math.max(6, Math.round(this.htmlTextResizeState.originalSize * scale));
+      item.width = nextWidth;
+      item.height = Math.max(Math.ceil(item.size * 1.05), nextHeight);
       return;
     }
     if (this.htmlTextDragState) {
@@ -1151,8 +1156,14 @@ private readonly toolbarGap = 8;
       if (!item) return;
       const nextWidth = this.resizeState.originalWidth + (event.clientX - this.resizeState.startX) / this.zoom;
       const nextHeight = this.resizeState.originalHeight + (event.clientY - this.resizeState.startY) / this.zoom;
-      item.width = Math.max(16, Math.min(Math.round(nextWidth), Math.round(page.width - item.x)));
-      item.height = Math.max(16, Math.min(Math.round(nextHeight), Math.round(page.height - item.y)));
+      const finalWidth = Math.max(16, Math.min(Math.round(nextWidth), Math.round(page.width - item.x)));
+      const finalHeight = Math.max(16, Math.min(Math.round(nextHeight), Math.round(page.height - item.y)));
+      if (item.kind === 'text' || item.kind === 'signature') {
+        const scale = Math.max(finalWidth / this.resizeState.originalWidth, finalHeight / this.resizeState.originalHeight);
+        item.size = Math.max(6, Math.round((this.resizeState.originalSize ?? item.size) * scale));
+      }
+      item.width = finalWidth;
+      item.height = finalHeight;
       return;
     }
     if (!this.dragState) return;

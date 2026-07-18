@@ -1,8 +1,18 @@
 :host {
+  --ink: #162033;
+  --muted: #60718a;
+  --surface: #ffffff;
+  --surface-soft: #f5f8fc;
+  --line: #dbe4f0;
+  --navy: #0b1220;
+  --navy-2: #15233a;
+  --brand: #2563eb;
+  --brand-strong: #1d4ed8;
+  --brand-soft: #e8f0ff;
   display: block;
   min-height: 100vh;
-  color: #202331;
-  background: #e9edf1;
+  color: var(--ink);
+  background: #edf2f8;
   font-family: Aptos, "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -29,9 +39,7 @@ button:disabled {
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0) 34%),
-    #e9edf1;
+  background: linear-gradient(135deg, #f8fbff 0%, #e8eef7 100%);
 }
 
 .left-panel,
@@ -39,15 +47,39 @@ button:disabled {
   overflow-y: auto;
   max-height: 100vh;
   padding: 22px;
-  background: #f8fbff;
-  border-right: 1px solid #cfe4ff;
+  background: var(--navy);
+  border-right: 1px solid #243553;
+  color: #dbeafe;
 }
 
 .right-panel {
   border-right: 0;
-  border-left: 1px solid #cfe4ff;
-  background: #ffffff;
+  border-left: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--ink);
 }
+
+.left-panel h1,
+.left-panel h2,
+.left-panel h3,
+.left-panel label,
+.left-panel small {
+  color: #e6efff;
+}
+
+/* Shared dark control-deck styling for both side panels. */
+.left-panel { display:flex; flex-direction:column; gap:16px; padding:20px 16px; background:linear-gradient(180deg,#0b1324,#080f1e); scrollbar-color:#385074 transparent; }
+.brand-row,.right-panel .services-head { margin:0; padding:4px 4px 15px; border-bottom:1px solid rgba(148,163,184,.2); }
+.left-panel .eyebrow,.right-panel .services-head .eyebrow { margin:0 0 7px; color:#7dd3fc; font-size:10px; font-weight:900; letter-spacing:.12em; }
+.left-panel .brand-row h1,.right-panel .services-head h2 { color:#f8fbff; font-size:22px; font-weight:700; letter-spacing:-.035em; text-transform:none; }
+.left-panel .file-drop,.left-panel .precision-panel { border:1px solid rgba(147,197,253,.24); border-radius:12px; background:rgba(15,23,42,.88); color:#f8fbff; box-shadow:0 10px 22px rgba(0,0,0,.16); }
+.left-panel .file-drop { min-height:104px; padding:14px; }
+.left-panel .file-drop:hover { border-color:#60a5fa; background:#172944; }
+.left-panel .file-drop span { color:#eff6ff; }.left-panel .file-drop small,.left-panel .precision-grid label { color:#93c5fd; }
+.left-panel .precision-panel { gap:12px; padding:14px; margin:0; }.left-panel .precision-panel textarea,.left-panel .precision-grid input,.left-panel .precision-grid select { border-color:rgba(96,165,250,.26); background:#0a1427; color:#f8fbff; }
+.left-panel .precision-head button,.left-panel .precision-actions button { border-radius:8px; background:linear-gradient(135deg,#2563eb,#4f46e5); }
+.left-panel .status-bar,.right-panel .status-bar { margin:0; padding:12px; border:1px solid rgba(251,191,36,.28); border-radius:12px; background:rgba(120,53,15,.2); color:#fde68a; }
+.left-panel .side-quick-actions,.right-panel .side-quick-actions { gap:10px; margin:0; }.left-panel .side-quick-actions button,.right-panel .side-quick-actions button { border-color:rgba(148,163,184,.32); border-radius:10px; background:#121d31; color:#dbeafe; }
 
 .right-panel > .precision-panel,
 .right-panel > .status-bar,
@@ -122,6 +154,30 @@ button:disabled {
   background: #0082ff;
   color: #ffffff;
 }
+
+/* Services rail matches the left-hand professional control deck. */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 16px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(79, 70, 229, 0.26), transparent 33%),
+    linear-gradient(180deg, #0b1324 0%, #080f1e 100%);
+  border-left-color: #243553;
+  color: #dbeafe;
+  scrollbar-color: #385074 transparent;
+}
+
+.right-panel .services-menu {
+  gap: 18px;
+}
+
+.right-panel .service-categories { gap:12px; }
+.right-panel .service-category { min-height:112px; gap:10px; padding:12px 6px; border:1px solid rgba(148,163,184,.2); border-radius:13px; background:#111d33; color:#cbd5e1; box-shadow:0 10px 22px rgba(0,0,0,.14); }
+.right-panel .service-icon { width:48px; height:48px; border-color:rgba(96,165,250,.55); background:#111e34; color:#7dd3fc; box-shadow:none; }
+.right-panel .service-category:hover,.right-panel .service-category.active { border-color:#60a5fa; background:#1d3151; color:#f8fbff; }
+.right-panel .service-category:hover .service-icon,.right-panel .service-category.active .service-icon { border-color:#60a5fa; background:#2563eb; color:#fff; }
 
 .tool-popup-backdrop {
   position: fixed;
@@ -334,9 +390,9 @@ h2 {
   justify-content: space-between;
   gap: 12px;
   padding: 9px 18px;
-  background: #202331;
-  color: #fffdf8;
-  border-bottom: 1px solid #111827;
+  background: linear-gradient(100deg, var(--navy) 0%, var(--navy-2) 100%);
+  color: #f8fbff;
+  border-bottom: 1px solid #253a5d;
 }
 
 .page-summary {
@@ -406,8 +462,8 @@ h2 {
   place-items: start center;
   padding: 26px;
   background:
-    radial-gradient(circle at 14% 10%, rgba(246, 193, 95, 0.22), transparent 34%),
-    linear-gradient(180deg, #eef2f2 0%, #dfe5e1 100%);
+    radial-gradient(circle at 18% 8%, rgba(37, 99, 235, 0.14), transparent 36%),
+    linear-gradient(180deg, #edf3fa 0%, #dbe6f3 100%);
 }
 
 .viewer-shell.busy {
@@ -455,7 +511,8 @@ h2 {
 .page-stage {
   position: relative;
   background: #ffffff;
-  box-shadow: 0 18px 46px rgba(32, 35, 49, 0.25);
+  border: 1px solid #d7e1ee;
+  box-shadow: 0 22px 52px rgba(15, 23, 42, 0.2);
 }
 
 .page-preview {
@@ -557,6 +614,7 @@ background-color: transparent;
 
 .html-text-move-handle,
 .html-text-resize-handle {
+  font-size: 10px;
   position: absolute;
   z-index: 4;
   display: grid;
@@ -564,10 +622,10 @@ background-color: transparent;
   width: 16px;
   height: 16px;
   padding: 0;
-  border: 1px solid #ffffff;
+
   border-radius: 3px;
-  background: #0f766e;
-  color: #ffffff;
+
+  color: #0f766e;
   touch-action: none;
 }
 
@@ -577,8 +635,9 @@ background-color: transparent;
 }
 
 .html-text-resize-handle {
-  border-radius: 50%;
+
   cursor: nwse-resize;
+
 }
 
 
@@ -634,10 +693,10 @@ background-color: transparent;
   align-items: center;
   gap: 0;
   overflow: hidden;
-  border: 1px solid #0082ff;
+  border: 1px solid #93b7f5;
   border-radius: 4px;
-  background: #ffffff;
-  box-shadow: 0 10px 28px rgba(32, 35, 49, 0.24);
+  background: #f8fbff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
   animation: popupIn 140ms ease-out;
 }
 
@@ -1181,9 +1240,9 @@ background-color: transparent;
   gap: 10px;
   padding: 12px;
   margin-bottom: 16px;
-  border: 1px solid #cfe4ff;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #f8fbff;
+  background: var(--surface);
 }
 
 .precision-head,
@@ -1198,7 +1257,7 @@ background-color: transparent;
 .precision-actions button {
   padding: 8px 10px;
   border-radius: 6px;
-  background: #0072e5;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
   color: #ffffff;
   font-size: 12px;
   font-weight: 900;
@@ -1558,5 +1617,122 @@ background-color: transparent;
 
   .service-icon i {
     font-size: 16px;
+  }
+
+  /* Editor-first mobile layout: controls stay available, the document gets the room. */
+  main.workspace,
+  .workspace {
+    padding-bottom: 70px !important;
+  }
+
+  .left-panel .brand-row h1 {
+    display: none;
+  }
+
+  .left-panel .brand-row {
+    margin: 0;
+    padding: 0 2px;
+  }
+
+  .left-panel .file-drop,
+  .left-panel .file-drop.compact {
+    min-height: 54px;
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+
+  .left-panel .status-bar,
+  .left-panel .status-bar {
+    display: none;
+  }
+
+  .left-panel .side-quick-actions {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+  }
+
+  .left-panel .side-quick-actions button {
+    min-height: 34px;
+    padding: 6px;
+    font-size: 11px;
+  }
+
+  .page-strip {
+    display: none;
+  }
+
+  .viewer-shell {
+    min-height: calc(100dvh - 232px);
+    padding: 6px 4px 12px;
+  }
+
+  .right-panel .service-categories {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 200;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 2px;
+    padding: 5px;
+    border: 1px solid rgba(96, 165, 250, 0.24);
+    border-width: 1px 0 0;
+    border-radius: 14px 14px 0 0;
+    background: rgba(8, 15, 30, 0.98);
+    box-shadow: 0 -8px 24px rgba(2, 6, 23, 0.28);
+  }
+
+  .right-panel .service-category {
+    min-height: 56px;
+    gap: 3px;
+    padding: 3px 2px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: none;
+    color: #cbd5e1;
+    font-size: 9px;
+  }
+
+  .right-panel .service-icon {
+    width: 27px;
+    height: 27px;
+    border-width: 1px;
+    background: #111e34;
+  }
+
+  .right-panel .service-icon i {
+    font-size: 13px;
+  }
+
+  .right-panel .service-category:hover,
+  .right-panel .service-category.active {
+    transform: none;
+    background: rgba(37, 99, 235, 0.16);
+  }
+
+  .tool-popup {
+    max-height: calc(100dvh - 88px);
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .tool-popup-list {
+    gap: 6px;
+  }
+
+  .tool-popup-list button {
+    min-height: 48px;
+    gap: 6px;
+    padding: 7px 8px;
+    font-size: 11px;
+  }
+
+  .tool-popup-list i {
+    width: 15px;
+    flex-basis: 15px;
+    font-size: 12px;
   }
 }

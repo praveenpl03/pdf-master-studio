@@ -202,13 +202,13 @@
   </textarea>
   @if (textItem.id === selectedHtmlTextId) {
     <button type="button" class="html-text-move-handle" title="Drag text box"
-      [style.left.px]="textItem.x + textItem.width - 8" [style.top.px]="textItem.y - 8"
+      [style.left.px]="textItem.x -20" [style.top.px]="textItem.y+8"
       (pointerdown)="startHtmlTextDrag(textItem, $event)" (click)="$event.stopPropagation()">
       <i class="fa-solid fa-up-down-left-right"></i>
     </button>
     <button type="button" class="html-text-resize-handle" title="Resize text box"
-      [style.left.px]="textItem.x + textItem.width - 7" [style.top.px]="textItem.y + textItem.height - 7"
-      (pointerdown)="startHtmlTextResize(textItem, $event)" (click)="$event.stopPropagation()"></button>
+      [style.left.px]="textItem.x + textItem.width - 8" [style.top.px]="textItem.y + textItem.height+2"
+      (pointerdown)="startHtmlTextResize(textItem, $event)" (click)="$event.stopPropagation()"><i class="fa-solid fa-crop-simple "></i></button>
   }
 }
 
