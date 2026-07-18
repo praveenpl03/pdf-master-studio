@@ -120,6 +120,8 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   redoStack: EditorSnapshot[] = [];
   private dragState?: { id: string; startX: number; startY: number; originalX: number; originalY: number };
   private resizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number };
+  private htmlTextDragState?: { id: string; startX: number; startY: number; originalX: number; originalY: number };
+  private htmlTextResizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number };
   private trackingHtmlEditId = '';
   private trackingOverlayEditId = '';
   private lastWheelPageTurn = 0;
@@ -205,6 +207,7 @@ private activeRenderTask?: { cancel: () => void };
     { name: 'Audit dimensions', group: 'analyze', action: 'auditDimensions' },
     { name: 'List selected pages', group: 'analyze', action: 'listSelected' },
   ];
+  
 
   async ngAfterViewInit(): Promise<void> {
     this.configureMobileRendering();
@@ -1082,9 +1085,67 @@ private readonly toolbarGap = 8;
     this.resizeState = { id: item.id, startX: event.clientX, startY: event.clientY, originalWidth: item.width, originalHeight: item.height };
   }
 
+  startOverlayMove(item: OverlayItem, event: PointerEvent): void {
+    event.stopPropagation();
+    event.preventDefault();
+    if (item.locked) return;
+    this.selectOverlay(item, event);
+    this.recordHistory();
+    this.dragState = { id: item.id, startX: event.clientX, startY: event.clientY, originalX: item.x, originalY: item.y };
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+  }
+
+  startHtmlTextDrag(item: HtmlTextItem, event: PointerEvent): void {
+    event.stopPropagation();
+    event.preventDefault();
+    this.selectHtmlText(item, event);
+    this.recordHistory();
+    this.htmlTextDragState = {
+      id: item.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      originalX: item.x,
+      originalY: item.y,
+    };
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+  }
+
+  startHtmlTextResize(item: HtmlTextItem, event: PointerEvent): void {
+    event.stopPropagation();
+    event.preventDefault();
+    this.selectHtmlText(item, event);
+    this.recordHistory();
+    this.htmlTextResizeState = {
+      id: item.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      originalWidth: item.width,
+      originalHeight: item.height,
+    };
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+  }
+
   dragOverlay(event: PointerEvent): void {
     const page = this.activePage;
     if (!page) return;
+    if (this.htmlTextResizeState) {
+      const item = this.htmlTextItems.find((text) => text.id === this.htmlTextResizeState?.id);
+      if (!item) return;
+      const width = this.htmlTextResizeState.originalWidth + (event.clientX - this.htmlTextResizeState.startX) / this.zoom;
+      const height = this.htmlTextResizeState.originalHeight + (event.clientY - this.htmlTextResizeState.startY) / this.zoom;
+      item.width = Math.max(24, Math.min(Math.round(width), Math.round(page.width - item.x)));
+      item.height = Math.max(Math.ceil(item.size * 1.05), Math.min(Math.round(height), Math.round(page.height - item.y)));
+      return;
+    }
+    if (this.htmlTextDragState) {
+      const item = this.htmlTextItems.find((text) => text.id === this.htmlTextDragState?.id);
+      if (!item) return;
+      const x = this.htmlTextDragState.originalX + (event.clientX - this.htmlTextDragState.startX) / this.zoom;
+      const y = this.htmlTextDragState.originalY + (event.clientY - this.htmlTextDragState.startY) / this.zoom;
+      item.x = Math.max(0, Math.min(Math.round(x), Math.round(page.width - item.width)));
+      item.y = Math.max(0, Math.min(Math.round(y), Math.round(page.height - item.height)));
+      return;
+    }
     if (this.resizeState) {
       const item = this.overlays.find((overlay) => overlay.id === this.resizeState?.id);
       if (!item) return;
@@ -1106,6 +1167,16 @@ private readonly toolbarGap = 8;
   stopDrag(): void {
     this.dragState = undefined;
     this.resizeState = undefined;
+    this.htmlTextDragState = undefined;
+    this.htmlTextResizeState = undefined;
+  }
+
+  htmlTextNeedsSourceMask(item: HtmlTextItem): boolean {
+    return this.htmlTextChanged(item)
+      || item.x !== item.originalX
+      || item.y !== item.originalY
+      || item.width !== item.originalWidth
+      || item.height !== item.originalHeight;
   }
 
   async inspectTextLayer(): Promise<void> {
@@ -2278,17 +2349,13 @@ const mupdfRuns =
         return {
           ...item,
           color: realTextColor,
-          backgroundColor: '#ffffff', // 👈 CHANGE THIS FROM 'transparent' TO '#ffffff'
+          backgroundColor: 'transparent',
           originalColor: realTextColor,
           originalFontWeight: item.fontWeight || '700'
         };
       }
       
-      // Also catch anything else defaulting to transparent and force it white
-      if (!item.backgroundColor || item.backgroundColor === 'transparent' || item.backgroundColor === 'rgba(0,0,0,0)') {
-        item.backgroundColor = '#ffffff'; // 👈 FORCE ALL STANDARD BACKGROUNDS WHITE
-      }
-      return item;
+      return { ...item, backgroundColor: 'transparent' };
     });
 
 
@@ -3251,6 +3318,10 @@ const y =
 }
    htmlTextChanged(item: HtmlTextItem): boolean {
     return item.text !== item.originalText
+      || item.x !== item.originalX
+      || item.y !== item.originalY
+      || item.width !== item.originalWidth
+      || item.height !== item.originalHeight
       || (item.textDecoration !== 'underline' && (
         Math.abs(item.size - item.originalSize) > 0.2
         || (item.color ?? '#111111').toLowerCase() !== (item.originalColor ?? '#111111').toLowerCase()
@@ -4054,6 +4125,7 @@ private async structuredTextPages(): Promise<
     if (!context) throw new Error('Canvas unavailable.');
 
     for (const item of htmlItems) {
+      this.maskOriginalHtmlTextOnCanvas(context, item, scale);
       this.paintHtmlTextToCanvas(context, item, scale);
     }
     for (const overlay of this.overlays.filter((item) => item.pageId === pageItem.id)) {
@@ -4115,6 +4187,22 @@ private async structuredTextPages(): Promise<
         context.stroke();
       }
     });
+    context.restore();
+  }
+
+  private maskOriginalHtmlTextOnCanvas(
+    context: CanvasRenderingContext2D,
+    item: HtmlTextItem,
+    scale: number,
+  ): void {
+    context.save();
+    context.fillStyle = item.eraseColor ?? '#ffffff';
+    context.fillRect(
+      item.originalX * scale - 1,
+      item.originalY * scale - 1,
+      item.originalWidth * scale + 2,
+      item.originalHeight * scale + 2,
+    );
     context.restore();
   }
 

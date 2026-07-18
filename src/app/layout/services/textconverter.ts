@@ -98,7 +98,7 @@ console.log(text, run.bbox,run.bbox.w);
 
 
     y:
-     run.bbox.y+run.bbox.y*0.005,
+     run.bbox.y+run.bbox.y*0.001,
 
 width:
   Math.max(

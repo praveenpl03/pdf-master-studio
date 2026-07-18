@@ -167,12 +167,12 @@
     
 @for (textItem of activeHtmlTextItems; track textItem.id) {
   <div class="html-text-mask"
-    [style.display]="htmlTextChanged(textItem) || textItem.id === selectedHtmlTextId ? 'block' : 'none'"
-    [style.left.px]="textItem.x" 
-    [style.top.px]="textItem.y" 
-    [style.width.px]="textItem.width" 
-    [style.height.px]="textItem.height" 
-    [style.background-color]="textItem.backgroundColor">
+    [style.display]="htmlTextNeedsSourceMask(textItem) ? 'block' : 'none'"
+    [style.left.px]="textItem.originalX" 
+    [style.top.px]="textItem.originalY" 
+    [style.width.px]="textItem.originalWidth" 
+    [style.height.px]="textItem.originalHeight" 
+    [style.background-color]="'#ffffff'">
   </div>
 
   <textarea class="html-text-run" [class.selected]="textItem.id === selectedHtmlTextId"
@@ -184,6 +184,7 @@
     [style.top.px]="textItem.y" 
     [style.width.px]="textItem.width" 
     [style.height.px]="textItem.height"
+
     [style.font-size.px]="textItem.size" 
     [style.font-family]="textItem.fontFamily" 
     [style.font-weight]="textItem.fontWeight" 
@@ -199,6 +200,16 @@
     (touchstart)="selectHtmlText(textItem, $event); focusTextField($event)" 
     (touchend)="focusTextField($event)">
   </textarea>
+  @if (textItem.id === selectedHtmlTextId) {
+    <button type="button" class="html-text-move-handle" title="Drag text box"
+      [style.left.px]="textItem.x + textItem.width - 8" [style.top.px]="textItem.y - 8"
+      (pointerdown)="startHtmlTextDrag(textItem, $event)" (click)="$event.stopPropagation()">
+      <i class="fa-solid fa-up-down-left-right"></i>
+    </button>
+    <button type="button" class="html-text-resize-handle" title="Resize text box"
+      [style.left.px]="textItem.x + textItem.width - 7" [style.top.px]="textItem.y + textItem.height - 7"
+      (pointerdown)="startHtmlTextResize(textItem, $event)" (click)="$event.stopPropagation()"></button>
+  }
 }
 
 
@@ -217,6 +228,9 @@
                       <input inputmode="text" autocapitalize="sentences" spellcheck="true" [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (pointerdown)="selectOverlay(item, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" (touchend)="selectOverlay(item, $event); focusTextField($event)" />
                     }
                     @if (item.id === selectedOverlayId && !item.locked) {
+                      @if (item.kind === 'text' || item.kind === 'signature') {
+                        <button type="button" class="overlay-move-handle" title="Drag text box" (pointerdown)="startOverlayMove(item, $event)"><i class="fa-solid fa-up-down-left-right"></i></button>
+                      }
                       <button type="button" class="remove-handle" title="Delete" (click)="removeOverlay(item, $event)">x</button>
                       <button type="button" class="resize-handle" title="Resize" (pointerdown)="startResize(item, $event)"></button>
                     }
@@ -292,6 +306,9 @@
                     <input  inputmode="text" autocapitalize="sentences" spellcheck="true" [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (pointerdown)="selectOverlay(item, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" (touchend)="selectOverlay(item, $event); focusTextField($event)" />
                   }
                   @if (item.id === selectedOverlayId && !item.locked) {
+                    @if (item.kind === 'text' || item.kind === 'signature') {
+                      <button type="button" class="overlay-move-handle" title="Drag text box" (pointerdown)="startOverlayMove(item, $event)"><i class="fa-solid fa-up-down-left-right"></i></button>
+                    }
                     <button type="button" class="remove-handle" title="Delete" (click)="removeOverlay(item, $event)">x</button>
                     <button type="button" class="resize-handle" title="Resize" (pointerdown)="startResize(item, $event)"></button>
                   }

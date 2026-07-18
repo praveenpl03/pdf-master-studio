@@ -521,7 +521,7 @@ h2 {
   resize: none;
   vertical-align:top;
   /* ─── CRITICAL VISUAL LAYOUT ADJUSTMENTS ─── */
-  line-height: 1;            /* 1. INCREASED: Provides vital breathing room for multi-line font scales */
+  line-height: 90%;            /* 1. INCREASED: Provides vital breathing room for multi-line font scales */
   white-space: pre-wrap;
 background-color: transparent;
   text-align: left;
@@ -553,6 +553,32 @@ background-color: transparent;
 
   box-shadow:none;
 
+}
+
+.html-text-move-handle,
+.html-text-resize-handle {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid #ffffff;
+  border-radius: 3px;
+  background: #0f766e;
+  color: #ffffff;
+  touch-action: none;
+}
+
+.html-text-move-handle {
+  cursor: move;
+  font-size: 8px;
+}
+
+.html-text-resize-handle {
+  border-radius: 50%;
+  cursor: nwse-resize;
 }
 
 
@@ -790,6 +816,25 @@ background-color: transparent;
   border-radius: 50%;
   background: #0f766e;
   cursor: nwse-resize;
+}
+
+.overlay-item .overlay-move-handle {
+  position: absolute;
+  top: -9px;
+  left: -9px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  padding: 0;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #ffffff;
+  cursor: move;
+  font-size: 9px;
+  touch-action: none;
 }
 
 .overlay-item .remove-handle {
