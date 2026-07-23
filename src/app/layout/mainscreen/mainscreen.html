@@ -150,7 +150,7 @@
       </div>
     </header>
 
-    <div class="viewer-shell" [class.busy]="busy" (wheel)="handleViewerWheel($event)" (pointermove)="dragOverlay($event)" (pointerup)="stopDrag()" (pointerleave)="stopDrag()">
+    <div class="viewer-shell" [class.busy]="busy" (wheel)="handleViewerWheel($event)" (pointermove)="dragOverlay($event)" (pointerup)="stopDrag()">
       @if (busy) {
         <div class="loading-overlay" aria-live="polite">
           <div class="loader-ring"></div>
@@ -341,27 +341,81 @@
       }
     </div>
 
-    @if (pages.length) {
-    <div class="page-strip">
-      @for (page of pages; track page.id; let i = $index) {
-        <div class="page-card" role="button" tabindex="0" [class.active]="page.id === activePageId" [class.selected]="page.selected" (click)="setActive(page)" (keydown.enter)="setActive(page)">
-          @if (page.thumb) {
-            <img [src]="page.thumb" alt="PDF page thumbnail" />
-          }
-          <canvas #thumbCanvas [class.ready]="page.thumb"></canvas>
-          <span>Page {{ i + 1 }}</span>
-          <div class="page-actions">
-            <button type="button" class="select-page" [class.checked]="page.selected" title="Select page" (click)="togglePage(page, $event)">
-              <span></span>
-            </button>
-            <button type="button" title="Move up" [disabled]="i === 0" (click)="movePage(i, -1, $event)">&#8593;</button>
-            <button type="button" title="Move down" [disabled]="i === pages.length - 1" (click)="movePage(i, 1, $event)">&#8595;</button>
-            <button type="button" class="delete-page" title="Delete page" (click)="deletePage(i, $event)">x</button>
-          </div>
-        </div>
+@if (pages.length) {
+
+<div class="page-strip">
+
+  @for (page of pages; track page.id; let i = $index) {
+
+  <div
+    class="page-card"
+    role="button"
+    tabindex="0"
+    [class.active]="page.id===activePageId"
+    [class.selected]="page.selected"
+    (click)="setActive(page)"
+    (keydown.enter)="setActive(page)">
+
+    <div class="page-preview">
+
+      @if (!page.thumb) {
+
+      <canvas #thumbCanvas></canvas>
+
+      } @else {
+
+      <img
+        [src]="page.thumb"
+        alt="Thumbnail"
+        loading="lazy"
+        decoding="async">
+
       }
+
     </div>
-    }
+
+    <span>Page {{i+1}}</span>
+
+    <div class="page-actions">
+
+      <button
+        type="button"
+        class="select-page"
+        [class.checked]="page.selected"
+        (click)="togglePage(page,$event)">
+        <span></span>
+      </button>
+
+      <button
+        type="button"
+        [disabled]="i===0"
+        (click)="movePage(i,-1,$event)">
+        ↑
+      </button>
+
+      <button
+        type="button"
+        [disabled]="i===pages.length-1"
+        (click)="movePage(i,1,$event)">
+        ↓
+      </button>
+
+      <button
+        type="button"
+        class="delete-page"
+        (click)="deletePage(i,$event)">
+        ×
+      </button>
+
+    </div>
+
+  </div>
+
+  }
+
+</div>
+
+}
   </section>
 
   @if (pages.length) {

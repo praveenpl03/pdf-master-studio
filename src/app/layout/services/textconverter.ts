@@ -80,7 +80,6 @@ export class Textconverter {
 
 
 
-console.log(text, run.bbox,run.bbox.w);
    items.push({
 
     id:

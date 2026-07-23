@@ -8,6 +8,16 @@ import { createWorker } from 'tesseract.js';
 import { GoogleFontService } from './fonts/font-catalog';
 import { PdfFontDictionaryService, PdfFontDefinition } from '../services/pdf-font-dictionary';
 import {Textconverter} from '../services/textconverter';
+import {
+    Document,
+    Packer,
+    Paragraph,
+    TextRun,
+    HeadingLevel,
+    AlignmentType,
+    UnderlineType,
+    ImageRun
+} from "docx";
 
 import type {
   OperationGroup,
@@ -1110,6 +1120,19 @@ private readonly toolbarGap = 8;
     (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
   }
 
+  @HostListener('window:pointermove', ['$event'])
+  handleWindowPointerMove(event: PointerEvent): void {
+    if (this.dragState || this.resizeState || this.htmlTextDragState || this.htmlTextResizeState) {
+      this.dragOverlay(event);
+    }
+  }
+
+  @HostListener('window:pointerup')
+  @HostListener('window:pointercancel')
+  handleWindowPointerEnd(): void {
+    this.stopDrag();
+  }
+
   dragOverlay(event: PointerEvent): void {
     const page = this.activePage;
     if (!page) return;
@@ -2080,10 +2103,6 @@ private async reconstructAllHtmlPages(): Promise<number> {
     );
 
 
-  console.log(
-    "MuPDF extracted:",
-    mupdfItems
-  );
 
 
 
@@ -2515,82 +2534,128 @@ const mupdfRuns =
       if (this.activeRenderTask === renderTask) this.activeRenderTask = undefined;
     }
   }
+private renderingThumbs = false;
+private thumbRenderTasks = new Map<number, any>();
+
 
 private async renderThumbs(
   scale = this.isMobileScreen() ? 0.18 : 0.24
 ): Promise<void> {
-  if (!this.currentBytes?.length) {
+
+  if (this.renderingThumbs) {
     return;
   }
 
-  const pdf = await this.openPdfJsDocument();
-  const canvases = this.thumbCanvases.toArray();
+  this.renderingThumbs = true;
 
-  if (canvases.length !== this.pages.length) {
-    console.warn(
-      `Thumbnail canvas mismatch. Pages=${this.pages.length}, Canvases=${canvases.length}`
-    );
-    return;
-  }
+  try {
 
-  const quality = this.isMobileScreen() ? 0.5 : 0.68;
-  const dpr = window.devicePixelRatio || 1;
-
-  for (let index = 0; index < this.pages.length; index++) {
-    const item = this.pages[index];
-    const canvas = canvases[index].nativeElement;
-    const context = canvas.getContext('2d');
-
-    if (!context) {
-      continue;
+    if (!this.currentBytes?.length) {
+      return;
     }
 
-    try {
-      if (item.blank) {
-        this.paintBlankCanvas(canvas, context, item, scale, false);
-        item.thumb = canvas.toDataURL('image/jpeg', quality);
+    // Wait for Angular to render the thumbnail canvases
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    const canvases = this.thumbCanvases.toArray();
+
+    if (!canvases.length) {
+      console.warn("No thumbnail canvases available.");
+      return;
+    }
+
+    const pdf = await this.openPdfJsDocument();
+
+    const quality = this.isMobileScreen() ? 0.5 : 0.7;
+    const dpr = this.isMobileScreen()
+      ? 1
+      : Math.min(window.devicePixelRatio || 1, 2);
+
+    for (let index = 0; index < this.pages.length; index++) {
+
+      const item = this.pages[index];
+      const canvas = canvases[index]?.nativeElement;
+
+      if (!canvas) {
         continue;
       }
 
-      const page = await this.runPdfOutsideAngular(() =>
-        pdf.getPage(item.sourceIndex + 1)
-      );
+      const ctx = canvas.getContext("2d");
 
-      const viewport = page.getViewport({
-        scale,
-        rotation: item.rotation
-      });
+      if (!ctx) {
+        continue;
+      }
 
-      // High-DPI canvas
-      canvas.width = Math.ceil(viewport.width * dpr);
-      canvas.height = Math.ceil(viewport.height * dpr);
+      try {
 
-      canvas.style.width = `${Math.ceil(viewport.width)}px`;
-      canvas.style.height = `${Math.ceil(viewport.height)}px`;
+        if (item.blank) {
 
-      // Reset transform
-      context.setTransform(1, 0, 0, 1, 0, 0);
-      context.clearRect(0, 0, canvas.width, canvas.height);
+          this.paintBlankCanvas(canvas, ctx, item, scale, false);
+          item.thumb = canvas.toDataURL("image/jpeg", quality);
+          continue;
 
-      // Scale for Retina displays
-      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
 
-      const renderTask = page.render({
-        canvasContext: context,
-        viewport
-      });
+        const page = await this.runPdfOutsideAngular(() =>
+          pdf.getPage(item.sourceIndex + 1)
+        );
 
-      await this.runPdfOutsideAngular(() => renderTask.promise);
+        const viewport = page.getViewport({
+          scale,
+          rotation: item.rotation
+        });
 
-      item.thumb = canvas.toDataURL('image/jpeg', quality);
+        canvas.width = Math.ceil(viewport.width * dpr);
+        canvas.height = Math.ceil(viewport.height * dpr);
 
-      page.cleanup();
-    } catch (err) {
-      console.error(`Thumbnail render failed for page ${index + 1}`, err);
+        canvas.style.width = `${Math.ceil(viewport.width)}px`;
+        canvas.style.height = `${Math.ceil(viewport.height)}px`;
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(dpr, dpr);
+
+        const renderTask = page.render({
+          canvasContext: ctx,
+          viewport
+        });
+
+        try {
+          await this.runPdfOutsideAngular(() => renderTask.promise);
+        } catch (err: any) {
+
+          if (err?.name !== "RenderingCancelledException") {
+            throw err;
+          }
+
+          continue;
+        }
+
+        item.thumb = canvas.toDataURL("image/jpeg", quality);
+
+        page.cleanup();
+
+        // Allow the browser to paint before rendering the next page
+        await new Promise(resolve => requestAnimationFrame(resolve));
+
+      } catch (err) {
+
+        console.error(
+          `Thumbnail render failed for page ${index + 1}`,
+          err
+        );
+
+      }
+
     }
-  }
 
-  this.refreshView();
+    this.refreshView();
+
+  } finally {
+
+    this.renderingThumbs = false;
+
+  }
 }
   private queueActiveRender(): void {
     if (this.renderTimer) clearTimeout(this.renderTimer);
@@ -2799,13 +2864,18 @@ private queueThumbRender(): void {
     const source = await this.loadSourcePdfDocument();
     const output = await PDFDocument.create();
     output.registerFontkit(fontkit);
-    for (const page of this.pages) {
-      const [copied] = await output.copyPages(source, [page.sourceIndex]);
-      copied.setRotation(degrees((copied.getRotation().angle + page.rotation + 360) % 360));
-      output.addPage(copied);
-    }
-    await this.applyHtmlTextEdits(output);
-    await this.applyOverlays(output);
+for (const page of this.pages) {
+  const [copied] = await output.copyPages(source, [page.sourceIndex]);
+  // Perform ONLY rotation or minor adjustments on 'copied' here
+  copied.setRotation(degrees((copied.getRotation().angle + page.rotation + 360) % 360));
+  
+  output.addPage(copied); // Only add once!
+}
+
+// Ensure these functions operate on the 'output' pages, not re-accessing 'source'
+await this.applyHtmlTextEdits(output); 
+await this.applyOverlays(output);
+
     if (applyMetadata) this.writeMetadata(output);
     return output;
   }
@@ -2814,483 +2884,103 @@ private queueThumbRender(): void {
     return this.createHtmlEditedPdf(applyMetadata);
   }
 
-private async applyHtmlTextEdits(
-  pdf: PDFDocument
-): Promise<void> {
-
-
+private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
   const fonts = {
-
-    helvetica:
-      await pdf.embedFont(StandardFonts.Helvetica),
-
-    helveticaBold:
-      await pdf.embedFont(StandardFonts.HelveticaBold),
-
-    helveticaItalic:
-      await pdf.embedFont(StandardFonts.HelveticaOblique),
-
-    helveticaBoldItalic:
-      await pdf.embedFont(StandardFonts.HelveticaBoldOblique),
-
-    times:
-      await pdf.embedFont(StandardFonts.TimesRoman),
-
-    timesBold:
-      await pdf.embedFont(StandardFonts.TimesRomanBold),
-
-    timesItalic:
-      await pdf.embedFont(StandardFonts.TimesRomanItalic),
-
-    timesBoldItalic:
-      await pdf.embedFont(StandardFonts.TimesRomanBoldItalic),
-
-    courier:
-      await pdf.embedFont(StandardFonts.Courier),
-
-    courierBold:
-      await pdf.embedFont(StandardFonts.CourierBold),
-
-    courierItalic:
-      await pdf.embedFont(StandardFonts.CourierOblique),
-
-    courierBoldItalic:
-      await pdf.embedFont(StandardFonts.CourierBoldOblique)
-
+    helvetica: await pdf.embedFont(StandardFonts.Helvetica),
+    helveticaBold: await pdf.embedFont(StandardFonts.HelveticaBold),
+    helveticaItalic: await pdf.embedFont(StandardFonts.HelveticaOblique),
+    helveticaBoldItalic: await pdf.embedFont(StandardFonts.HelveticaBoldOblique),
+    times: await pdf.embedFont(StandardFonts.TimesRoman),
+    timesBold: await pdf.embedFont(StandardFonts.TimesRomanBold),
+    timesItalic: await pdf.embedFont(StandardFonts.TimesRomanItalic),
+    timesBoldItalic: await pdf.embedFont(StandardFonts.TimesRomanBoldItalic),
+    courier: await pdf.embedFont(StandardFonts.Courier),
+    courierBold: await pdf.embedFont(StandardFonts.CourierBold),
+    courierItalic: await pdf.embedFont(StandardFonts.CourierOblique),
+    courierBoldItalic: await pdf.embedFont(StandardFonts.CourierBoldOblique)
   };
 
-
-  const pdfPages =
-    pdf.getPages();
-
-
-
-  for(
-    const [pageIndex,pageItem]
-    of this.pages.entries()
-  ){
-
-
-    const page =
-      pdfPages[pageIndex];
-
-
-    if(!page)
-      continue;
-
-
-
-    const {
-      width,
-      height
-    } = page.getSize();
-
-
-
-    const scaleX =
-      width / pageItem.width;
-
-
-    const scaleY =
-      height / pageItem.height;
-
-
-
-    const editedItems =
-      this.htmlTextItems.filter(
-        item =>
-          item.pageId === pageItem.id &&
-          this.htmlTextChanged(item)
-      );
-
-
-
-
-    for(const item of editedItems){
-
-
-
-      const textFont =
-        this.fontForHtmlItem(
-          item,
-          fonts
-        );
-
-
-
-      const fontSize =
-        this.effectiveHtmlFontSize(
-          item,
-          scaleX,
-          scaleY
-        );
-
-
-
-
-      // ======================
-      // ORIGINAL PDF POSITION
-      // ======================
-
-
-      const pdfX =
-        (item.originalX ?? item.x)
-        *
-        scaleX;
-
-
-
-      const pdfTop =
-        (item.originalY ?? item.y)
-        *
-        scaleY;
-
-
-
-const pdfBoxHeight =
-  Math.max(
-    item.originalHeight ?? 0,
-    fontSize * 0.9
-  )
-  * scaleY;
-
-
-
-      const pdfY =
-        height
-        -
-        pdfTop
-        -
-        pdfBoxHeight;
-
-
-
-
-      // ======================
-      // ERASE OLD TEXT
-      // ======================
-
-
-      const originalTextWidth =
-        textFont.widthOfTextAtSize(
-          item.originalText ?? item.text,
-          fontSize
-        );
-
-
-
-      const eraseWidth =
-        Math.max(
-
-          (item.originalWidth ?? 0)
-          *
-          scaleX,
-
-          originalTextWidth
-
-        );
-
-const onlyStyleChange =
-  item.text === item.originalText;
-
-
-if(!onlyStyleChange){
-
-
- page.drawRectangle({
-
-   x:
-    pdfX - 0.5,
-
-
-   y:
-    pdfY + fontSize * 0.15,
-
-
-   width:
-    eraseWidth + 1,
-
-
-   height:
-    pdfBoxHeight * 0.85,
-
-
- color:
- this.hexToRgb(
-   item.eraseColor ?? '#ffffff'
- ),
-
-
-   opacity:
-    1
-
- });
-
-
-}
-
-
-
-      // ======================
-      // DRAW EDITED TEXT
-      // ======================
-
-
-
-      const lines =
-        item.text.split(/\r?\n/);
-
-
-
-      const lineHeight =
-        fontSize * 1.2;
-
-
-
-
-      lines.forEach(
-        (
-          line,
-          lineIndex
-        )=>{
-
-
-
-        const clean =
-          line || ' ';
-
-
-// PDF baseline correction
-
-const y =
- pdfY
- +
- fontSize * 0.18
- -
- lineIndex * lineHeight;
-
-
-
-
-        let drawX =
-          pdfX;
-
-
-
-        const normalWidth =
-          textFont.widthOfTextAtSize(
-            clean,
-            fontSize
-          );
-
-
-
-        if(
-          item.textAlign === 'right'
-        ){
-
-          drawX =
-            pdfX
-            +
-            eraseWidth
-            -
-            normalWidth;
-
-        }
-
-
-        else if(
-          item.textAlign === 'center'
-        ){
-
-          drawX =
-            pdfX
-            +
-            eraseWidth/2
-            -
-            normalWidth/2;
-
-        }
-
-
-
-
-
-        // ======================
-        // CHARACTER SPACING FIX
-        // ======================
-
-
-        const targetWidth =
-          Math.max(
-            (item.originalWidth ?? item.width)
-            *
-            scaleX,
-            normalWidth
-          );
-
-
-
-        if(
-          clean.length > 1 &&
-          Math.abs(
-            targetWidth-normalWidth
-          ) > 1
-        ){
-
-
-
-          const extra =
-            (
-              targetWidth
-              -
-              normalWidth
-            )
-            /
-            (
-              clean.length-1
-            );
-
-
-
-          let cursorX =
-            drawX;
-
-
-
-          for(
-            const ch of clean
-          ){
-
-
-            page.drawText(
-              ch,
-              {
-
-                x:
-                  cursorX,
-
-
-                y,
-
-
-                size:
-                  fontSize,
-
-
-                font:
-                  textFont,
-
-
-                color:
-                  this.hexToRgb(
-                    item.color ?? '#111111'
-                  )
-
-              }
-            );
-
-
-
-            cursorX +=
-
-              textFont.widthOfTextAtSize(
-                ch,
-                fontSize
-              )
-
-              +
-
-              extra;
-
-
-          }
-
-
-
-        }
-
-        else{
-
-
-          page.drawText(
-            clean,
-            {
-
-              x:
-                drawX,
-
-
-              y,
-
-
-              size:
-                fontSize,
-
-
-              font:
-                textFont,
-
-
-              color:
-                this.hexToRgb(
-                  item.color ?? '#111111'
-                )
-
-            }
-          );
-
-
-        }
-
-
-
-
-        // underline
-        if(
-          item.textDecoration === 'underline'
-        ){
-
-
-          page.drawLine({
-
-            start:{
-              x:drawX,
-              y:y-1
-            },
-
-
-            end:{
-              x:
-                drawX+targetWidth,
-              y:y-1
-            },
-
-
-            thickness:
-              Math.max(
-                .5,
-                fontSize*.05
-              ),
-
-
-            color:
-              this.hexToRgb(
-                item.color ?? '#0000ee'
-              )
-
-          });
-
-        }
-
-
+  const pdfPages = pdf.getPages();
+
+  for (const [pageIndex, pageItem] of this.pages.entries()) {
+    const page = pdfPages[pageIndex];
+    if (!page) continue;
+
+    const { width, height } = page.getSize();
+    const scaleX = width / pageItem.width;
+    const scaleY = height / pageItem.height;
+
+    const editedItems = this.htmlTextItems.filter(
+      (item) => item.pageId === pageItem.id && this.htmlTextChanged(item)
+    );
+
+    for (const item of editedItems) {
+      const textFont = this.fontForHtmlItem(item, fonts);
+      const fontSize = this.effectiveHtmlFontSize(item, scaleX, scaleY);
+
+      // Erase the source text at its original position, then draw the edited
+      // fragment at its current canvas position. Using original coordinates
+      // for both operations caused moved text to overlap in exported PDFs.
+      const originalX = item.originalX * scaleX;
+      const originalTop = item.originalY * scaleY;
+      const originalHeight = Math.max(item.originalHeight * scaleY, fontSize * 1.2);
+      const originalTextWidth = textFont.widthOfTextAtSize(item.originalText ?? item.text, fontSize);
+      const eraseWidth = Math.max((item.originalWidth ?? 0) * scaleX, originalTextWidth);
+      const buffer = 2;
+      page.drawRectangle({
+        x: originalX - buffer,
+        y: height - originalTop - originalHeight - buffer,
+        width: eraseWidth + (buffer * 2),
+        height: originalHeight + (buffer * 2),
+        color: this.hexToRgb(item.eraseColor ?? '#ffffff'),
+        opacity: 1,
       });
 
+      const pdfX = item.x * scaleX;
+      const pdfBoxWidth = Math.max(1, item.width * scaleX);
+      const pdfTop = item.y * scaleY;
 
+      // --- DRAW EDITED TEXT ---
+      const lines = item.text.split(/\r?\n/);
+      const lineHeight = fontSize * 1.2;
+
+      lines.forEach((line, lineIndex) => {
+        const clean = line || ' ';
+        // Canvas text uses a top-left origin; pdf-lib uses a baseline from the
+        // bottom-left. This mirrors the HTML editor's baseline placement.
+        const y = height - pdfTop - (fontSize * 0.82) - (lineIndex * lineHeight);
+
+        let drawX = pdfX;
+        const normalWidth = textFont.widthOfTextAtSize(clean, fontSize);
+
+        if (item.textAlign === 'right') drawX = pdfX + pdfBoxWidth - normalWidth;
+        else if (item.textAlign === 'center') drawX = pdfX + (pdfBoxWidth - normalWidth) / 2;
+
+        const targetWidth = Math.max(pdfBoxWidth, normalWidth);
+
+        // Render text
+        if (clean.length > 1 && Math.abs(targetWidth - normalWidth) > 1) {
+          const extra = (targetWidth - normalWidth) / (clean.length - 1);
+          let cursorX = drawX;
+          for (const ch of clean) {
+            page.drawText(ch, { x: cursorX, y, size: fontSize, font: textFont, color: this.hexToRgb(item.color ?? '#111111') });
+            cursorX += textFont.widthOfTextAtSize(ch, fontSize) + extra;
+          }
+        } else {
+          page.drawText(clean, { x: drawX, y, size: fontSize, font: textFont, color: this.hexToRgb(item.color ?? '#111111') });
+        }
+
+        if (item.textDecoration === 'underline') {
+          page.drawLine({
+            start: { x: drawX, y: y - 1 },
+            end: { x: drawX + targetWidth, y: y - 1 },
+            thickness: Math.max(0.5, fontSize * 0.05),
+            color: this.hexToRgb(item.color ?? '#0000ee')
+          });
+        }
+      });
     }
-
   }
-
 }
    htmlTextChanged(item: HtmlTextItem): boolean {
     return item.text !== item.originalText
@@ -3437,24 +3127,130 @@ const y =
     this.status = 'Word-compatible DOC exported.';
   }
 
-  private async exportDocx(): Promise<void> {
+  // private async exportDocx(): Promise<void> {
+  //   const pages = await this.structuredTextPages();
+  //   const paragraphs = pages.flatMap((page, index) => [
+  //     this.docxParagraph(`Page ${page.page}`, index > 0),
+  //     ...page.rows.map((row) => this.docxParagraph(row.cells.map((cell) => cell.text).join(' '))),
+  //   ]).join('');
+  //   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  //     <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  //       <w:body>${paragraphs}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr></w:body>
+  //     </w:document>`;
+  //   const files = [
+  //     { name: '[Content_Types].xml', data: this.utf8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`) },
+  //     { name: '_rels/.rels', data: this.utf8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`) },
+  //     { name: 'word/document.xml', data: this.utf8(documentXml) },
+  //   ];
+  //   this.downloadBlob(this.createZip(files), 'converted.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  //   this.status = 'DOCX exported.';
+  // }
+private async exportDocx(): Promise<void> {
+  try {
+
+    this.status = 'Preparing DOCX...';
+
     const pages = await this.structuredTextPages();
-    const paragraphs = pages.flatMap((page, index) => [
-      this.docxParagraph(`Page ${page.page}`, index > 0),
-      ...page.rows.map((row) => this.docxParagraph(row.cells.map((cell) => cell.text).join(' '))),
-    ]).join('');
-    const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-        <w:body>${paragraphs}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr></w:body>
-      </w:document>`;
-    const files = [
-      { name: '[Content_Types].xml', data: this.utf8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`) },
-      { name: '_rels/.rels', data: this.utf8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`) },
-      { name: 'word/document.xml', data: this.utf8(documentXml) },
-    ];
-    this.downloadBlob(this.createZip(files), 'converted.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    this.status = 'DOCX exported.';
+
+    const sections: any[] = [];
+
+    for (const page of pages) {
+
+      const children: any[] = [];
+
+      // Page title (optional)
+      children.push(
+        new Paragraph({
+          heading: HeadingLevel.HEADING_2,
+          spacing: {
+            after: 300
+          },
+          children: [
+            new TextRun({
+              text: `Page ${page.page}`,
+              bold: true
+            })
+          ]
+        })
+      );
+
+      for (const row of page.rows) {
+
+        const runs: TextRun[] = [];
+
+        for (const cell of row.cells) {
+
+          if (!cell.text?.trim()) continue;
+
+          runs.push(
+            new TextRun({
+              text: cell.text + " ",
+              font: cell.fontFamily || "Calibri",
+              size: Math.round((cell.fontSize || 11) * 2),
+              bold: !!cell.bold,
+              italics: !!cell.italic,
+              underline: cell.underline
+                ? {
+                    type: UnderlineType.SINGLE
+                  }
+                : undefined,
+              color: (cell.color || "#000000").replace("#", "")
+            })
+          );
+
+        }
+
+        children.push(
+          new Paragraph({
+            alignment:
+              row.align === "center"
+                ? AlignmentType.CENTER
+                : row.align === "right"
+                ? AlignmentType.RIGHT
+                : AlignmentType.LEFT,
+
+            spacing: {
+              after: 120
+            },
+
+            children: runs
+          })
+        );
+
+      }
+
+      sections.push({
+        properties: {},
+        children
+      });
+
+    }
+
+    const doc = new Document({
+      creator: "TheConvertor",
+      title: "Converted PDF",
+      description: "Generated by TheConvertor",
+      sections
+    });
+
+    const blob = await Packer.toBlob(doc);
+
+    this.downloadBlob(
+      blob,
+      "converted.docx",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+
+    this.status = "DOCX exported.";
+
+  } catch (error) {
+
+    console.error(error);
+
+    this.status = "DOCX export failed.";
+
   }
+}
 
   private async exportExcel(): Promise<void> {
     const pages = await this.structuredTextPages();
@@ -3759,122 +3555,122 @@ private addOverlay(kind: OverlayKind, preset?: 'square' | 'whiteout'): void {
     const pdf = await this.loadSourcePdfDocument();
     this.status = `Title: ${pdf.getTitle() || 'none'} | Author: ${pdf.getAuthor() || 'none'} | Pages: ${pdf.getPageCount()}`;
   }
-private async structuredTextPages(): Promise<
-  {
-    page:number;
-    rows:{
-      y:number;
-      cells:{
-        x:number;
-        text:string
-      }[]
-    }[]
-  }[]
-> {
+// private async structuredTextPages(): Promise<
+//   {
+//     page:number;
+//     rows:{
+//       y:number;
+//       cells:{
+//         x:number;
+//         text:string
+//       }[]
+//     }[]
+//   }[]
+// > {
 
 
-  if(!this.pages.length){
+//   if(!this.pages.length){
 
-    throw new Error(
-      'Load a PDF first.'
-    );
+//     throw new Error(
+//       'Load a PDF first.'
+//     );
 
-  }
-
-
-
-  // already extracted html layer
-  if(this.htmlTextItems.length){
-
-
-    return this.pages.map(
-      (page,index)=>({
-
-        page:index + 1,
-
-        rows:
-          this.rowsFromPositionedItems(
-
-            this.htmlTextItems.filter(
-              item=>item.pageId === page.id
-            )
-
-          )
-
-      })
-
-    );
-
-  }
+//   }
 
 
 
-
-  // MuPDF extraction
-  const mupdfItems =
-    await this.mupdfService.extractFonts(
-      this.currentBytes
-    );
+//   // already extracted html layer
+//   if(this.htmlTextItems.length){
 
 
+//     return this.pages.map(
+//       (page,index)=>({
 
-  const results:{
-    page:number;
-    rows:{
-      y:number;
-      cells:{
-        x:number;
-        text:string
-      }[]
-    }[]
-  }[] = [];
+//         page:index + 1,
+
+//         rows:
+//           this.rowsFromPositionedItems(
+
+//             this.htmlTextItems.filter(
+//               item=>item.pageId === page.id
+//             )
+
+//           )
+
+//       })
+
+//     );
+
+//   }
 
 
 
 
-  for(
-    const [index,pageItem]
-    of this.pages.entries()
-  ){
-
-
-    const htmlItems =
-      this.textConverter.htmlItemsFromMuPdf(
-
-        mupdfItems.filter(
-          item =>
-            item.page === index + 1
-        ),
-
-
-        pageItem.id
-
-      );
+//   // MuPDF extraction
+//   const mupdfItems =
+//     await this.mupdfService.extractFonts(
+//       this.currentBytes
+//     );
 
 
 
-
-    results.push({
-
-      page:index + 1,
-
-
-      rows:
-       this.rowsFromPositionedItems(
-          htmlItems
-       )
-
-
-    });
-
-
-  }
+//   const results:{
+//     page:number;
+//     rows:{
+//       y:number;
+//       cells:{
+//         x:number;
+//         text:string
+//       }[]
+//     }[]
+//   }[] = [];
 
 
 
-  return results;
 
-}
+//   for(
+//     const [index,pageItem]
+//     of this.pages.entries()
+//   ){
+
+
+//     const htmlItems =
+//       this.textConverter.htmlItemsFromMuPdf(
+
+//         mupdfItems.filter(
+//           item =>
+//             item.page === index + 1
+//         ),
+
+
+//         pageItem.id
+
+//       );
+
+
+
+
+//     results.push({
+
+//       page:index + 1,
+
+
+//       rows:
+//        this.rowsFromPositionedItems(
+//           htmlItems
+//        )
+
+
+//     });
+
+
+//   }
+
+
+
+//   return results;
+
+// }
   // private async structuredTextPages(): Promise<{ page: number; rows: { y: number; cells: { x: number; text: string }[] }[] }[]> {
   //   if (!this.pages.length) throw new Error('Load a PDF first.');
   //   if (this.htmlTextItems.length) {
@@ -3897,7 +3693,175 @@ private async structuredTextPages(): Promise<
   //   }
   //   return results;
   // }
+private async structuredTextPages(): Promise<
+{
+  page: number;
+  rows: {
+    y: number;
+    align: 'left' | 'center' | 'right' | 'justify';
+    cells: {
+      x: number;
+      y: number;
 
+      text: string;
+
+      width: number;
+      height: number;
+
+      fontFamily: string;
+      fontSize: number;
+
+      color: string;
+
+      bold: boolean;
+      italic: boolean;
+      underline: boolean;
+    }[];
+  }[];
+}[]
+> {
+
+  if (!this.pages.length) {
+    throw new Error("Load a PDF first.");
+  }
+
+  let htmlItems: HtmlTextItem[] = [];
+
+  // Use edited HTML if available
+  if (this.htmlTextItems.length) {
+
+    htmlItems = [...this.htmlTextItems];
+
+  } else {
+
+    // Reconstruct from MuPDF
+    const mupdfItems =
+      await this.mupdfService.extractFonts(
+        this.currentBytes
+      );
+
+    for (const [index, page] of this.pages.entries()) {
+
+      htmlItems.push(
+
+        ...this.textConverter.htmlItemsFromMuPdf(
+
+          mupdfItems.filter(
+            i => i.page === index + 1
+          ),
+
+          page.id
+
+        )
+
+      );
+
+    }
+
+  }
+
+  const results: any[] = [];
+
+  for (const [pageIndex, page] of this.pages.entries()) {
+
+    const pageItems = htmlItems
+
+      .filter(
+        i => i.pageId === page.id
+      )
+
+      .sort((a, b) => {
+
+        if (Math.abs(a.y - b.y) > 3) {
+          return a.y - b.y;
+        }
+
+        return a.x - b.x;
+
+      });
+
+    const rows: any[] = [];
+
+    for (const item of pageItems) {
+
+      let row = rows.find(
+        r => Math.abs(r.y - item.y) < 4
+      );
+
+      if (!row) {
+
+        row = {
+
+          y: item.y,
+
+          align: item.textAlign ?? "left",
+
+          cells: []
+
+        };
+
+        rows.push(row);
+
+      }
+
+      row.cells.push({
+
+        x: item.x,
+
+        y: item.y,
+
+        text: item.text,
+
+        width: item.width,
+
+        height: item.height,
+
+        fontFamily:
+          item.exactFont ||
+          item.fontFamily ||
+          "Calibri",
+
+        fontSize:
+          item.size ||
+          item.originalSize ||
+          11,
+
+        color:
+          item.color ||
+          item.originalColor ||
+          "#000000",
+
+        bold:
+          item.fontWeight === "700" ||
+          item.fontWeight === "bold" ||
+          item.originalFontWeight === "700" ||
+          item.originalFontWeight === "bold",
+
+        italic:
+          item.fontStyle === "italic" ||
+          item.originalFontStyle === "italic",
+
+        underline:
+          item.textDecoration?.includes("underline") ??
+          false
+
+      });
+
+    }
+
+    results.push({
+
+      page: pageIndex + 1,
+
+      rows
+
+    });
+
+  }
+
+  return results;
+
+}
   private rowsFromPositionedItems(items: Pick<HtmlTextItem, 'x' | 'y' | 'text' | 'size' | 'height'>[]): { y: number; cells: { x: number; text: string }[] }[] {
     const rows: { y: number; cells: { x: number; text: string }[] }[] = [];
     for (const item of [...items].sort((a, b) => Math.abs(a.y - b.y) < Math.max(a.size, b.size) * 0.5 ? a.x - b.x : a.y - b.y)) {
