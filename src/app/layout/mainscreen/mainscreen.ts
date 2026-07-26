@@ -2897,6 +2897,11 @@ private queueThumbRender(): void {
     const source = await this.loadSourcePdfDocument();
     const output = await PDFDocument.create();
     for (const page of this.pages) {
+      if (page.blank) {
+        const blank = output.addPage([page.width, page.height]);
+        blank.setRotation(degrees((page.rotation + 360) % 360));
+        continue;
+      }
       const [copied] = await output.copyPages(source, [page.sourceIndex]);
       copied.setRotation(degrees((copied.getRotation().angle + page.rotation + 360) % 360));
       output.addPage(copied);
@@ -2914,6 +2919,11 @@ private queueThumbRender(): void {
     const output = await PDFDocument.create();
     output.registerFontkit(fontkit);
 for (const page of this.pages) {
+  if (page.blank) {
+    const blank = output.addPage([page.width, page.height]);
+    blank.setRotation(degrees((page.rotation + 360) % 360));
+    continue;
+  }
   const [copied] = await output.copyPages(source, [page.sourceIndex]);
   // Perform ONLY rotation or minor adjustments on 'copied' here
   copied.setRotation(degrees((copied.getRotation().angle + page.rotation + 360) % 360));
@@ -4141,6 +4151,7 @@ private async structuredTextPages(): Promise<
 
   private async createVisualHtmlRebuildPdf(flattenAllPages = false): Promise<PDFDocument> {
     const output = await PDFDocument.create();
+    const source = flattenAllPages ? undefined : await this.loadSourcePdfDocument();
     for (const page of this.pages) {
       const htmlItems = this.htmlTextItems.filter((item) => item.pageId === page.id);
       const hasRebuild = flattenAllPages || this.pageHasEdits(page);
@@ -4153,8 +4164,12 @@ private async structuredTextPages(): Promise<
         canvas.width = 0;
         canvas.height = 0;
       } else {
-        const source = await this.loadSourcePdfDocument();
-        const [copied] = await output.copyPages(source, [page.sourceIndex]);
+        if (page.blank) {
+          const blank = output.addPage([page.width, page.height]);
+          blank.setRotation(degrees((page.rotation + 360) % 360));
+          continue;
+        }
+        const [copied] = await output.copyPages(source!, [page.sourceIndex]);
         copied.setRotation(degrees((copied.getRotation().angle + page.rotation + 360) % 360));
         output.addPage(copied);
       }
