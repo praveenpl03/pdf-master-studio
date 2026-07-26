@@ -619,11 +619,10 @@ background-color: transparent;
   z-index: 4;
   display: grid;
   place-items: center;
-  width: 16px;
-  height: 16px;
+
   padding: 0;
 
-  border-radius: 3px;
+
 
   color: #0f766e;
   touch-action: none;
@@ -635,9 +634,11 @@ background-color: transparent;
 }
 
 .html-text-resize-handle {
-
   cursor: nwse-resize;
-
+  pointer-events: auto;
+  z-index: 10;
+ 
+  background: #ffffff;
 }
 
 

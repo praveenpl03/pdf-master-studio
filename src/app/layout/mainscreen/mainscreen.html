@@ -207,8 +207,12 @@
       <i class="fa-solid fa-up-down-left-right"></i>
     </button>
     <button type="button" class="html-text-resize-handle" title="Resize text box"
-      [style.left.px]="textItem.x + textItem.width - 8" [style.top.px]="textItem.y + textItem.height+2"
-      (pointerdown)="startHtmlTextResize(textItem, $event)" (click)="$event.stopPropagation()"><i class="fa-solid fa-crop-simple "></i></button>
+      [style.left.px]="textItem.x + textItem.width " [style.top.px]="textItem.y + textItem.height"
+      (pointerdown)="startHtmlTextResize(textItem, $event)"
+      (pointermove)="resizeHtmlTextFromPointer($event)"
+      (pointerup)="stopDrag()"
+      (pointercancel)="stopDrag()"
+      (click)="$event.stopPropagation()"><i class="fa-solid fa-crop-simple "></i></button>
   }
 }
 
@@ -242,8 +246,8 @@
 <div class="floating-toolbar"  [style.left.px]="htmlToolbarLeft(htmlEdit)" [style.top.px]="htmlToolbarTop(htmlEdit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
     <button type="button" [class.active]="isBoldActive" (click)="toggleSelectedHtmlBold()">B</button>
     <button type="button" [class.active]="isItalicActive" (click)="toggleSelectedHtmlItalic()"><i>I</i></button>
-    <button type="button" (click)="resizeSelectedHtmlText(-1)">A-</button>
-    <button type="button" (click)="resizeSelectedHtmlText(1)">A+</button>
+    <button type="button" (click)="resizeSelectedHtmlText(-2)">A-</button>
+    <button type="button" (click)="resizeSelectedHtmlText(2)">A+</button>
     
     <button type="button" title="Move up" (click)="nudgeSelectedHtmlText(0, -1)"><i class="fa-solid fa-arrow-up"></i></button>
     <button type="button" title="Move down" (click)="nudgeSelectedHtmlText(0, 1)"><i class="fa-solid fa-arrow-down"></i></button>
@@ -270,6 +274,10 @@
               <div class="floating-toolbar" [style.left.px]="toolbarLeft(edit)" [style.top.px]="toolbarTop(edit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
                 <button type="button" title="Rotate left" (click)="rotateSelectedOverlay(-15)"><i class="fa-solid fa-rotate-left"></i></button>
                 <button type="button" title="Rotate right" (click)="rotateSelectedOverlay(15)"><i class="fa-solid fa-rotate-right"></i></button>
+                @if (edit.kind === 'text' || edit.kind === 'signature') {
+                  <button type="button" title="Decrease text size" (click)="resizeSelectedText(-2)">A-</button>
+                  <button type="button" title="Increase text size" (click)="resizeSelectedText(2)">A+</button>
+                }
                 @if (edit.kind === 'image') {
                   <button type="button" (click)="adjustSelectedImageCrop(2)">Crop +</button>
                   <button type="button" (click)="adjustSelectedImageCrop(-2)">Crop -</button>
@@ -319,8 +327,8 @@
               <div class="floating-toolbar" [style.left.px]="toolbarLeft(edit)" [style.top.px]="toolbarTop(edit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
                 <button type="button" (click)="toggleSelectedBold()">B</button>
                 <button type="button" (click)="toggleSelectedItalic()"><i>I</i></button>
-                <button type="button" (click)="resizeSelectedText(-1)">A-</button>
-                <button type="button" (click)="resizeSelectedText(1)">A+</button>
+                <button type="button" (click)="resizeSelectedText(-2)">A-</button>
+                <button type="button" (click)="resizeSelectedText(2)">A+</button>
                 <input type="color" [(ngModel)]="edit.color" />
                 @if (edit.kind === 'image') {
                   <button type="button" (click)="adjustSelectedImageCrop(2)">Crop +</button>

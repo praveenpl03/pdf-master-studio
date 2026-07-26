@@ -92,6 +92,7 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   status = 'Open a PDF to begin.';
   fileName = 'document.pdf';
   currentBytes: Uint8Array<ArrayBufferLike> = new Uint8Array();
+  private sourcePageCount = 0;
   busy = false;
   busyLabel = '';
   zoom = this.isMobileScreen() ? 1.0 : 1.7
@@ -131,7 +132,7 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   private dragState?: { id: string; startX: number; startY: number; originalX: number; originalY: number };
   private resizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number };
   private htmlTextDragState?: { id: string; startX: number; startY: number; originalX: number; originalY: number };
-  private htmlTextResizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number };
+  private htmlTextResizeState?: { id: string; startX: number; startY: number; originalWidth: number; originalHeight: number; originalSize: number };
   private trackingHtmlEditId = '';
   private trackingOverlayEditId = '';
   private lastWheelPageTurn = 0;
@@ -881,8 +882,10 @@ setActive(page: PageItem): void {
     const item = this.selectedOverlay;
     if (!item || item.locked) return;
     this.recordHistory();
-    item.size = Math.max(6, item.size + amount);
-    item.height = Math.max(item.height, item.size + 8);
+    const nextSize = Math.max(6, Math.min(144, Number(item.size || 18) + amount));
+    item.size = nextSize;
+    item.height = Math.max(item.height, Math.ceil(nextSize * 1.35));
+    this.changeDetector.markForCheck();
   }
 
   toggleSelectedHtmlBold(): void {
@@ -903,8 +906,10 @@ setActive(page: PageItem): void {
     const item = this.selectedHtmlText;
     if (!item) return;
     this.recordHistory();
-    item.size = Math.max(6, item.size + amount);
-    item.height = Math.max(item.height, item.size * 1.18);
+    const nextSize = Math.max(6, Math.min(144, Number(item.size || item.originalSize || 12) + amount));
+    item.size = nextSize;
+    item.height = Math.max(item.height, Math.ceil(nextSize * 1.35));
+    this.changeDetector.markForCheck();
   }
 
   nudgeSelectedHtmlText(dx: number, dy: number): void {
@@ -1114,10 +1119,55 @@ private readonly toolbarGap = 8;
       id: item.id,
       startX: event.clientX,
       startY: event.clientY,
-      originalWidth: item.width,
-      originalHeight: item.height,
+      originalWidth: Number(item.width) || 24,
+      originalHeight: Number(item.height) || Math.ceil((Number(item.size) || 12) * 1.05),
+      originalSize: Math.max(6, Number(item.size) || Number(item.originalSize) || 12),
     };
     (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+  }
+
+  resizeHtmlTextFromPointer(event: PointerEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.resizeHtmlTextAt(event.clientX, event.clientY);
+  }
+
+  @HostListener('document:mousemove', ['$event'])
+  handleHtmlTextResizeMouseMove(event: MouseEvent): void {
+    if (this.htmlTextResizeState) this.resizeHtmlTextAt(event.clientX, event.clientY);
+  }
+
+  @HostListener('document:mouseup')
+  handleHtmlTextResizeMouseUp(): void {
+    if (this.htmlTextResizeState) this.stopDrag();
+  }
+
+  private resizeHtmlTextAt(clientX: number, clientY: number): void {
+    const page = this.activePage;
+    const state = this.htmlTextResizeState;
+    if (!page || !state) return;
+
+    const item = this.htmlTextItems.find((text) => text.id === state.id);
+    if (!item) return;
+
+    const zoom = Math.max(0.01, Number(this.zoom) || 1);
+    const x = Number(item.x) || 0;
+    const y = Number(item.y) || 0;
+    const width = Number(state.originalWidth) + (clientX - state.startX) / zoom;
+    const height = Number(state.originalHeight) + (clientY - state.startY) / zoom;
+    const nextWidth = Math.max(24, Math.min(Math.round(width), Math.round(page.width - x)));
+    const widthScale = nextWidth / state.originalWidth;
+    const heightScale = Math.max(1, height) / state.originalHeight;
+    const nextSize = Math.max(6, Math.min(144, Math.round(state.originalSize * Math.max(widthScale, heightScale))));
+    const nextHeight = Math.max(
+      Math.ceil(nextSize * 1.35),
+      Math.min(Math.round(height), Math.round(page.height - y)),
+    );
+
+    this.htmlTextItems = this.htmlTextItems.map((text) =>
+      text.id === item.id ? { ...text, width: nextWidth, height: nextHeight, size: nextSize } : text,
+    );
+    this.changeDetector.detectChanges();
   }
 
   @HostListener('window:pointermove', ['$event'])
@@ -1137,12 +1187,7 @@ private readonly toolbarGap = 8;
     const page = this.activePage;
     if (!page) return;
     if (this.htmlTextResizeState) {
-      const item = this.htmlTextItems.find((text) => text.id === this.htmlTextResizeState?.id);
-      if (!item) return;
-      const width = this.htmlTextResizeState.originalWidth + (event.clientX - this.htmlTextResizeState.startX) / this.zoom;
-      const height = this.htmlTextResizeState.originalHeight + (event.clientY - this.htmlTextResizeState.startY) / this.zoom;
-      item.width = Math.max(24, Math.min(Math.round(width), Math.round(page.width - item.x)));
-      item.height = Math.max(Math.ceil(item.size * 1.05), Math.min(Math.round(height), Math.round(page.height - item.y)));
+      this.resizeHtmlTextFromPointer(event);
       return;
     }
     if (this.htmlTextDragState) {
@@ -2057,6 +2102,7 @@ this.pdfFontDictionary.compileGlobalDocumentFontHeaderStyle(this.pdfFonts);
   const pdf = await this.openPdfJsDocument(bytes);
 //console.log('PDF loaded:', pdf);
   this.pages = [];
+  this.sourcePageCount = pdf.numPages;
   for (let index = 1; index <= pdf.numPages; index += 1) {
     const page = await pdf.getPage(index);
 
@@ -2675,12 +2721,15 @@ private async renderThumbs(
  
 
   private safePdfRenderScale(width: number, height: number, requestedScale: number): number {
-    if (!this.isMobileScreen()) return requestedScale;
-    const maxPixels = 3_200_000;
-    const maxSide = 2048;
+    // Browser canvases have finite dimensions even on desktop. Keeping every
+    // raster path below this ceiling prevents large-format PDFs from failing
+    // during image, compression, and visual-rebuild exports.
+    const maxPixels = this.isMobileScreen() ? 3_200_000 : 16_000_000;
+    const maxSide = this.isMobileScreen() ? 2048 : 8192;
     const pixelScale = Math.sqrt(maxPixels / Math.max(1, width * height));
     const sideScale = maxSide / Math.max(width, height, 1);
-    return Math.max(0.6, Math.min(requestedScale, pixelScale, sideScale, 1.35));
+    const deviceLimit = this.isMobileScreen() ? 1.35 : requestedScale;
+    return Math.max(0.01, Math.min(requestedScale, pixelScale, sideScale, deviceLimit));
   }
 
 /**
@@ -2881,7 +2930,40 @@ await this.applyOverlays(output);
   }
 
   private async createExportPdf(applyMetadata = true): Promise<PDFDocument> {
-    return this.createHtmlEditedPdf(applyMetadata);
+    // Avoid rebuilding unedited documents through the HTML text pipeline.
+    // Besides preserving the source PDF more faithfully, this avoids creating
+    // a large font/resource graph for oversized pages that only need copying.
+    const hasHtmlEdits = this.htmlTextItems.some((item) => this.htmlTextChanged(item));
+    if (hasHtmlEdits && await this.editedPagesContainImages()) {
+      // Vector text replacement paints an opaque rectangle over the old text.
+      // That rectangle cannot restore a photo or scanned background, so flatten
+      // only the edited page(s) through the bounded canvas route instead.
+      return this.createVisualHtmlRebuildPdf(true);
+    }
+    return hasHtmlEdits
+      ? this.createHtmlEditedPdf(applyMetadata)
+      : this.createPdfDocument(applyMetadata);
+  }
+
+  private async editedPagesContainImages(): Promise<boolean> {
+    const editedPages = this.pages.filter((page) =>
+      this.htmlTextItems.some((item) => item.pageId === page.id && this.htmlTextChanged(item)),
+    );
+    if (!editedPages.length) return false;
+
+    const pdf = await this.getPdfDocument();
+    const imageOperations = [
+      (pdfjsLib as any).OPS?.paintImageXObject,
+      (pdfjsLib as any).OPS?.paintImageMaskXObject,
+      (pdfjsLib as any).OPS?.paintJpegXObject,
+    ].filter((operation): operation is number => typeof operation === 'number');
+
+    for (const pageItem of editedPages) {
+      const page = await pdf.getPage(pageItem.sourceIndex + 1);
+      const operators = await page.getOperatorList();
+      if (operators.fnArray.some((operation: number) => imageOperations.includes(operation))) return true;
+    }
+    return false;
   }
 
 private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
@@ -2921,11 +3003,17 @@ private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
       // Erase the source text at its original position, then draw the edited
       // fragment at its current canvas position. Using original coordinates
       // for both operations caused moved text to overlap in exported PDFs.
-      const originalX = item.originalX * scaleX;
-      const originalTop = item.originalY * scaleY;
-      const originalHeight = Math.max(item.originalHeight * scaleY, fontSize * 1.2);
+      const originalX = (Number.isFinite(item.originalX) ? item.originalX : item.x) * scaleX;
+      const originalTop = (Number.isFinite(item.originalY) ? item.originalY : item.y) * scaleY;
+      const originalHeight = Math.max(
+        (Number.isFinite(item.originalHeight) ? item.originalHeight : item.height) * scaleY,
+        fontSize * 1.2,
+      );
       const originalTextWidth = textFont.widthOfTextAtSize(item.originalText ?? item.text, fontSize);
-      const eraseWidth = Math.max((item.originalWidth ?? 0) * scaleX, originalTextWidth);
+      const eraseWidth = Math.max(
+        (Number.isFinite(item.originalWidth) ? item.originalWidth : item.width) * scaleX,
+        originalTextWidth,
+      );
       const buffer = 2;
       page.drawRectangle({
         x: originalX - buffer,
@@ -2936,9 +3024,9 @@ private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
         opacity: 1,
       });
 
-      const pdfX = item.x * scaleX;
-      const pdfBoxWidth = Math.max(1, item.width * scaleX);
-      const pdfTop = item.y * scaleY;
+      const pdfX = (Number.isFinite(item.x) ? item.x : 0) * scaleX;
+      const pdfBoxWidth = Math.max(1, (Number.isFinite(item.width) ? item.width : 1) * scaleX);
+      const pdfTop = (Number.isFinite(item.y) ? item.y : 0) * scaleY;
 
       // --- DRAW EDITED TEXT ---
       const lines = item.text.split(/\r?\n/);
@@ -2982,18 +3070,16 @@ private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
     }
   }
 }
-   htmlTextChanged(item: HtmlTextItem): boolean {
+  htmlTextChanged(item: HtmlTextItem): boolean {
     return item.text !== item.originalText
       || item.x !== item.originalX
       || item.y !== item.originalY
       || item.width !== item.originalWidth
       || item.height !== item.originalHeight
-      || (item.textDecoration !== 'underline' && (
-        Math.abs(item.size - item.originalSize) > 0.2
-        || (item.color ?? '#111111').toLowerCase() !== (item.originalColor ?? '#111111').toLowerCase()
-        || (item.fontWeight ?? '400') !== (item.originalFontWeight ?? '400')
-        || (item.fontStyle ?? 'normal') !== (item.originalFontStyle ?? 'normal')
-      ));
+      || Math.abs(item.size - item.originalSize) > 0.2
+      || (item.color ?? '#111111').toLowerCase() !== (item.originalColor ?? '#111111').toLowerCase()
+      || (item.fontWeight ?? '400') !== (item.originalFontWeight ?? '400')
+      || (item.fontStyle ?? 'normal') !== (item.originalFontStyle ?? 'normal');
   }
 
   private effectiveHtmlFontSize(item: HtmlTextItem, scaleX: number, scaleY: number): number {
@@ -3272,6 +3358,14 @@ private async exportDocx(): Promise<void> {
   }
 
   private async downloadPdf(applyMetadata: boolean, name: string, forceMetadata = false): Promise<void> {
+    // A regular export of an unchanged document should not be decoded and
+    // rewritten. Re-serializing large-format pages can exhaust browser memory,
+    // while the original byte stream is already a valid PDF to download.
+    if (!forceMetadata && !this.pdfPassword.trim() && this.canDownloadOriginalPdf()) {
+      this.downloadBlob(this.currentBytes, name, 'application/pdf');
+      this.status = `${name} exported.`;
+      return;
+    }
     const pdf = await this.createExportPdf(applyMetadata || forceMetadata);
     const bytes = await pdf.save({ useObjectStreams: true, addDefaultPage: false });
     const protectedBytes = await this.protectPdfBytes(new Uint8Array(bytes));
@@ -3279,6 +3373,14 @@ private async exportDocx(): Promise<void> {
     this.status = this.pdfPassword.trim()
       ? `${name} exported with password protection.`
       : `${name} exported.`;
+  }
+
+  private canDownloadOriginalPdf(): boolean {
+    return this.currentBytes.length > 0
+      && this.pages.length === this.sourcePageCount
+      && this.overlays.length === 0
+      && !this.htmlTextItems.some((item) => this.htmlTextChanged(item))
+      && this.pages.every((page, index) => !page.blank && page.sourceIndex === index && page.rotation === 0);
   }
 
   private async downloadEncryptedPdf(): Promise<void> {
@@ -4037,17 +4139,19 @@ private async structuredTextPages(): Promise<
       : 'HTML rebuilt PDF exported with reconstructed page structure preserved visually.';
   }
 
-  private async createVisualHtmlRebuildPdf(): Promise<PDFDocument> {
+  private async createVisualHtmlRebuildPdf(flattenAllPages = false): Promise<PDFDocument> {
     const output = await PDFDocument.create();
     for (const page of this.pages) {
       const htmlItems = this.htmlTextItems.filter((item) => item.pageId === page.id);
-      const hasRebuild = !!this.htmlPageBackgrounds[page.id] || htmlItems.length > 0;
+      const hasRebuild = flattenAllPages || this.pageHasEdits(page);
       if (hasRebuild) {
         const canvas = await this.renderHtmlPageCanvas(page, htmlItems.filter((item) => this.htmlTextChanged(item)), this.effectiveHtmlBackgroundScale());
-        const imageBytes = await fetch(canvas.toDataURL('image/png')).then((response) => response.arrayBuffer());
-        const image = await output.embedPng(imageBytes);
+        const imageBlob = await this.canvasToBlob(canvas, 'image/jpeg', this.effectiveJpegQuality());
+        const image = await output.embedJpg(await imageBlob.arrayBuffer());
         const target = output.addPage([page.width, page.height]);
         target.drawImage(image, { x: 0, y: 0, width: page.width, height: page.height });
+        canvas.width = 0;
+        canvas.height = 0;
       } else {
         const source = await this.loadSourcePdfDocument();
         const [copied] = await output.copyPages(source, [page.sourceIndex]);
@@ -4060,16 +4164,17 @@ private async structuredTextPages(): Promise<
   }
 
   private async renderHtmlPageCanvas(pageItem: PageItem, htmlItems: HtmlTextItem[], scale: number): Promise<HTMLCanvasElement> {
-    const canvas = await this.renderPageCanvas(pageItem, scale);
+    const safeScale = this.safePdfRenderScale(pageItem.width, pageItem.height, scale);
+    const canvas = await this.renderPageCanvas(pageItem, safeScale);
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Canvas unavailable.');
 
     for (const item of htmlItems) {
-      this.maskOriginalHtmlTextOnCanvas(context, item, scale);
-      this.paintHtmlTextToCanvas(context, item, scale);
+      this.maskOriginalHtmlTextOnCanvas(context, item, safeScale);
+      this.paintHtmlTextToCanvas(context, item, safeScale);
     }
     for (const overlay of this.overlays.filter((item) => item.pageId === pageItem.id)) {
-      await this.paintOverlayToCanvas(context, overlay, scale);
+      await this.paintOverlayToCanvas(context, overlay, safeScale);
     }
     return canvas;
   }
@@ -4188,6 +4293,12 @@ private async renderPageCanvas(
   scale:number
 ):Promise<HTMLCanvasElement>{
 
+  const safeScale = this.safePdfRenderScale(
+    pageItem.width,
+    pageItem.height,
+    scale
+  );
+
 
   if(pageItem.blank){
 
@@ -4210,7 +4321,7 @@ private async renderPageCanvas(
       canvas,
       context,
       pageItem,
-      scale,
+      safeScale,
       false
     );
 
@@ -4229,15 +4340,6 @@ private async renderPageCanvas(
   const sourcePage =
     await pdf.getPage(
       pageItem.sourceIndex + 1
-    );
-
-
-
-  const safeScale =
-    this.safePdfRenderScale(
-      pageItem.width,
-      pageItem.height,
-      scale
     );
 
 
@@ -4300,12 +4402,13 @@ private async renderPageCanvas(
 }
 
   private async renderCompositePageCanvas(pageItem: PageItem, scale: number): Promise<HTMLCanvasElement> {
-    const canvas = await this.renderPageCanvas(pageItem, scale);
+    const safeScale = this.safePdfRenderScale(pageItem.width, pageItem.height, scale);
+    const canvas = await this.renderPageCanvas(pageItem, safeScale);
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Canvas unavailable.');
 
     for (const overlay of this.overlays.filter((item) => item.pageId === pageItem.id)) {
-      await this.paintOverlayToCanvas(context, overlay, scale);
+      await this.paintOverlayToCanvas(context, overlay, safeScale);
     }
     return canvas;
   }
