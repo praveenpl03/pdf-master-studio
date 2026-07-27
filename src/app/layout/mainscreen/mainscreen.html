@@ -2,8 +2,8 @@
   <aside class="left-panel">
     <div class="brand-row">
       <div>
-        <p class="eyebrow">TheConvertor</p>
-        <h1>PDF Operations Studio</h1>
+        <p class="eyebrow">PDF Master Studio</p>
+        <h1>Smart way to edit PDFs</h1>
       </div>
     </div>
 
@@ -519,4 +519,26 @@
       </section>
     </div>
   }
+
+
+
 </main>
+  <footer class="site-footer">
+  <div class="footer-container">
+    <div class="footer-left">
+      <p class="footer-brand"><strong>PDF Master Studio</strong></p>
+      <p class="footer-text">An open-source PDF editor built for everyone.</p>
+    </div>
+    
+    <div class="footer-links">
+      <button (click)="openAbout()">About</button>
+  <button class="nav-link-btn" (click)="openPrivacy()">Privacy Policy</button>
+<app-privacy-modal #privacyModal></app-privacy-modal>
+      <a href="https://github.com/praveenpl03/pdf-master-studio" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+  <app-about-modal #aboutModal></app-about-modal>
+  <div class="footer-bottom">
+    <p>&copy; 2026 PDF Master Studio. Open-source software licensed under the MIT License.</p>
+  </div>
+</footer>

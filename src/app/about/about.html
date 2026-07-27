@@ -1,0 +1,51 @@
+<div class="modal-backdrop" *ngIf="isOpen" (click)="close()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    
+    <!-- Header -->
+    <div class="modal-header">
+      <h2>About PDF Master Studio</h2>
+      <button class="close-btn" (click)="close()">&times;</button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+      <div class="app-info">
+        <h3>PDF Master Studio v{{ version }}</h3>
+        <p>A high-performance, open-source cross-platform PDF editor built with Angular and Electron.</p>
+      </div>
+
+      <div class="section">
+        <h4>🔒 User Privacy & Data Security</h4>
+        <p>
+          Your privacy is our top priority. PDF Master Studio operates entirely <strong>locally on your device</strong>. 
+          Your documents are never uploaded to any external servers, cloud storage, or third-party services. 
+          We do not track, collect, or store any of your personal data or file contents.
+        </p>
+      </div>
+
+      <div class="section">
+        <h4>📖 Open Source & License</h4>
+        <p>
+          This project is completely open-source and licensed under the 
+          <a href="https://github.com/praveenpl03/pdf-master-studio/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>. 
+          Feel free to inspect, contribute, or build upon the source code.
+        </p>
+      </div>
+
+      <div class="section">
+        <h4>📥 Releases & Updates</h4>
+        <p>
+          Download the latest updates for Windows, macOS, and Linux directly from our 
+          <a href="https://github.com/praveenpl03/pdf-master-studio/releases" target="_blank" rel="noopener">GitHub Releases Page</a>.
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <p>&copy; 2026 PDF Master Studio. All rights reserved.</p>
+      <button class="btn-primary" (click)="close()">Close</button>
+    </div>
+
+  </div>
+</div>

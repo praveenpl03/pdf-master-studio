@@ -40,14 +40,27 @@ import type {
   LinkRect
 } from '../services/pdf_interface';
 import { MuPdfService } from '../services/mupdf/pdf-extract.service';
+import { AboutModalComponent } from '../../about/about';
+import { PrivacyModalComponent } from '../../privacy/privacy';
 
 @Component({
   selector: 'app-pdf-editor',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AboutModalComponent, PrivacyModalComponent],
   templateUrl: './mainscreen.html',
   styleUrls: ['./mainscreen.css'],
 })
 export class Mainscreen implements AfterViewInit {
+
+  @ViewChild('aboutModal') aboutModal!: AboutModalComponent;
+@ViewChild('privacyModal') privacyModal!: PrivacyModalComponent;
+
+openPrivacy() {
+  this.privacyModal.open();
+}
+  openAbout() {
+   
+    this.aboutModal.open();
+  }
   private readonly fontFamilyAliases = {
     helvetica: ['helvetica', 'arial', 'sans-serif', 'sans serif'],
     times: ['times', 'times new roman', 'georgia', 'serif'],

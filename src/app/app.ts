@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { Mainscreen } from "./layout/mainscreen/mainscreen";
 
+
 @Component({
   selector: 'app-root',
   imports: [Mainscreen],

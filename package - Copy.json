@@ -1,18 +1,15 @@
 {
   "name": "theconvertor",
   "version": "0.0.0",
-  "main": "electron/main.js",
-  "private": true,
-  "packageManager": "npm@11.11.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
-    "desktop": "npm run build && electron .",
-    "desktop:package": "npm run build && electron-builder --win nsis"
+    "test": "ng test"
   },
+  "private": true,
+  "packageManager": "npm@11.11.0",
   "dependencies": {
     "@angular/common": "^21.2.0",
     "@angular/compiler": "^21.2.0",
@@ -24,7 +21,6 @@
     "@hyzyla/pdfium": "^2.1.13",
     "@pdf-lib/fontkit": "^1.1.1",
     "docx": "^9.7.1",
-    "express": "^5.2.1",
     "fabric": "^7.4.0",
     "pdf-lib": "^1.17.1",
     "pdfium-wasm": "^0.0.2",
@@ -40,31 +36,12 @@
     "@angular/compiler-cli": "^21.2.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/tesseract.js": "^0.0.2",
-    "electron": "^43.2.0",
-    "electron-builder": "^26.15.3",
     "jsdom": "^28.0.0",
     "patch-package": "^8.0.1",
-    "png-to-ico": "^3.0.2",
     "postcss": "^8.5.3",
     "prettier": "^3.8.1",
     "tailwindcss": "^4.1.12",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
-  },
-  "build": {
-    "appId": "com.theconvertor.app",
-    "productName": "The Convertor",
-    "directories": {
-      "output": "C:\\temp\\theconvertor-release"
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "package.json"
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "public/favicon/win.ico"
-    }
   }
 }
