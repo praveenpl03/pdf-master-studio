@@ -1,6 +1,10 @@
 {
-  "name": "theconvertor",
-  "version": "0.0.0",
+  "name": "PDF-Master-Studio",
+  "version": "1.0.0",
+  "description": "A desktop PDF management studio built with Angular and Electron",
+  "author": "Praveen <praveenpl03>",
+  "license": "MIT",
+  "desktopName": "com.pdfmasterstudio.app",
   "main": "electron/main.js",
   "private": true,
   "packageManager": "npm@11.11.0",
@@ -11,8 +15,13 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "desktop": "npm run build && electron .",
-    "desktop:package": "npm run build && electron-builder --win nsis"
+    "desktop:package": "npm run build && electron-builder --win --x64",
+    "desktop:package32": "npm run build && electron-builder --win --ia32",
+    "desktop:mac": "npm run build && electron-builder --mac",
+    "desktop:linux": "npm run build && electron-builder --linux",
+    "desktop:all": "npm run build && electron-builder -mwl"
   },
+  "repository": "https://github.com/praveenpl03/pdf-master-studio",
   "dependencies": {
     "@angular/common": "^21.2.0",
     "@angular/compiler": "^21.2.0",
@@ -52,8 +61,8 @@
     "vitest": "^4.0.8"
   },
   "build": {
-    "appId": "com.theconvertor.app",
-    "productName": "The Convertor",
+    "appId": "com.pdfmasterstudio.app",
+    "productName": "PDF Master Studio",
     "directories": {
       "output": "C:\\temp\\theconvertor-release"
     },
@@ -65,6 +74,18 @@
     "win": {
       "target": "nsis",
       "icon": "public/favicon/win.ico"
+    },
+    "mac": {
+      "target": "default",
+      "category": "public.app-category.utilities",
+      "icon": "public/favicon/mac.icns"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "public/favicon/linux.png"
     }
   }
 }
