@@ -1,0 +1,42 @@
+name: Build Electron ARM64
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows-arm64:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20' # Match your local major Node.js version
+        cache: 'npm'
+
+    - name: Set Architecture Environment Variables
+      run: |
+        echo "npm_config_arch=arm64" >> $env:GITHUB_ENV
+        echo "npm_config_target_arch=arm64" >> $env:GITHUB_ENV
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Rebuild Native Modules for ARM64
+      run: npx electron-rebuild --arch arm64
+
+    - name: Build Electron Executable
+      run: npx electron-builder --win --arm64
+      # Note: If you use electron-packager, change this line to: 
+      # run: npx electron-packager . MyApp --platform=win32 --arch=arm64
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: electron-win32-arm64
+        path: dist/ # Change to 'out/' if using electron-packager
