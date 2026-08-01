@@ -16,7 +16,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20' # Match your local major Node.js version
+        node-version: '20' # Matches standard LTS Node versions
         cache: 'npm'
 
     - name: Set Architecture Environment Variables
@@ -31,12 +31,12 @@ jobs:
       run: npx electron-rebuild --arch arm64
 
     - name: Build Electron Executable
-      run: npx electron-builder --win --arm64
-      # Note: If you use electron-packager, change this line to: 
-      # run: npx electron-packager . MyApp --platform=win32 --arch=arm64
+      run: npx electron-builder --win --arm64 --publish never
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: electron-win32-arm64
-        path: dist/ # Change to 'out/' if using electron-packager
+        path: |
+          C:/temp/theconvertor-release/*.exe
+          C:/temp/theconvertor-release/*.blockmap
