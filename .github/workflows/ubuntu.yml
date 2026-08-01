@@ -1,0 +1,44 @@
+name: Build Electron Ubuntu (.deb)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-linux-deb:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Linux Build Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-multilib g++-multilib libcanvas-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
+    - name: Clean Install Dependencies
+      run: npm ci
+
+    # --- Step 1: Build 64-bit (x64 / amd64) ---
+    - name: Build Ubuntu 64-bit Package
+      run: npx electron-builder --linux deb --x64 --publish never
+
+    # --- Step 2: Build 32-bit (ia32 / i386) ---
+    - name: Build Ubuntu 32-bit Package
+      run: npx electron-builder --linux deb --ia32 --publish never
+
+    - name: Upload Debian Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: electron-ubuntu-packages
+        path: |
+          dist/*.deb
+          C:/temp/theconvertor-release/*.deb
