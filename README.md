@@ -1,59 +1,273 @@
-# Theconvertor
+# PDF Master Studio
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.14.
+A modern, AI-powered PDF editor built with Angular that enables users to edit PDF documents directly in the browser while preserving the original layout. PDF Master Studio combines advanced text recognition, font matching, image editing, page management, and document conversion into a single desktop and web application.
 
-## Development server
+---
 
-To start a local development server, run:
+## ✨ Features
+
+### 📄 PDF Editing
+- Edit text directly inside PDFs
+- Preserve original fonts, colors, alignment, and formatting
+- Rich text formatting (bold, italic, underline)
+- Background-aware text replacement
+- Smart text resizing
+- Drag and reposition text
+
+### 🖼 Image Editing
+- Replace images
+- Delete images
+- Resize and reposition images
+- Crop and rotate images
+
+### 📑 Page Management
+- Merge PDFs
+- Split PDF
+- Extract pages
+- Delete pages
+- Rotate pages
+- Reorder pages using drag & drop
+- Duplicate pages
+- Insert blank pages
+
+### 🔄 PDF Conversion
+- PDF → Word
+- PDF → HTML
+- PDF → Image
+- Image → PDF
+- Word → PDF
+- PowerPoint → PDF
+- Excel → PDF
+
+### 🤖 AI Assisted Editing
+- Intelligent layout reconstruction
+- Automatic font detection
+- Smart spacing correction
+- Table-aware editing
+- Background reconstruction
+- Text layer regeneration
+
+### 🎨 User Experience
+- Responsive interface
+- Dark mode
+- Mobile support
+- Thumbnail navigation
+- Zoom controls
+- Keyboard shortcuts
+- Undo / Redo
+
+---
+
+# Technology Stack
+
+- Angular 21
+- TypeScript
+- PDF.js
+- MuPDF
+- HTML5 Canvas
+- Bootstrap 5
+- Tailwind CSS
+- RxJS
+- Electron (Desktop)
+
+---
+
+# Installation
+
+Clone the repository
+
+```bash
+git clone https://github.com/yourusername/pdf-master-studio.git
+```
+
+Navigate to the project
+
+```bash
+cd pdf-master-studio
+```
+
+Install dependencies
+
+```bash
+npm install
+```
+
+---
+
+# Development Server
+
+Start the Angular development server
 
 ```bash
 ng serve
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Open
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
+```
+http://localhost:4200
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+The application automatically reloads when source files change.
 
-```bash
-ng generate --help
-```
+---
 
-## Building
+# Build
 
-To build the project run:
+Development build
 
 ```bash
 ng build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Production build
 
-## Running unit tests
+```bash
+ng build --configuration production
+```
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+The compiled application is generated inside
+
+```
+dist/
+```
+
+---
+
+# Running Tests
+
+Unit Tests
 
 ```bash
 ng test
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+End-to-End Tests
 
 ```bash
 ng e2e
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+---
 
-## Additional Resources
+# Project Structure
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+```
+src/
+│
+├── app/
+│   ├── components/
+│   ├── pages/
+│   ├── services/
+│   ├── models/
+│   ├── shared/
+│   └── layout/
+│
+├── assets/
+├── environments/
+└── styles/
+```
+
+---
+
+# Supported Operations
+
+- Edit PDF text
+- Replace fonts
+- Change colors
+- Add text
+- Remove text
+- Insert images
+- Delete images
+- Watermark PDFs
+- Compress PDFs
+- Merge documents
+- Split documents
+- Rotate pages
+- Export to PDF
+- Export to HTML
+
+---
+
+# Browser Support
+
+- Chrome
+- Edge
+- Firefox
+- Brave
+
+---
+
+# Desktop Support
+
+- Windows
+- Linux
+- macOS (Electron)
+
+---
+
+# Performance
+
+- Fast PDF rendering
+- Incremental page loading
+- Lazy thumbnail generation
+- Optimized memory usage
+- GPU accelerated canvas rendering
+
+---
+
+# Future Roadmap
+
+- OCR support
+- Digital signatures
+- AI document translation
+- AI document summarization
+- Collaborative editing
+- Cloud storage integration
+- Version history
+- Batch processing
+- Form designer
+- PDF annotation tools
+
+---
+
+# Contributing
+
+Contributions are welcome!
+
+1. Fork the repository
+2. Create a feature branch
+
+```bash
+git checkout -b feature/my-feature
+```
+
+3. Commit your changes
+
+```bash
+git commit -m "Add new feature"
+```
+
+4. Push your branch
+
+```bash
+git push origin feature/my-feature
+```
+
+5. Open a Pull Request
+
+---
+
+# License
+
+This project is licensed under the MIT License.
+
+---
+
+# Author
+
+**PDF Master Studio**
+
+Professional AI-powered PDF Editing Platform
+
+Built with ❤️ using Angular, TypeScript, PDF.js, MuPDF and Electron.
