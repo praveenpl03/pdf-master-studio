@@ -10,7 +10,7 @@ Platform	Download
 🪟 Windows (64-bit)	Download PDF Master Studio for Windows (.exe)
 🐧 Ubuntu / Debian (64-bit)	Download PDF Master Studio (.deb)
 
-Latest Releases: https://github.com/yourusername/pdf-master-studio/releases
+Latest Releases: https://github.com/praveenpl03/pdf-master-studio/releases
 
 System Requirements
 
