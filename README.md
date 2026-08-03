@@ -2,7 +2,43 @@
 
 A modern, AI-powered PDF editor built with Angular that enables users to edit PDF documents directly in the browser while preserving the original layout. PDF Master Studio combines advanced text recognition, font matching, image editing, page management, and document conversion into a single desktop and web application.
 
----
+📥 Download
+
+Get the latest release of PDF Master Studio for your operating system.
+
+Platform	Download
+🪟 Windows (64-bit)	Download PDF Master Studio for Windows (.exe)
+🐧 Ubuntu / Debian (64-bit)	Download PDF Master Studio (.deb)
+
+Latest Releases: https://github.com/yourusername/pdf-master-studio/releases
+
+System Requirements
+
+Windows
+
+Windows 10 or later (64-bit)
+4 GB RAM (8 GB recommended)
+500 MB free disk space
+
+Ubuntu / Debian
+
+Ubuntu 22.04+ / Debian 12+
+4 GB RAM (8 GB recommended)
+500 MB free disk space
+Installation
+Windows
+Download the Windows (.exe) installer.
+Run the installer.
+Follow the setup wizard.
+Launch PDF Master Studio from the Start Menu.
+Ubuntu / Debian
+
+Using the terminal:
+
+sudo dpkg -i PDFMasterStudio-linux-amd64.deb
+sudo apt --fix-broken install
+
+Or simply double-click the .deb package and install it using your software manager.
 
 ## ✨ Features
 
