@@ -77,14 +77,6 @@ Or simply double-click the .deb package and install it using your software manag
 - PowerPoint → PDF
 - Excel → PDF
 
-### 🤖 AI Assisted Editing
-- Intelligent layout reconstruction
-- Automatic font detection
-- Smart spacing correction
-- Table-aware editing
-- Background reconstruction
-- Text layer regeneration
-
 ### 🎨 User Experience
 - Responsive interface
 - Dark mode
