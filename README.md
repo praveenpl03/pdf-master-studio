@@ -298,6 +298,6 @@ This project is licensed under the MIT License.
 
 **PDF Master Studio**
 
-Professional AI-powered PDF Editing Platform
+Professional PDF Editing Platform
 
 Built with ❤️ using Angular, TypeScript, PDF.js, MuPDF and Electron.
