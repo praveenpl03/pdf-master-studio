@@ -1,6 +1,6 @@
 # PDF Master Studio
 
-A modern, AI-powered PDF editor built with Angular that enables users to edit PDF documents directly in the browser while preserving the original layout. PDF Master Studio combines advanced text recognition, font matching, image editing, page management, and document conversion into a single desktop and web application.
+A modern, PDF editor built with Angular that enables users to edit PDF documents directly in the browser while preserving the original layout. PDF Master Studio combines advanced text recognition, font matching, image editing, page management, and document conversion into a single desktop and web application.
 
 📥 Download
 
