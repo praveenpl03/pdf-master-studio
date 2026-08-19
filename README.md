@@ -19,14 +19,12 @@ System Requirements
 Windows
 
 Windows 10 or later (64-bit)
-4 GB RAM (8 GB recommended)
-500 MB free disk space
+
 
 Ubuntu / Debian
 
 Ubuntu 22.04+ / Debian 12+
-4 GB RAM (8 GB recommended)
-500 MB free disk space
+
 Installation
 Windows
 Download the Windows (.exe) installer.
