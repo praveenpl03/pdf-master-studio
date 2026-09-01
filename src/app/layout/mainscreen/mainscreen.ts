@@ -151,6 +151,9 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   private lastWheelPageTurn = 0;
   private readonly htmlBackgroundScale =   this.isMobileScreen() ? 1.0 : 2.4;;
   private activeRenderToken = 0;
+  // Increments whenever a different source file is selected. Render work from
+  // the previous document must never paint into the newly opened document.
+  private pdfDocumentEpoch = 0;
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
 private activeRenderTask?: { cancel: () => void }; 
 
@@ -2081,11 +2084,14 @@ item.originalHeight;
   }
 private pdfFonts: PdfFontDefinition[] = [];
 private async loadBytes(bytes: Uint8Array, name: string): Promise<void> {
+  const documentEpoch = ++this.pdfDocumentEpoch;
   this.busy = true;
   this.busyLabel = 'Loading PDF';
   this.status = 'Loading PDF...';
   this.refreshView();
   this.releaseCanvasMemory();
+  await this.resetCachedPdfDocument();
+  if (documentEpoch !== this.pdfDocumentEpoch) return;
   this.currentBytes = bytes;
   setTimeout(() => { this.fileName = name; });
   this.overlays = [];
@@ -2111,13 +2117,17 @@ private async loadBytes(bytes: Uint8Array, name: string): Promise<void> {
 
 this.pdfFonts = await this.pdfFontDictionary.extract(bytes);
 
+if (documentEpoch !== this.pdfDocumentEpoch) return;
+
 this.pdfFontDictionary.compileGlobalDocumentFontHeaderStyle(this.pdfFonts);
   const pdf = await this.openPdfJsDocument(bytes);
+if (documentEpoch !== this.pdfDocumentEpoch) return;
 //console.log('PDF loaded:', pdf);
   this.pages = [];
   this.sourcePageCount = pdf.numPages;
   for (let index = 1; index <= pdf.numPages; index += 1) {
     const page = await pdf.getPage(index);
+    if (documentEpoch !== this.pdfDocumentEpoch) return;
 
     const viewport = page.getViewport({ scale: 1 });
     this.pages.push({
@@ -2136,6 +2146,7 @@ this.pdfFontDictionary.compileGlobalDocumentFontHeaderStyle(this.pdfFonts);
 
   // Reconstruct engines now have a fully primed font registry map to process elements
   const rebuilt =  await this.reconstructAllHtmlPages();
+  if (documentEpoch !== this.pdfDocumentEpoch) return;
 
   this.status = `${name} loaded with ${this.pages.length} page(s). HTML rebuilt ${rebuilt} editable line(s).`;
   this.busy = false;
@@ -4107,18 +4118,48 @@ private async structuredTextPages(): Promise<
     const output = await PDFDocument.create();
     const scale = this.effectiveCompressionScale();
     const quality = this.effectiveCompressionQuality();
-    for (const page of this.pages) {
-      this.busyLabel = `Compressing page ${this.pages.indexOf(page) + 1}`;
+    // Compression used to rasterize every page. That made an untouched page
+    // look different because its original fonts, vectors, transparency and
+    // page boxes were replaced by a JPEG. Keep the original page object when
+    // it has no visual edits; only flatten pages that actually need it.
+    const needsSourcePages = this.pages.some((page) => !this.pageHasEdits(page) && !page.blank);
+    const source = needsSourcePages ? await this.loadSourcePdfDocument() : undefined;
+    let flattenedPages = 0;
+    let preservedPages = 0;
+
+    for (const [pageIndex, page] of this.pages.entries()) {
+      const pageNumber = pageIndex + 1;
+      if (!this.pageHasEdits(page) && !page.blank) {
+        this.busyLabel = `Preserving page ${pageNumber}`;
+        const [copied] = await output.copyPages(source!, [page.sourceIndex]);
+        copied.setRotation(degrees((copied.getRotation().angle + page.rotation + 360) % 360));
+        output.addPage(copied);
+        preservedPages += 1;
+        continue;
+      }
+
+      if (page.blank) {
+        this.busyLabel = `Adding blank page ${pageNumber}`;
+        const blank = output.addPage([page.width, page.height]);
+        blank.setRotation(degrees((page.rotation + 360) % 360));
+        continue;
+      }
+
+      this.busyLabel = `Compressing edited page ${pageNumber}`;
       const canvas = await this.renderEditedPageCanvas(page, scale);
       const blob = await this.canvasToBlob(canvas, 'image/jpeg', quality);
-      const bytes = await blob.arrayBuffer();
-      const image = await output.embedJpg(bytes);
+      const image = await output.embedJpg(await blob.arrayBuffer());
       const target = output.addPage([page.width, page.height]);
       target.drawImage(image, { x: 0, y: 0, width: page.width, height: page.height });
+      canvas.width = 0;
+      canvas.height = 0;
+      flattenedPages += 1;
     }
     this.writeMetadata(output);
     this.downloadBlob(await output.save({ useObjectStreams: true }), name, 'application/pdf');
-    this.status = `Compressed PDF exported at level ${this.compressionLevel}.`;
+    this.status = flattenedPages
+      ? `Compressed ${flattenedPages} edited page(s) at level ${this.compressionLevel}; preserved ${preservedPages} untouched page(s) with their original layout and fonts.`
+      : `No edited pages to flatten. Preserved ${preservedPages} page(s) with their original layout and fonts.`;
   }
 
   private effectiveImageExportScale(): number {
@@ -4301,6 +4342,26 @@ private async structuredTextPages(): Promise<
   // }
 
   private pdfDocumentCache:any = null;
+
+  private async resetCachedPdfDocument(): Promise<void> {
+    const cachedDocument = this.pdfDocumentCache;
+    this.pdfDocumentCache = null;
+    // A cached PDF.js document belongs to the previous file. Reusing it makes
+    // the next selection render stale pages (or fail when the page counts
+    // differ). Cancel current work before releasing its PDF.js resources.
+    this.activeRenderToken += 1;
+    this.activeRenderTask?.cancel();
+    this.activeRenderTask = undefined;
+    if (!cachedDocument) return;
+    try {
+      cachedDocument.cleanup?.();
+      await cachedDocument.destroy?.();
+    } catch (error) {
+      // PDF.js may reject destroy while a cancelled render is settling. The
+      // cache is already detached, so this cannot affect the next document.
+      console.debug('Previous PDF renderer released after cancellation.', error);
+    }
+  }
 
 
 private async getPdfDocument(){
