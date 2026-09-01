@@ -1,6 +1,6 @@
 {
   "name": "PDF-Master-Studio",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A desktop PDF management studio built with Angular and Electron",
   "author": "Praveen <praveenpl03>",
   "license": "MIT",
@@ -64,7 +64,7 @@
     "appId": "com.pdfmasterstudio.app",
     "productName": "PDF Master Studio",
     "directories": {
-      "output": "C:\\temp\\theconvertor-release"
+      "output": "D:\\temp\\"
     },
     "files": [
       "dist/**/*",

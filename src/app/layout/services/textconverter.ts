@@ -73,10 +73,7 @@ export class Textconverter {
 
 
 
-   const font =
-     this.cleanMuPdfFont(
-       run.fontName
-     );
+   const font = this.cleanMuPdfFont(run.family || run.fontName);
 
 
 
@@ -96,20 +93,11 @@ export class Textconverter {
      run.bbox.x,
 
 
-    y:
-     run.bbox.y+run.bbox.y*0.001,
+    y: run.bbox.y,
 
-width:
-  Math.max(
-    30,
-    run.bbox.w +10
-  ),
+width: Math.max(1, run.bbox.w),
 
-height:
-  Math.min(
-    run.size * 1.45,
-    run.bbox.h + 4)
-  * 0.75,
+height: Math.max(run.bbox.h, run.size),
 
 
 // keep original PDF area
@@ -205,15 +193,18 @@ private  cleanMuPdfFont(
    return 'Times New Roman';
 
 
- return font
+ const cleaned = font
   .replace(
     /^[A-Z]{6}\+/,
     ''
-  )
-  .replace(
-    '-Bold',
-    ''
   );
+ const normalized = cleaned.toLowerCase().replace(/[\s_-]/g, '');
+ if (/times|serif|georgia/.test(normalized)) return 'Times New Roman';
+ if (/helvetica|arial|sans/.test(normalized)) return 'Arial';
+ if (/courier|mono/.test(normalized)) return 'Courier New';
+ if (/calibri/.test(normalized)) return 'Calibri';
+ if (/cambria/.test(normalized)) return 'Cambria';
+ return cleaned.replace(/-(bold|italic|oblique)$/i, '') || 'Arial';
 
 }
 

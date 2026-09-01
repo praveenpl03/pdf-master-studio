@@ -8,15 +8,15 @@
     </div>
 
     <div class="file-actions">
-      <label class="file-drop">
+      <!-- <label class="file-drop">
         <input type="file" accept="application/pdf" (change)="loadMainFile($event)" />
         <span>Open PDF</span>
         <small>{{ fileName }}</small>
-      </label>
+      </label> -->
 
       <label class="file-drop compact">
         <input type="file" accept="application/pdf" multiple (change)="addMergeFiles($event)" />
-        <span>Add merge PDFs</span>
+        <span>Select One or More PDFs</span>
         <small>{{ extraFiles.length }} queued</small>
       </label>
     </div>
@@ -112,7 +112,7 @@
       <div class="status-bar" [class.loading]="busy">{{ status }}</div>
       <div class="side-quick-actions">
         <button type="button" title="Compress PDF" (click)="run('compressedPdf')" [disabled]="busy"><i class="fa-solid fa-compress"></i><span>Compress</span></button>
-        <button type="button" title="Generate PDF" (click)="run('downloadPdf')" [disabled]="busy"><i class="fa-solid fa-file-pdf"></i><span>Generate PDF</span></button>
+        <button type="button" title="Generate PDF" (click)="run('downloadPdf', true)" [disabled]="busy"><i class="fa-solid fa-file-pdf"></i><span>Generate PDF</span></button>
       </div>
     }
   </aside>
@@ -163,7 +163,7 @@
           <canvas #mainCanvas class="page-preview" [style.width.px]="activePage.width * zoom" [style.height.px]="activePage.height * zoom"></canvas>
           <div #nativeTextLayer class="native-text-layer textLayer" [style.width.px]="activePage.width" [style.height.px]="activePage.height"></div>
           @if (htmlEditMode) {
-            <div class="html-rebuild-layer" [style.width.px]="activePage.width" [style.height.px]="activePage.height" [style.transform]="'scale(' + zoom + ')'" [style.background-color]="activeHtmlBackground ? '#ffffff' : 'transparent'" [style.background-image]="activeHtmlBackground ? 'url(' + activeHtmlBackground + ')' : null">
+            <div class="html-rebuild-layer" [style.width.px]="activePage.width" [style.height.px]="activePage.height" [style.transform]="'scale(' + zoom + ')'">
     
 @for (textItem of activeHtmlTextItems; track textItem.id) {
   <div class="html-text-mask"
@@ -178,6 +178,8 @@
   <textarea class="html-text-run" [class.selected]="textItem.id === selectedHtmlTextId"
     inputmode="text" 
     autocapitalize="sentences" 
+    wrap="off"
+    rows="1"
     spellcheck="true"
     [(ngModel)]="textItem.text"
     [style.left.px]="textItem.x" 
@@ -368,7 +370,7 @@
 
       @if (!page.thumb) {
 
-      <canvas #thumbCanvas></canvas>
+      <canvas #thumbCanvas [attr.data-page-id]="page.id"></canvas>
 
       } @else {
 
@@ -478,7 +480,7 @@
       <button type="button" title="Undo" (click)="undo()" [disabled]="busy || !canUndo"><i class="fa-solid fa-rotate-left"></i><span>Undo</span></button>
       <button type="button" title="Redo" (click)="redo()" [disabled]="busy || !canRedo"><i class="fa-solid fa-rotate-right"></i><span>Redo</span></button>
       <button type="button" title="Compress PDF" (click)="run('compressedPdf')" [disabled]="busy"><i class="fa-solid fa-compress"></i><span>Compress</span></button>
-      <button type="button" title="Generate PDF" (click)="run('downloadPdf')" [disabled]="busy"><i class="fa-solid fa-file-pdf"></i><span>Generate PDF</span></button>
+      <button type="button" title="Generate PDF" (click)="run('downloadPdf', true)" [disabled]="busy"><i class="fa-solid fa-file-pdf"></i><span>Generate PDF</span></button>
     </div>
 
   </aside>

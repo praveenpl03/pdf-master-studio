@@ -154,6 +154,9 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   // Increments whenever a different source file is selected. Render work from
   // the previous document must never paint into the newly opened document.
   private pdfDocumentEpoch = 0;
+  private thumbnailRenderEpoch = 0;
+  private thumbnailRenderTimer: ReturnType<typeof setTimeout> | undefined;
+  private thumbnailRenderPending = false;
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
 private activeRenderTask?: { cancel: () => void }; 
 
@@ -909,6 +912,7 @@ setActive(page: PageItem): void {
     if (!item) return;
     this.recordHistory();
     item.fontWeight = Number(item.fontWeight) >= 600 || item.fontWeight === 'bold' ? '400' : '700';
+    this.fitHtmlTextBox(item);
   }
 
   toggleSelectedHtmlItalic(): void {
@@ -916,6 +920,7 @@ setActive(page: PageItem): void {
     if (!item) return;
     this.recordHistory();
     item.fontStyle = item.fontStyle === 'italic' ? 'normal' : 'italic';
+    this.fitHtmlTextBox(item);
   }
 
   resizeSelectedHtmlText(amount: number): void {
@@ -924,7 +929,7 @@ setActive(page: PageItem): void {
     this.recordHistory();
     const nextSize = Math.max(6, Math.min(144, Number(item.size || item.originalSize || 12) + amount));
     item.size = nextSize;
-    item.height = Math.max(item.height, Math.ceil(nextSize * 1.35));
+    this.fitHtmlTextBox(item);
     this.changeDetector.markForCheck();
   }
 
@@ -1241,7 +1246,8 @@ private readonly toolbarGap = 8;
   }
 
   htmlTextNeedsSourceMask(item: HtmlTextItem): boolean {
-    return this.htmlTextChanged(item)
+    return item.id === this.selectedHtmlTextId
+      || this.htmlTextChanged(item)
       || item.x !== item.originalX
       || item.y !== item.originalY
       || item.width !== item.originalWidth
@@ -1755,8 +1761,10 @@ markHtmlTextEdit(
 
 
 
-  item.height =
-item.originalHeight;
+  item.height = Math.max(
+    item.originalHeight,
+    Math.ceil(item.text.split(/\r?\n/).length * item.size * 1.1),
+  );
 
 
 }
@@ -2085,6 +2093,7 @@ item.originalHeight;
 private pdfFonts: PdfFontDefinition[] = [];
 private async loadBytes(bytes: Uint8Array, name: string): Promise<void> {
   const documentEpoch = ++this.pdfDocumentEpoch;
+  this.invalidateThumbnailRenders();
   this.busy = true;
   this.busyLabel = 'Loading PDF';
   this.status = 'Loading PDF...';
@@ -2613,10 +2622,13 @@ private async renderThumbs(
 ): Promise<void> {
 
   if (this.renderingThumbs) {
+    this.thumbnailRenderPending = true;
     return;
   }
 
+  const thumbnailEpoch = this.thumbnailRenderEpoch;
   this.renderingThumbs = true;
+  this.thumbnailRenderPending = false;
 
   try {
 
@@ -2626,15 +2638,21 @@ private async renderThumbs(
 
     // Wait for Angular to render the thumbnail canvases
     await new Promise(resolve => requestAnimationFrame(resolve));
+    if (thumbnailEpoch !== this.thumbnailRenderEpoch) return;
 
     const canvases = this.thumbCanvases.toArray();
 
-    if (!canvases.length) {
-      console.warn("No thumbnail canvases available.");
+    const canvasesByPageId = new Map(
+      canvases.map((item) => [item.nativeElement.dataset['pageId'] ?? '', item.nativeElement]),
+    );
+
+    if (!canvasesByPageId.size && this.pages.some((page) => !page.thumb)) {
+      this.thumbnailRenderPending = true;
       return;
     }
 
     const pdf = await this.openPdfJsDocument();
+    if (thumbnailEpoch !== this.thumbnailRenderEpoch) return;
 
     const quality = this.isMobileScreen() ? 0.5 : 0.7;
     const dpr = this.isMobileScreen()
@@ -2642,11 +2660,14 @@ private async renderThumbs(
       : Math.min(window.devicePixelRatio || 1, 2);
 
     for (let index = 0; index < this.pages.length; index++) {
+      if (thumbnailEpoch !== this.thumbnailRenderEpoch) return;
 
       const item = this.pages[index];
-      const canvas = canvases[index]?.nativeElement;
+      if (item.thumb) continue;
+      const canvas = canvasesByPageId.get(item.id);
 
       if (!canvas) {
+        this.thumbnailRenderPending = true;
         continue;
       }
 
@@ -2689,6 +2710,7 @@ private async renderThumbs(
           canvasContext: ctx,
           viewport
         });
+        this.thumbRenderTasks.set(index, renderTask);
 
         try {
           await this.runPdfOutsideAngular(() => renderTask.promise);
@@ -2699,7 +2721,11 @@ private async renderThumbs(
           }
 
           continue;
+        } finally {
+          this.thumbRenderTasks.delete(index);
         }
+
+        if (thumbnailEpoch !== this.thumbnailRenderEpoch) return;
 
         item.thumb = canvas.toDataURL("image/jpeg", quality);
 
@@ -2724,6 +2750,9 @@ private async renderThumbs(
   } finally {
 
     this.renderingThumbs = false;
+    if (thumbnailEpoch === this.thumbnailRenderEpoch && this.thumbnailRenderPending) {
+      this.queueThumbRender();
+    }
 
   }
 }
@@ -2838,12 +2867,26 @@ private async renderThumbs(
   }
 
 private queueThumbRender(): void {
-  setTimeout(() => {
+  this.thumbnailRenderPending = true;
+  if (this.thumbnailRenderTimer) clearTimeout(this.thumbnailRenderTimer);
+  this.thumbnailRenderTimer = setTimeout(() => {
+    this.thumbnailRenderTimer = undefined;
     this.renderThumbs(
       this.isMobileScreen() ? 0.12 : 0.24
     );
   }, this.isMobileScreen() ? 520 : 140);
 }
+
+  private invalidateThumbnailRenders(): void {
+    this.thumbnailRenderEpoch += 1;
+    this.thumbnailRenderPending = false;
+    if (this.thumbnailRenderTimer) {
+      clearTimeout(this.thumbnailRenderTimer);
+      this.thumbnailRenderTimer = undefined;
+    }
+    for (const task of this.thumbRenderTasks.values()) task.cancel?.();
+    this.thumbRenderTasks.clear();
+  }
 
 
   private async openPdfJsDocument(bytes = this.currentBytes): Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }> {
@@ -2964,16 +3007,10 @@ await this.applyOverlays(output);
   }
 
   private async createExportPdf(applyMetadata = true): Promise<PDFDocument> {
-    // Avoid rebuilding unedited documents through the HTML text pipeline.
-    // Besides preserving the source PDF more faithfully, this avoids creating
-    // a large font/resource graph for oversized pages that only need copying.
+    // Standard export and merge always retain source PDF page content. Image
+    // flattening is intentionally reserved for the dedicated compression and
+    // visual-rebuild tools, never an automatic fallback during PDF assembly.
     const hasHtmlEdits = this.htmlTextItems.some((item) => this.htmlTextChanged(item));
-    if (hasHtmlEdits && await this.editedPagesContainImages()) {
-      // Vector text replacement paints an opaque rectangle over the old text.
-      // That rectangle cannot restore a photo or scanned background, so flatten
-      // only the edited page(s) through the bounded canvas route instead.
-      return this.createVisualHtmlRebuildPdf(true);
-    }
     return hasHtmlEdits
       ? this.createHtmlEditedPdf(applyMetadata)
       : this.createPdfDocument(applyMetadata);
@@ -3043,7 +3080,7 @@ private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
         (Number.isFinite(item.originalHeight) ? item.originalHeight : item.height) * scaleY,
         fontSize * 1.2,
       );
-      const originalTextWidth = textFont.widthOfTextAtSize(item.originalText ?? item.text, fontSize);
+      const originalTextWidth = textFont.widthOfTextAtSize(this.pdfSafeText(item.originalText ?? item.text), fontSize);
       const eraseWidth = Math.max(
         (Number.isFinite(item.originalWidth) ? item.originalWidth : item.width) * scaleX,
         originalTextWidth,
@@ -3067,7 +3104,7 @@ private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
       const lineHeight = fontSize * 1.2;
 
       lines.forEach((line, lineIndex) => {
-        const clean = line || ' ';
+        const clean = this.pdfSafeText(line || ' ');
         // Canvas text uses a top-left origin; pdf-lib uses a baseline from the
         // bottom-left. This mirrors the HTML editor's baseline placement.
         const y = height - pdfTop - (fontSize * 0.82) - (lineIndex * lineHeight);
@@ -3191,10 +3228,33 @@ private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
           const isBold = overlay.kind === 'signature' || Number(overlay.fontWeight) >= 600 || overlay.fontWeight === 'bold';
           const isItalic = overlay.fontStyle === 'italic';
           const textFont = isBold && isItalic ? boldItalic : isBold ? bold : isItalic ? italic : font;
-          page.drawText(overlay.text, { x, y: y + 8, size: overlay.size, font: textFont, color: this.hexToRgb(overlay.color), opacity: overlay.opacity });
+          page.drawText(this.pdfSafeText(overlay.text), { x, y: y + 8, size: overlay.size, font: textFont, color: this.hexToRgb(overlay.color), opacity: overlay.opacity });
         }
       }
     }
+  }
+
+  private pdfSafeText(value: string): string {
+    // Standard PDF fonts use WinAnsi. PDF text extraction can surface
+    // Wingdings/private-use glyphs (notably U+F0B7 for a bullet), which
+    // pdf-lib cannot encode and would otherwise abort the whole export.
+    const winAnsiSymbols = new Set([
+      '€', '‚', 'ƒ', '„', '…', '†', '‡', 'ˆ', '‰', 'Š', '‹', 'Œ', 'Ž',
+      '‘', '’', '“', '”', '•', '–', '—', '˜', '™', 'š', '›', 'œ', 'ž', 'Ÿ',
+    ]);
+    return Array.from(value, (character) => {
+      if (character === '\uf0b7' || character === '◦' || character === '▪') return '•';
+      const codePoint = character.codePointAt(0) ?? 0;
+      if ((codePoint >= 0x20 && codePoint <= 0x7e)
+        || (codePoint >= 0xa0 && codePoint <= 0xff)
+        || winAnsiSymbols.has(character)) return character;
+
+      // Retain common accented text when it has a simple Latin equivalent;
+      // replace truly unsupported scripts/icons rather than failing export.
+      const asciiFallback = character.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+      if (asciiFallback.length === 1 && /^[\x20-\x7e]$/.test(asciiFallback)) return asciiFallback;
+      return '?';
+    }).join('');
   }
 
   private writeMetadata(pdf: PDFDocument): void {
@@ -3442,7 +3502,10 @@ private async exportDocx(): Promise<void> {
 
   private async mergePdfs(): Promise<void> {
     if (!this.extraFiles.length) throw new Error('Choose extra PDFs to merge first.');
-    const output = this.currentBytes.length ? await this.createExportPdf(true) : await PDFDocument.create();
+    // Merge has its own native-PDF assembly route. It must never enter a
+    // visual-rebuild path: every unchanged page remains an original page
+    // object, while only pages with real edits receive extra drawing commands.
+    const output = this.currentBytes.length ? await this.createMergePdf() : await PDFDocument.create();
     for (const file of this.extraFiles) {
       const incoming = await PDFDocument.load(file.bytes);
       const copied = await output.copyPages(incoming, incoming.getPageIndices());
@@ -3452,6 +3515,34 @@ private async exportDocx(): Promise<void> {
     await this.loadBytes(new Uint8Array(bytes), 'merged.pdf');
     this.extraFiles = [];
     this.status = 'Merged PDFs into the workspace.';
+  }
+
+  private async createMergePdf(): Promise<PDFDocument> {
+    const source = await this.loadSourcePdfDocument();
+    const output = await PDFDocument.create();
+    const hasHtmlEdits = this.htmlTextItems.some((item) => this.htmlTextChanged(item));
+
+    for (const page of this.pages) {
+      if (page.blank) {
+        const blank = output.addPage([page.width, page.height]);
+        blank.setRotation(degrees((page.rotation + 360) % 360));
+        continue;
+      }
+
+      // copyPages retains the source content streams, embedded fonts, vector
+      // graphics, images, crop boxes and annotations. Reordering is simply
+      // the order in which these original page objects are added.
+      const [copied] = await output.copyPages(source, [page.sourceIndex]);
+      copied.setRotation(degrees((copied.getRotation().angle + page.rotation + 360) % 360));
+      output.addPage(copied);
+    }
+
+    // Both helpers already filter by pageId. Calling them only when there is
+    // a real edit means untouched pages get no rebuilt text or overlay output.
+    if (hasHtmlEdits) await this.applyHtmlTextEdits(output);
+    if (this.overlays.length) await this.applyOverlays(output);
+    this.writeMetadata(output);
+    return output;
   }
 
   private async downloadSelectedAsOne(): Promise<void> {
@@ -4666,7 +4757,18 @@ private async renderPageCanvas(
     const style = item.fontStyle === 'italic' ? 'italic' : 'normal';
     const family = item.fontFamily || 'Times New Roman, Georgia, serif';
     context.font = `${style} ${weight} ${item.size}px ${family}`;
-    return Math.max(40, context.measureText(item.text || 'M').width + 6);
+    const longestLine = item.text.split(/\r?\n/)
+      .reduce((widest, line) => Math.max(widest, context.measureText(line || 'M').width), 0);
+    return Math.max(1, longestLine + 2);
+  }
+
+  private fitHtmlTextBox(item: HtmlTextItem): void {
+    const page = this.pages.find((candidate) => candidate.id === item.pageId);
+    item.width = Math.max(item.width, this.measureHtmlTextWidth(item));
+    item.height = Math.max(item.height, Math.ceil(item.text.split(/\r?\n/).length * item.size * 1.1));
+    if (page && item.width <= page.width) {
+      item.x = Math.max(0, Math.min(item.x, page.width - item.width));
+    }
   }
 
   private htmlFontWeight(fontWeight?: string): string {
@@ -4706,8 +4808,16 @@ private async renderPageCanvas(
     const link = document.createElement('a');
     link.href = url;
     link.download = name;
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    // Keep the object URL alive long enough for Chromium/Electron to begin
+    // reading it. Revoking in the same task can silently cancel a generated
+    // PDF download, especially after a longer asynchronous export.
+    setTimeout(() => {
+      link.remove();
+      URL.revokeObjectURL(url);
+    }, 1_000);
   }
 
   private asBlobPart(data: Uint8Array<ArrayBufferLike> | ArrayBuffer | string): BlobPart {

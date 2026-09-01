@@ -332,8 +332,7 @@ h2 {
 }
 
 .file-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -577,9 +576,10 @@ h2 {
   background: transparent;
   resize: none;
   vertical-align:top;
-  /* ─── CRITICAL VISUAL LAYOUT ADJUSTMENTS ─── */
-  line-height: 90%;            /* 1. INCREASED: Provides vital breathing room for multi-line font scales */
-  white-space: pre-wrap;
+  /* Match MuPDF's line box directly; percentage line-height shifts a text
+     baseline away from the source glyph bounds. */
+  line-height: 1;
+  white-space: pre;
 background-color: transparent;
   text-align: left;
   font-kerning: normal;
