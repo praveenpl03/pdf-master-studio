@@ -13,6 +13,9 @@ Platform	Download
 Latest Releases: https://github.com/praveenpl03/pdf-master-studio/releases
 
 Ubuntu Store : https://snapcraft.io/pdf-master-studio
+<a href="https://snapcraft.io/pdf-master-studio">
+   <img alt="Get it from the Snap Store" src=https://snapcraft.io/en/dark/install.svg />
+</a>
 
 Use Online : https://theconvertor--converter-97c1d.asia-southeast1.hosted.app/
 
