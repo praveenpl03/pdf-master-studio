@@ -12,6 +12,8 @@ Platform	Download
 
 Latest Releases: https://github.com/praveenpl03/pdf-master-studio/releases
 
+Ubuntu Store : https://snapcraft.io/pdf-master-studio
+
 Use Online : https://theconvertor--converter-97c1d.asia-southeast1.hosted.app/
 
 System Requirements
