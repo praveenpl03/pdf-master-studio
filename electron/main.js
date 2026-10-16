@@ -1,40 +1,84 @@
-const { app, BrowserWindow,Menu } = require('electron');
-const express = require('express');
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  protocol,
+  net
+} = require('electron');
+
 const path = require('node:path');
+const fs = require('node:fs');
+const { pathToFileURL } = require('node:url');
 
-let localServer;
+const APP_SCHEME = 'app';
 
-function startProductionServer() {
-  const webApp = express();
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: APP_SCHEME,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true
+    }
+  }
+]);
 
-const distPath = path.join(
-  __dirname,
-  '..',
-  'dist',
-  'theconvertor',
-  'browser'
-);
-  webApp.use(express.static(distPath));
+let mainWindow;
 
-  // Makes Angular routes work after refreshing the app.
-  webApp.use((request, response) => {
-    response.sendFile(path.join(distPath, 'index.html'));
-  });
-Menu.setApplicationMenu(null);
-  return new Promise((resolve) => {
-    localServer = webApp.listen(0, '127.0.0.1', () => {
-      const { port } = localServer.address();
-      resolve(`http://127.0.0.1:${port}`);
-    });
+function getAngularPath() {
+  return path.join(
+    app.getAppPath(),
+    'dist',
+    'theconvertor',
+    'browser'
+  );
+}
+
+function registerAppProtocol() {
+  const angularPath = getAngularPath();
+
+  protocol.handle(APP_SCHEME, async (request) => {
+    const requestUrl = new URL(request.url);
+
+    let pathname = decodeURIComponent(requestUrl.pathname);
+
+    if (pathname === '/') {
+      pathname = '/index.html';
+    }
+
+    const requestedPath = path.resolve(
+      angularPath,
+      `.${pathname}`
+    );
+
+    // Prevent requests from escaping the Angular directory.
+    if (
+      requestedPath !== angularPath &&
+      !requestedPath.startsWith(angularPath + path.sep)
+    ) {
+      return new Response('Forbidden', { status: 403 });
+    }
+
+    let filePath = requestedPath;
+
+    // Support Angular client-side routes.
+    if (
+      !fs.existsSync(filePath) ||
+      !fs.statSync(filePath).isFile()
+    ) {
+      filePath = path.join(angularPath, 'index.html');
+    }
+
+    return net.fetch(pathToFileURL(filePath).toString());
   });
 }
 
-async function createWindow() {
-  const window = new BrowserWindow({
-    width: 1280,
-    height: 850,
-    minWidth: 900,
-    minHeight: 650,
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    show: false,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -42,19 +86,31 @@ async function createWindow() {
     }
   });
 
-  if (app.isPackaged) {
-    const productionUrl = await startProductionServer();
-    await window.loadURL(productionUrl);
-  } else {
-    await window.loadURL('http://localhost:4200');
-  }
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+
+  mainWindow.loadURL(`${APP_SCHEME}://app/`);
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
+
+  registerAppProtocol();
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
 
 app.on('window-all-closed', () => {
-  if (localServer) localServer.close();
-
   if (process.platform !== 'darwin') {
     app.quit();
   }

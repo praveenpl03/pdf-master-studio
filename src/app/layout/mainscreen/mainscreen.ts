@@ -241,7 +241,7 @@ private activeRenderTask?: { cancel: () => void };
 
   async ngAfterViewInit(): Promise<void> {
     this.configureMobileRendering();
-    (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc = 'pdf.worker.mjs';
+    (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc = '/assets/pdf.worker.mjs';
     this.thumbCanvases.changes.subscribe(() => this.queueThumbRender());
   }
 
