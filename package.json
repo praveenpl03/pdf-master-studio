@@ -9,6 +9,7 @@
   "private": true,
   "packageManager": "npm@11.11.0",
   "scripts": {
+   "build:snap": "ng build --configuration production && electron-builder --linux snap",
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
@@ -49,10 +50,10 @@
     "@angular/compiler-cli": "^21.2.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/tesseract.js": "^0.0.2",
-    "electron": "^43.2.0",
+    "electron": "^43.7.9",
     "electron-builder": "^26.15.3",
     "jsdom": "^28.0.0",
-    "patch-package": "^8.0.1",
+    "patch-package": "^6.0.7",
     "png-to-ico": "^3.0.2",
     "postcss": "^8.5.3",
     "prettier": "^3.8.1",
@@ -64,13 +65,16 @@
     "appId": "com.pdfmasterstudio.app",
     "productName": "PDF Master Studio",
     "directories": {
-      "output": "D:\\temp\\"
+      "output": "/run/media/praveen/Zero/pdf/pdf-master-studio/bin"
     },
     "files": [
       "dist/**/*",
       "electron/**/*",
       "package.json"
     ],
+    "snapcraft": {
+      "base": "core24"
+    },
     "win": {
       "target": "nsis",
       "icon": "public/favicon/win.ico"
@@ -82,10 +86,21 @@
     },
     "linux": {
       "target": [
+        "snap",
         "AppImage",
         "deb"
       ],
-      "icon": "public/favicon/linux.png"
+      "icon": "public/favicon/linux.png",
+       "category": "Utility"
     }
+  },
+  "allowScripts": {
+    "@parcel/watcher@2.6.0": true,
+    "canvas@3.2.3": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.28.1": true,
+    "lmdb@3.5.1": true,
+    "msgpackr-extract@3.0.4": true,
+    "tesseract.js@7.0.0": true
   }
 }
