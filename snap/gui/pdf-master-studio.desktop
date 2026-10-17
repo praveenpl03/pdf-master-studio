@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=PDF Master Studio
+Comment=PDF editing and management
+Exec=pdf-master-studio
+Icon=${SNAP}/meta/gui/pdf-master-studio.png
+Terminal=false
+Type=Application
+Categories=Office;Utility;
+StartupNotify=true
