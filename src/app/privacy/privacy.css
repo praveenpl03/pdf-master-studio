@@ -123,3 +123,22 @@
 .btn-primary:hover {
   background-color: #0369a1;
 }
+
+.modal-backdrop { background: rgba(11, 20, 36, .58); backdrop-filter: blur(6px); }
+.modal-content { max-width: 560px; border: 1px solid #e0e7f0; border-radius: 18px; box-shadow: 0 30px 90px rgba(9, 20, 40, .28); }
+.modal-header { padding: 22px 24px; border-color: #e8edf4; background: #fff; }
+.modal-header h2 { color: #17243a; font-size: 19px; font-weight: 800; letter-spacing: -.025em; }
+.close-btn { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: #f3f6fa; color: #617087; font-size: 21px; }
+.close-btn:hover { background: #eaf1ff; color: #2864dc; }
+.modal-body { padding: 23px 24px; color: #52627a; }
+.app-info { padding: 16px; border: 1px solid #dce7f7; border-radius: 12px; background: linear-gradient(135deg, #f4f8ff, #edf4ff); }
+.app-info h3 { color: #1c3154; font-size: 16px; font-weight: 800; }
+.section { margin-top: 18px; }
+.section h4 { color: #263750; font-size: 13px; font-weight: 800; }
+.section p { line-height: 1.65; }
+.modal-body a { color: #2864dc; font-weight: 650; }
+.modal-body a:hover { color: #1e4fb4; }
+.modal-footer { padding: 15px 24px; border-color: #e8edf4; background: #fafbfd; }
+.modal-footer p { color: #718096; }
+.btn-primary { border-radius: 9px; background: #2864dc; font-weight: 700; transition: transform .15s ease, background .15s ease; }
+.btn-primary:hover { transform: translateY(-1px); background: #1e4fb4; }

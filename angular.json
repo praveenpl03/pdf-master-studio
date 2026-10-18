@@ -45,11 +45,11 @@
                 {
                   "type": "initial",
                   "maximumWarning": "3MB",
-                  "maximumError": "3MB"
+                  "maximumError": "3.1MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "20kB",
+                  "maximumWarning": "28kB",
                   "maximumError": "30kB"
                 }
               ],

@@ -1,0 +1,6 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  color: var(--app-ink, #152238);
+  background: var(--app-canvas, #eef2f7);
+}

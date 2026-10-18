@@ -1,6 +1,7 @@
 <main class="workspace" [style.grid-template-columns]="(!pages.length && !isMobileDevice) ? '350px minmax(420px,1fr)' : null">
   <aside class="left-panel">
     <div class="brand-row">
+      <span class="brand-mark" aria-hidden="true"><i class="fa-solid fa-file-pdf"></i></span>
       <div>
         <p class="eyebrow">PDF Master Studio</p>
         <h1>Smart way to edit PDFs</h1>
@@ -16,8 +17,8 @@
 
       <label class="file-drop compact">
         <input type="file" accept="application/pdf" multiple (change)="addMergeFiles($event)" />
-        <span>Select One or More PDFs</span>
-        <small>{{ extraFiles.length }} queued</small>
+        <span class="file-drop-icon" aria-hidden="true"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
+        <span class="file-drop-copy"><strong>Select PDFs</strong><small>{{ extraFiles.length }} files queued · click to add</small></span>
       </label>
     </div>
     <input id="imageUpload" class="hidden-upload" type="file" accept="image/png,image/jpeg" (change)="addImageOverlay($event)" />
@@ -137,12 +138,12 @@
           @if (shapeMenuOpen) {
             <div class="shape-popover top-shape-popover">
               <button type="button" class="popover-close" title="Close" (click)="shapeMenuOpen = false">x</button>
-              <button type="button" class="shape-choice rectangle" (click)="addShape('rectangle')"><span></span>Box</button>
-              <button type="button" class="shape-choice square" (click)="addShape('square')"><span></span>Square</button>
-              <button type="button" class="shape-choice highlight" (click)="addShape('highlight')"><span></span>Highlight</button>
-              <button type="button" class="shape-choice ellipse" (click)="addShape('ellipse')"><span></span>Circle</button>
-              <button type="button" class="shape-choice line" (click)="addShape('line')"><span></span>Line</button>
-              <button type="button" class="shape-choice whiteout" (click)="addWhiteout()"><span></span>White box</button>
+              <button type="button" class="shape-choice rectangle" (click)="addShape('rectangle')"><i class="fa-regular fa-square shape-symbol" aria-hidden="true"></i><span>Box</span></button>
+              <button type="button" class="shape-choice square" (click)="addShape('square')"><i class="fa-solid fa-square shape-symbol" aria-hidden="true"></i><span>Square</span></button>
+              <button type="button" class="shape-choice highlight" (click)="addShape('highlight')"><i class="fa-solid fa-highlighter shape-symbol" aria-hidden="true"></i><span>Highlight</span></button>
+              <button type="button" class="shape-choice ellipse" (click)="addShape('ellipse')"><i class="fa-regular fa-circle shape-symbol" aria-hidden="true"></i><span>Circle</span></button>
+              <button type="button" class="shape-choice line" (click)="addShape('line')"><i class="fa-solid fa-minus shape-symbol" aria-hidden="true"></i><span>Line</span></button>
+              <button type="button" class="shape-choice whiteout" (click)="addWhiteout()"><i class="fa-solid fa-square shape-symbol" aria-hidden="true"></i><span>White box</span></button>
             </div>
           }
         </div>
@@ -487,8 +488,9 @@
     <section class="services-menu" aria-label="PDF services">
       <div class="services-head">
         <div>
-          <p class="eyebrow">Services</p>
+          <p class="eyebrow">YOUR TOOLBOX</p>
           <h2>PDF Tools</h2>
+          <span class="services-hint">Choose a category to get started</span>
         </div>
       </div>
 
@@ -544,7 +546,10 @@
     <div class="option-backdrop" (click)="closeToolOptions()">
       <section class="option-modal" role="dialog" aria-modal="true" [attr.aria-label]="modal.title" (click)="$event.stopPropagation()">
         <div class="option-head">
-          <h2>{{ modal.title }}</h2>
+          <div class="option-title">
+            <span class="option-title-icon"><i class="fa-solid" [ngClass]="iconForAction(modal.action)" aria-hidden="true"></i></span>
+            <div><h2 class="option-title-text">{{ modal.title }}</h2><small>{{ modal.action === 'addText' ? 'Add text to the current page' : 'Set options before applying' }}</small></div>
+          </div>
           <button type="button" title="Close" (click)="closeToolOptions()">x</button>
         </div>
         <div class="option-grid">
