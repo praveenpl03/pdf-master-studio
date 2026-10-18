@@ -41,4 +41,3 @@ jobs:
         name: electron-ubuntu-packages
         path: |
           dist/*.deb
-          C:/temp/theconvertor-release/*.deb
