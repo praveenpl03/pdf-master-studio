@@ -24,7 +24,7 @@ export class Textconverter {
   constructor()
   {
 
-  (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc = 'pdf.worker.mjs';
+  (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc = '/assets/pdf.worker.mjs';
   }
 
 

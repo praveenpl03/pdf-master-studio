@@ -897,6 +897,14 @@ setActive(page: PageItem): void {
     item.fontStyle = item.fontStyle === 'italic' ? 'normal' : 'italic';
   }
 
+  setSelectedOverlayAlignment(alignment: 'left' | 'center' | 'right'): void {
+    const item = this.selectedOverlay;
+    if (!item || item.locked || item.textAlign === alignment) return;
+    this.recordHistory();
+    item.textAlign = alignment;
+    this.changeDetector.markForCheck();
+  }
+
   resizeSelectedText(amount: number): void {
     const item = this.selectedOverlay;
     if (!item || item.locked) return;
@@ -921,6 +929,14 @@ setActive(page: PageItem): void {
     this.recordHistory();
     item.fontStyle = item.fontStyle === 'italic' ? 'normal' : 'italic';
     this.fitHtmlTextBox(item);
+  }
+
+  setSelectedHtmlAlignment(alignment: 'left' | 'center' | 'right'): void {
+    const item = this.selectedHtmlText;
+    if (!item || item.textAlign === alignment) return;
+    this.recordHistory();
+    item.textAlign = alignment;
+    this.changeDetector.markForCheck();
   }
 
   resizeSelectedHtmlText(amount: number): void {
@@ -4369,9 +4385,13 @@ private async structuredTextPages(): Promise<
     context.font = `${style} ${weight} ${fontSize}px ${family}`;
     context.fillStyle = item.color ?? '#111111';
     context.textBaseline = 'alphabetic';
-    context.textAlign = item.textAlign === 'center' ? 'center' : 'left';
+    context.textAlign = item.textAlign === 'center' ? 'center' : item.textAlign === 'right' ? 'right' : 'left';
     item.text.split(/\r?\n/).forEach((line, index) => {
-      const x = item.textAlign === 'center' ? (item.x + boxWidth / 2) * scale : item.x * scale;
+      const x = item.textAlign === 'center'
+        ? (item.x + boxWidth / 2) * scale
+        : item.textAlign === 'right'
+          ? (item.x + boxWidth) * scale
+          : item.x * scale;
       const y = item.y * scale + index * lineHeight + fontSize * 0.82;
       const hasBackground = !this.isTransparentColor(item.backgroundColor);
       if (hasBackground) {
@@ -4383,7 +4403,11 @@ private async structuredTextPages(): Promise<
       if (item.textDecoration === 'underline') {
         const underlineY = y + fontSize * 0.98;
         const textWidth = Math.min(context.measureText(line).width, item.width * scale);
-        const underlineStart = item.textAlign === 'center' ? x - textWidth / 2 : x;
+        const underlineStart = item.textAlign === 'center'
+          ? x - textWidth / 2
+          : item.textAlign === 'right'
+            ? x - textWidth
+            : x;
         context.beginPath();
         context.moveTo(underlineStart, underlineY);
         context.lineTo(underlineStart + textWidth, underlineY);

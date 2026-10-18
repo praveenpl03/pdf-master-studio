@@ -99,7 +99,7 @@ export interface HtmlTextItem extends InspectTextItem {
   originalColor?: string;
   originalFontWeight?: string;
   originalFontStyle?: string;
-  textAlign?: 'left' | 'center';
+  textAlign?: 'left' | 'center' | 'right';
   headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
   listMarker?: string;
   verticalShift?: 'super' | 'sub';

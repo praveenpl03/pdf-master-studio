@@ -248,6 +248,9 @@
 <div class="floating-toolbar"  [style.left.px]="htmlToolbarLeft(htmlEdit)" [style.top.px]="htmlToolbarTop(htmlEdit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
     <button type="button" [class.active]="isBoldActive" (click)="toggleSelectedHtmlBold()">B</button>
     <button type="button" [class.active]="isItalicActive" (click)="toggleSelectedHtmlItalic()"><i>I</i></button>
+    <button type="button" title="Align left" aria-label="Align left" [attr.aria-pressed]="(htmlEdit.textAlign || 'left') === 'left'" [class.active]="(htmlEdit.textAlign || 'left') === 'left'" (click)="setSelectedHtmlAlignment('left')"><i class="fa-solid fa-align-left" aria-hidden="true"></i></button>
+    <button type="button" title="Align center" aria-label="Align center" [attr.aria-pressed]="htmlEdit.textAlign === 'center'" [class.active]="htmlEdit.textAlign === 'center'" (click)="setSelectedHtmlAlignment('center')"><i class="fa-solid fa-align-center" aria-hidden="true"></i></button>
+    <button type="button" title="Align right" aria-label="Align right" [attr.aria-pressed]="htmlEdit.textAlign === 'right'" [class.active]="htmlEdit.textAlign === 'right'" (click)="setSelectedHtmlAlignment('right')"><i class="fa-solid fa-align-right" aria-hidden="true"></i></button>
     <button type="button" (click)="resizeSelectedHtmlText(-2)">A-</button>
     <button type="button" (click)="resizeSelectedHtmlText(2)">A+</button>
     
@@ -277,6 +280,9 @@
                 <button type="button" title="Rotate left" (click)="rotateSelectedOverlay(-15)"><i class="fa-solid fa-rotate-left"></i></button>
                 <button type="button" title="Rotate right" (click)="rotateSelectedOverlay(15)"><i class="fa-solid fa-rotate-right"></i></button>
                 @if (edit.kind === 'text' || edit.kind === 'signature') {
+                  <button type="button" title="Align left" aria-label="Align left" [attr.aria-pressed]="(edit.textAlign || 'left') === 'left'" [class.active]="(edit.textAlign || 'left') === 'left'" (click)="setSelectedOverlayAlignment('left')"><i class="fa-solid fa-align-left" aria-hidden="true"></i></button>
+                  <button type="button" title="Align center" aria-label="Align center" [attr.aria-pressed]="edit.textAlign === 'center'" [class.active]="edit.textAlign === 'center'" (click)="setSelectedOverlayAlignment('center')"><i class="fa-solid fa-align-center" aria-hidden="true"></i></button>
+                  <button type="button" title="Align right" aria-label="Align right" [attr.aria-pressed]="edit.textAlign === 'right'" [class.active]="edit.textAlign === 'right'" (click)="setSelectedOverlayAlignment('right')"><i class="fa-solid fa-align-right" aria-hidden="true"></i></button>
                   <button type="button" title="Decrease text size" (click)="resizeSelectedText(-2)">A-</button>
                   <button type="button" title="Increase text size" (click)="resizeSelectedText(2)">A+</button>
                 }
@@ -313,7 +319,7 @@
                   } @else if (item.kind === 'rectangle' || item.kind === 'highlight' || item.kind === 'ellipse' || item.kind === 'line') {
                     <span></span>
                   } @else {
-                    <input  inputmode="text" autocapitalize="sentences" spellcheck="true" [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" (click)="focusTextField($event)" (pointerdown)="selectOverlay(item, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" (touchend)="selectOverlay(item, $event); focusTextField($event)" />
+                    <input  inputmode="text" autocapitalize="sentences" spellcheck="true" [(ngModel)]="item.text" [style.font-size.px]="item.size" [style.font-family]="item.fontFamily" [style.font-weight]="item.fontWeight" [style.font-style]="item.fontStyle" [style.text-align]="item.textAlign || 'left'" (click)="focusTextField($event)" (pointerdown)="selectOverlay(item, $event); focusTextField($event)" (pointerup)="focusTextField($event)" (touchstart)="selectOverlay(item, $event); focusTextField($event)" (touchend)="selectOverlay(item, $event); focusTextField($event)" />
                   }
                   @if (item.id === selectedOverlayId && !item.locked) {
                     @if (item.kind === 'text' || item.kind === 'signature') {
@@ -329,6 +335,11 @@
               <div class="floating-toolbar" [style.left.px]="toolbarLeft(edit)" [style.top.px]="toolbarTop(edit)" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
                 <button type="button" (click)="toggleSelectedBold()">B</button>
                 <button type="button" (click)="toggleSelectedItalic()"><i>I</i></button>
+                @if (edit.kind === 'text' || edit.kind === 'signature') {
+                  <button type="button" title="Align left" aria-label="Align left" [attr.aria-pressed]="(edit.textAlign || 'left') === 'left'" [class.active]="(edit.textAlign || 'left') === 'left'" (click)="setSelectedOverlayAlignment('left')"><i class="fa-solid fa-align-left" aria-hidden="true"></i></button>
+                  <button type="button" title="Align center" aria-label="Align center" [attr.aria-pressed]="edit.textAlign === 'center'" [class.active]="edit.textAlign === 'center'" (click)="setSelectedOverlayAlignment('center')"><i class="fa-solid fa-align-center" aria-hidden="true"></i></button>
+                  <button type="button" title="Align right" aria-label="Align right" [attr.aria-pressed]="edit.textAlign === 'right'" [class.active]="edit.textAlign === 'right'" (click)="setSelectedOverlayAlignment('right')"><i class="fa-solid fa-align-right" aria-hidden="true"></i></button>
+                }
                 <button type="button" (click)="resizeSelectedText(-2)">A-</button>
                 <button type="button" (click)="resizeSelectedText(2)">A+</button>
                 <input type="color" [(ngModel)]="edit.color" />
@@ -347,7 +358,50 @@
           }
         </div>
       } @else {
-        <div class="empty-state">Open a PDF to start editing.</div>
+        <section class="empty-state" aria-labelledby="welcome-title">
+          <div class="welcome-hero">
+            <div class="welcome-copy">
+              <span class="welcome-kicker"><i class="fa-solid fa-sparkles"></i> YOUR PDF WORKSPACE</span>
+              <h2 id="welcome-title">Everything you need to work with PDFs</h2>
+              <p>Organize pages, make precise edits, convert files, and protect documents from one place.</p>
+              <label class="welcome-open-button">
+                <input type="file" accept="application/pdf" (change)="loadMainFile($event)" />
+                <i class="fa-solid fa-arrow-up-from-bracket"></i>
+                <span>Open a PDF</span>
+              </label>
+              <small class="welcome-note">Your document is processed in your browser.</small>
+            </div>
+            <div class="welcome-hero-art" aria-hidden="true">
+              <div class="welcome-paper"><i class="fa-solid fa-file-pdf"></i><span></span><span></span><span></span></div>
+              <div class="welcome-spark spark-one"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+              <div class="welcome-spark spark-two"><i class="fa-solid fa-check"></i></div>
+            </div>
+          </div>
+          <div class="welcome-section-head">
+            <div><span>EXPLORE THE TOOLKIT</span><h3>What you can do</h3></div>
+            <p>Choose a PDF to get started, then find each tool in the editor menus.</p>
+          </div>
+          <div class="welcome-card-grid">
+            @for (group of toolGroups; track group.key) {
+              <article class="welcome-card" [class.welcome-card-organize]="group.key === 'organize'" [class.welcome-card-convert]="group.key === 'convert'" [class.welcome-card-edit]="group.key === 'edit'" [class.welcome-card-more]="group.key === 'more'">
+                <div class="welcome-card-icon">
+                  @switch (group.key) {
+                    @case ('organize') { <i class="fa-solid fa-layer-group"></i> }
+                    @case ('convert') { <i class="fa-solid fa-arrows-rotate"></i> }
+                    @case ('edit') { <i class="fa-solid fa-pen-to-square"></i> }
+                    @default { <i class="fa-solid fa-shield-halved"></i> }
+                  }
+                </div>
+                <div class="welcome-card-title"><h4>{{ group.key === 'more' ? 'Optimize, protect & analyze' : group.title }}</h4><span>{{ toolsForCategory(group.key).length }} tools</span></div>
+                <ul>
+                  @for (tool of toolsForCategory(group.key); track tool.action + tool.name) {
+                    <li>{{ tool.name }}</li>
+                  }
+                </ul>
+              </article>
+            }
+          </div>
+        </section>
       }
     </div>
 

@@ -69,6 +69,7 @@ export interface OverlayItem {
   fontFamily?: string;
   fontWeight?: string;
   fontStyle?: string;
+  textAlign?: 'left' | 'center' | 'right';
   rotation?: number;
 }
 
