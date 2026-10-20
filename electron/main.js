@@ -76,15 +76,16 @@ function registerAppProtocol() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    show: false,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true
-    }
-  });
+  width: 1400,
+  height: 900,
+  frame: false,
+  autoHideMenuBar: true,
+  webPreferences: {
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: true
+  }
+});
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();

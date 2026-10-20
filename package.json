@@ -9,7 +9,7 @@
   "private": true,
   "packageManager": "npm@11.11.0",
   "scripts": {
-   "build:snap": "ng build --configuration production && electron-builder --linux snap",
+    "build:snap": "ng build --configuration production && electron-builder --linux snap",
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
@@ -20,7 +20,10 @@
     "desktop:package32": "npm run build && electron-builder --win --ia32",
     "desktop:mac": "npm run build && electron-builder --mac",
     "desktop:linux": "npm run build && electron-builder --linux",
-    "desktop:all": "npm run build && electron-builder -mwl"
+    "desktop:all": "npm run build && electron-builder -mwl",
+    "desktop:deb": "npm run build && electron-builder --linux deb",
+    "desktop:rpm": "npm run build && electron-builder --linux rpm",
+    "desktop:flatpak": "npm run build && electron-builder --linux flatpak"
   },
   "repository": "https://github.com/praveenpl03/pdf-master-studio",
   "dependencies": {
@@ -50,7 +53,7 @@
     "@angular/compiler-cli": "^21.2.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/tesseract.js": "^0.0.2",
-    "electron": "^43.7.9",
+    "electron": "^44.9.0",
     "electron-builder": "^26.15.3",
     "jsdom": "^28.0.0",
     "patch-package": "^6.0.7",
@@ -65,6 +68,7 @@
     "appId": "com.pdfmasterstudio.app",
     "productName": "PDF Master Studio",
     "directories": {
+      "buildResources": "build",
       "output": "/run/media/praveen/Zero/pdf/pdf-master-studio/bin"
     },
     "files": [
@@ -86,12 +90,19 @@
     },
     "linux": {
       "target": [
-        "snap",
-        "AppImage",
-        "deb"
+        "deb",
+        "rpm",
+        "flatpak"
       ],
-      "icon": "public/favicon/linux.png",
-       "category": "Utility"
+      "category": "Office",
+      "icon": "build/icons",
+      "executableName": "pdf-master-studio",
+      "synopsis": "PDF editing and management",
+      "description": "PDF Master Studio desktop PDF editor"
+    },
+    "flatpak": {
+      "runtime": "org.freedesktop.Platform",
+      "runtimeVersion": "24.08"
     }
   },
   "allowScripts": {

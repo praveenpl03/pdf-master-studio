@@ -1,0 +1,1466 @@
+npm notice run PDF-Master-Studio@2.0.0 npx
+npm notice run 'electron-builder' --linux flatpak --x64
+  • electron-builder  version=26.15.3 os=7.0.0-38-generic
+  • loaded configuration  file=package.json ("build" field)
+  • effective config  config=directories:
+  output: /run/media/praveen/Zero/pdf/pdf-master-studio/bin
+  buildResources: build
+appId: com.pdfmasterstudio.app
+productName: PDF Master Studio
+files:
+  - filter:
+      - dist/**/*
+      - electron/**/*
+      - package.json
+snapcraft:
+  base: core24
+win:
+  target: nsis
+  icon: public/favicon/win.ico
+mac:
+  target: default
+  category: public.app-category.utilities
+  icon: public/favicon/mac.icns
+linux:
+  target:
+    - deb
+    - rpm
+    - flatpak
+  category: Office
+  icon: build/icons
+  executableName: pdf-master-studio
+  synopsis: PDF editing and management
+  description: PDF Master Studio desktop PDF editor
+flatpak:
+  runtime: org.freedesktop.Platform
+  runtimeVersion: '24.08'
+
+  • spawning        command=npm prefix -w cwd=/run/media/praveen/Zero/pdf/pdf-master-studio
+  • exited          command=npm code=1 pid=79540
+  • no event listeners found  event=beforePack
+  • executing @electron/rebuild  electronVersion=44.9.0 arch=x64 buildFromSource=false workspaceRoot=/run/media/praveen/Zero/pdf/pdf-master-studio projectDir=./ appDir=./
+  • installing native dependencies  arch=x64
+  ⨯ 2026-10-18T15:22:48.156Z electron-rebuild rebuilding with args: [Arguments] {
+  '0': {
+    buildPath: '/run/media/praveen/Zero/pdf/pdf-master-studio',
+    electronVersion: '44.9.0',
+    arch: 'x64',
+    platform: 'linux',
+    buildFromSource: false,
+    projectRootPath: '/run/media/praveen/Zero/pdf/pdf-master-studio',
+    mode: 'sequential',
+    disablePreGypCopy: true
+  }
+}
+
+  ⨯ 2026-10-18T15:22:48.157Z electron-rebuild ignoreModules []
+
+  ⨯ 2026-10-18T15:22:48.157Z electron-rebuild rebuilding with args: /run/media/praveen/Zero/pdf/pdf-master-studio 44.9.0 linux x64 Set(0) {} false https://www.electronjs.org/headers [ 'prod', 'optional' ] false
+
+  ⨯ 2026-10-18T15:22:48.158Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/common
+
+  ⨯ 2026-10-18T15:22:48.158Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/compiler
+
+  ⨯ 2026-10-18T15:22:48.158Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/core
+
+  ⨯ 2026-10-18T15:22:48.158Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/forms
+
+  ⨯ 2026-10-18T15:22:48.158Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/platform-browser
+2026-10-18T15:22:48.158Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/router
+2026-10-18T15:22:48.158Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@fortawesome/fontawesome-free
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@hyzyla/pdfium
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@pdf-lib/fontkit
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/docx
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/express
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pdf-lib
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pdfium-wasm
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pdfjs-dist
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/qpdf-wasm
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/rxjs
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tesseract.js
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tslib
+2026-10-18T15:22:48.159Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@standard-schema/spec
+
+  ⨯ 2026-10-18T15:22:48.160Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pako
+
+  ⨯ 2026-10-18T15:22:48.160Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@types/node
+
+  ⨯ 2026-10-18T15:22:48.160Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/hash.js
+2026-10-18T15:22:48.160Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/jszip
+2026-10-18T15:22:48.160Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/nanoid
+2026-10-18T15:22:48.160Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/xml
+2026-10-18T15:22:48.160Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/xml-js
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/accepts
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/body-parser
+2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/content-disposition
+2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/express/node_modules/content-type
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/content-type
+2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/cookie
+2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/cookie-signature
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/debug
+2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/depd
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/encodeurl
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/escape-html
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/etag
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/finalhandler
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fresh
+2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/http-errors
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/merge-descriptors
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/mime-types
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/on-finished
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/once
+2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/parseurl
+2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/proxy-addr
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/qs
+
+  ⨯ 2026-10-18T15:22:48.161Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/range-parser
+
+  ⨯ 2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/router
+
+  ⨯ 2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/send
+2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/serve-static
+
+  ⨯ 2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/statuses
+2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/type-is
+
+  ⨯ 2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/vary
+
+  ⨯ 2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/canvas
+
+  ⨯ 2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/jsdom
+2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/jsdom
+
+  ⨯ 2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@pdf-lib/standard-fonts
+
+  ⨯ 2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@pdf-lib/upng
+
+  ⨯ 2026-10-18T15:22:48.162Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@napi-rs/canvas
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/bmp-js
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/idb-keyval
+2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/is-url
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/node-fetch
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/opencollective-postinstall
+2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/regenerator-runtime
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tesseract.js-core
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/wasm-feature-detect
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/zlibjs
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/inherits
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/minimalistic-assert
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/lie
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/readable-stream
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/setimmediate
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/undici-types
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/sax
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/negotiator
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/bytes
+
+  ⨯ 2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/iconv-lite
+2026-10-18T15:22:48.163Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/raw-body
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ms
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/setprototypeof
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/toidentifier
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/mime-db
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ee-first
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/wrappy
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/forwarded
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ipaddr.js
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/es-define-property
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/side-channel
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/is-promise
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/path-to-regexp
+
+  ⨯ 2026-10-18T15:22:48.164Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/media-typer
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/node-addon-api
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/prebuild-install
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/cssstyle
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/cssstyle
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/data-urls
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/data-urls
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/decimal.js
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/html-encoding-sniffer
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/html-encoding-sniffer
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/http-proxy-agent
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/https-proxy-agent
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/is-potential-custom-element-name
+2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/nwsapi
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/parse5
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/parse5
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/rrweb-cssom
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/saxes
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/symbol-tree
+2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/tough-cookie
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tough-cookie
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/w3c-xmlserializer
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/webidl-conversions
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/webidl-conversions
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/whatwg-encoding
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/whatwg-mimetype
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/whatwg-mimetype
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/whatwg-url
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/whatwg-url
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ws
+2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/xml-name-validator
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@acemir/cssom
+
+  ⨯ 2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@asamuzakjp/dom-selector
+2026-10-18T15:22:48.165Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@bramus/specificity
+
+  ⨯ 2026-10-18T15:22:48.166Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@exodus/bytes
+
+  ⨯ 2026-10-18T15:22:48.166Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/undici
+
+  ⨯ 2026-10-18T15:22:48.166Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@napi-rs/canvas-linux-x64-gnu
+
+  ⨯ 2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/immediate
+
+  ⨯ 2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/core-util-is
+
+  ⨯ 2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/isarray
+2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/process-nextick-args
+
+  ⨯ 2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/safe-buffer
+
+  ⨯ 2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/string_decoder
+
+  ⨯ 2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/util-deprecate
+
+  ⨯ 2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/safer-buffer
+
+  ⨯ 2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/unpipe
+
+  ⨯ 2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/es-errors
+
+  ⨯ 2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/object-inspect
+2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/side-channel-list
+
+  ⨯ 2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/side-channel-map
+2026-10-18T15:22:48.167Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/side-channel-weakmap
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/detect-libc
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/expand-template
+2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/github-from-package
+2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/minimist
+2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/mkdirp-classic
+2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/napi-build-utils
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/prebuild-install/node_modules/node-abi
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/node-abi
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pump
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/rc
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/simple-get
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tar-fs
+2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tunnel-agent
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@asamuzakjp/css-color
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@asamuzakjp/css-color
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@csstools/css-syntax-patches-for-csstree
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/css-tree
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/cssstyle/node_modules/lru-cache
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/lru-cache
+
+  ⨯ 2026-10-18T15:22:48.168Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/agent-base
+
+  ⨯ 2026-10-18T15:22:48.169Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/entities
+
+  ⨯ 2026-10-18T15:22:48.169Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/entities
+
+  ⨯ 2026-10-18T15:22:48.169Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/xmlchars
+
+  ⨯ 2026-10-18T15:22:48.169Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/tldts
+
+  ⨯ 2026-10-18T15:22:48.169Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tldts
+
+  ⨯ 2026-10-18T15:22:48.169Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/tr46
+
+  ⨯ 2026-10-18T15:22:48.169Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tr46
+
+  ⨯ 2026-10-18T15:22:48.169Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@asamuzakjp/nwsapi
+
+  ⨯ 2026-10-18T15:22:48.169Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/bidi-js
+
+  ⨯ 2026-10-18T15:22:48.170Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/call-bound
+
+  ⨯ 2026-10-18T15:22:48.170Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/get-intrinsic
+
+  ⨯ 2026-10-18T15:22:48.170Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/semver
+
+  ⨯ 2026-10-18T15:22:48.170Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/end-of-stream
+
+  ⨯ 2026-10-18T15:22:48.170Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/deep-extend
+
+  ⨯ 2026-10-18T15:22:48.170Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/rc/node_modules/ini
+2026-10-18T15:22:48.170Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ini
+
+  ⨯ 2026-10-18T15:22:48.170Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/strip-json-comments
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/decompress-response
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/simple-concat
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tar-fs/node_modules/chownr
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/chownr
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tar-stream
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@csstools/css-calc
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@csstools/css-calc
+2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@csstools/css-color-parser
+2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@csstools/css-color-parser
+2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@csstools/css-parser-algorithms
+2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@csstools/css-parser-algorithms
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@csstools/css-tokenizer
+2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@csstools/css-tokenizer
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@asamuzakjp/generational-cache
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/mdn-data
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/source-map-js
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/yallist
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/tldts-core
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tldts-core
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/punycode
+
+  ⨯ 2026-10-18T15:22:48.171Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/require-from-string
+
+  ⨯ 2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/call-bind-apply-helpers
+
+  ⨯ 2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/es-object-atoms
+
+  ⨯ 2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/function-bind
+2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/get-proto
+2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/gopd
+
+  ⨯ 2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/has-symbols
+2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/hasown
+
+  ⨯ 2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/math-intrinsics
+
+  ⨯ 2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/mimic-response
+
+  ⨯ 2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/bl
+
+  ⨯ 2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fs-constants
+
+  ⨯ 2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@csstools/color-helpers
+
+  ⨯ 2026-10-18T15:22:48.172Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@csstools/color-helpers
+
+  ⨯ 2026-10-18T15:22:48.173Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/dunder-proto
+
+  ⨯ 2026-10-18T15:22:48.173Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/buffer
+
+  ⨯ 2026-10-18T15:22:48.173Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/base64-js
+
+  ⨯ 2026-10-18T15:22:48.173Z electron-rebuild exploring /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ieee754
+
+  ⨯ 2026-10-18T15:22:48.173Z electron-rebuild identified prod deps: Set(206) {
+  '@angular/common',
+  '@angular/compiler',
+  '@angular/core',
+  '@angular/forms',
+  '@angular/platform-browser',
+  '@angular/router',
+  '@fortawesome/fontawesome-free',
+  '@hyzyla/pdfium',
+  '@pdf-lib/fontkit',
+  'docx',
+  'express',
+  'fabric',
+  'pdf-lib',
+  'pdfium-wasm',
+  'pdfjs-dist',
+  'qpdf-wasm',
+  'rxjs',
+  'tesseract.js',
+  'tslib',
+  '@standard-schema/spec',
+  'pako',
+  '@types/node',
+  'hash.js',
+  'jszip',
+  'nanoid',
+  'xml',
+  'xml-js',
+  'accepts',
+  'body-parser',
+  'content-disposition',
+  'content-type',
+  'cookie',
+  'cookie-signature',
+  'debug',
+  'depd',
+  'encodeurl',
+  'escape-html',
+  'etag',
+  'finalhandler',
+  'fresh',
+  'http-errors',
+  'merge-descriptors',
+  'mime-types',
+  'on-finished',
+  'once',
+  'parseurl',
+  'proxy-addr',
+  'qs',
+  'range-parser',
+  'router',
+  'send',
+  'serve-static',
+  'statuses',
+  'type-is',
+  'vary',
+  'canvas',
+  'jsdom',
+  '@pdf-lib/standard-fonts',
+  '@pdf-lib/upng',
+  '@napi-rs/canvas',
+  'bmp-js',
+  'idb-keyval',
+  'is-url',
+  'node-fetch',
+  'opencollective-postinstall',
+  'regenerator-runtime',
+  'tesseract.js-core',
+  'wasm-feature-detect',
+  'zlibjs',
+  'inherits',
+  'minimalistic-assert',
+  'lie',
+  'readable-stream',
+  'setimmediate',
+  'undici-types',
+  'sax',
+  'negotiator',
+  'bytes',
+  'iconv-lite',
+  'raw-body',
+  'ms',
+  'setprototypeof',
+  'toidentifier',
+  'mime-db',
+  'ee-first',
+  'wrappy',
+  'forwarded',
+  'ipaddr.js',
+  'es-define-property',
+  'side-channel',
+  'is-promise',
+  'path-to-regexp',
+  'media-typer',
+  'node-addon-api',
+  'prebuild-install',
+  'cssstyle',
+  'data-urls',
+  'decimal.js',
+  'html-encoding-sniffer',
+  'http-proxy-agent',
+  ... 106 more items
+}
+
+  ⨯ 2026-10-18T15:22:48.174Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules
+
+  ⨯ 2026-10-18T15:22:48.178Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@acemir
+
+  ⨯ 2026-10-18T15:22:48.178Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@algolia
+
+  ⨯ 2026-10-18T15:22:48.179Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@alloc
+
+  ⨯ 2026-10-18T15:22:48.179Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@ampproject
+
+  ⨯ 2026-10-18T15:22:48.179Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular
+
+  ⨯ 2026-10-18T15:22:48.180Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular-devkit
+
+  ⨯ 2026-10-18T15:22:48.180Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@asamuzakjp
+
+  ⨯ 2026-10-18T15:22:48.180Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@asamuzakjp/dom-selector/node_modules
+
+  ⨯ 2026-10-18T15:22:48.180Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@babel
+
+  ⨯ 2026-10-18T15:22:48.180Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@babel/core/node_modules
+
+  ⨯ 2026-10-18T15:22:48.181Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@babel/helper-compilation-targets/node_modules
+
+  ⨯ 2026-10-18T15:22:48.181Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@bramus
+
+  ⨯ 2026-10-18T15:22:48.181Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@csstools
+
+  ⨯ 2026-10-18T15:22:48.181Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@electron
+
+  ⨯ 2026-10-18T15:22:48.182Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@electron/asar/node_modules
+
+  ⨯ 2026-10-18T15:22:48.182Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@electron/fuses/node_modules
+
+  ⨯ 2026-10-18T15:22:48.182Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@electron/notarize/node_modules
+
+  ⨯ 2026-10-18T15:22:48.182Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@electron/osx-sign/node_modules
+
+  ⨯ 2026-10-18T15:22:48.182Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@electron/universal/node_modules
+
+  ⨯ 2026-10-18T15:22:48.183Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@electron/windows-sign/node_modules
+
+  ⨯ 2026-10-18T15:22:48.183Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@electron-internal
+
+  ⨯ 2026-10-18T15:22:48.183Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@esbuild
+
+  ⨯ 2026-10-18T15:22:48.183Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@exodus
+
+  ⨯ 2026-10-18T15:22:48.183Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@fortawesome
+
+  ⨯ 2026-10-18T15:22:48.183Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@gar
+
+  ⨯ 2026-10-18T15:22:48.183Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@harperfast
+
+  ⨯ 2026-10-18T15:22:48.183Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@hono
+
+  ⨯ 2026-10-18T15:22:48.184Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@hyzyla
+
+  ⨯ 2026-10-18T15:22:48.184Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@inquirer
+
+  ⨯ 2026-10-18T15:22:48.184Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@isaacs
+
+  ⨯ 2026-10-18T15:22:48.184Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@istanbuljs
+
+  ⨯ 2026-10-18T15:22:48.184Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@jridgewell
+
+  ⨯ 2026-10-18T15:22:48.184Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@listr2
+
+  ⨯ 2026-10-18T15:22:48.184Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@lmdb
+
+  ⨯ 2026-10-18T15:22:48.184Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@malept
+
+  ⨯ 2026-10-18T15:22:48.185Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@malept/flatpak-bundler/node_modules
+
+  ⨯ 2026-10-18T15:22:48.185Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@modelcontextprotocol
+
+  ⨯ 2026-10-18T15:22:48.185Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@msgpackr-extract
+
+  ⨯ 2026-10-18T15:22:48.185Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@napi-rs
+
+  ⨯ 2026-10-18T15:22:48.185Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@noble
+
+  ⨯ 2026-10-18T15:22:48.185Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@npmcli
+
+  ⨯ 2026-10-18T15:22:48.185Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@npmcli/agent/node_modules
+
+  ⨯ 2026-10-18T15:22:48.185Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@npmcli/git/node_modules
+
+  ⨯ 2026-10-18T15:22:48.185Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@npmcli/package-json/node_modules
+
+  ⨯ 2026-10-18T15:22:48.185Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@npmcli/promise-spawn/node_modules
+
+  ⨯ 2026-10-18T15:22:48.186Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@oxc-project
+
+  ⨯ 2026-10-18T15:22:48.186Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@parcel
+
+  ⨯ 2026-10-18T15:22:48.186Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@pdf-lib
+
+  ⨯ 2026-10-18T15:22:48.186Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@peculiar
+
+  ⨯ 2026-10-18T15:22:48.186Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@rolldown
+
+  ⨯ 2026-10-18T15:22:48.186Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@rollup
+
+  ⨯ 2026-10-18T15:22:48.186Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@schematics
+
+  ⨯ 2026-10-18T15:22:48.186Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@sigstore
+
+  ⨯ 2026-10-18T15:22:48.187Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@sindresorhus
+
+  ⨯ 2026-10-18T15:22:48.187Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@standard-schema
+
+  ⨯ 2026-10-18T15:22:48.187Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@szmarczak
+
+  ⨯ 2026-10-18T15:22:48.187Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@tailwindcss
+
+  ⨯ 2026-10-18T15:22:48.188Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@tufjs
+
+  ⨯ 2026-10-18T15:22:48.188Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@types
+
+  ⨯ 2026-10-18T15:22:48.188Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@vitejs
+
+  ⨯ 2026-10-18T15:22:48.188Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@vitest
+
+  ⨯ 2026-10-18T15:22:48.188Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@vitest/utils/node_modules
+
+  ⨯ 2026-10-18T15:22:48.188Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@xmldom
+
+  ⨯ 2026-10-18T15:22:48.188Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@yarnpkg
+
+  ⨯ 2026-10-18T15:22:48.189Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/app-builder-lib/node_modules
+
+  ⨯ 2026-10-18T15:22:48.189Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/app-builder-lib/node_modules/@electron
+
+  ⨯ 2026-10-18T15:22:48.189Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/app-builder-lib/node_modules/@electron/get/node_modules
+
+  ⨯ 2026-10-18T15:22:48.189Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/bl/node_modules
+
+  ⨯ 2026-10-18T15:22:48.189Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/body-parser/node_modules
+
+  ⨯ 2026-10-18T15:22:48.189Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/cacache/node_modules
+
+  ⨯ 2026-10-18T15:22:48.190Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/cliui/node_modules
+
+  ⨯ 2026-10-18T15:22:48.190Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/clone-response/node_modules
+
+  ⨯ 2026-10-18T15:22:48.191Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/cssstyle/node_modules
+
+  ⨯ 2026-10-18T15:22:48.191Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/dir-compare/node_modules
+
+  ⨯ 2026-10-18T15:22:48.191Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/electron/node_modules
+
+  ⨯ 2026-10-18T15:22:48.191Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/electron/node_modules/@types
+
+  ⨯ 2026-10-18T15:22:48.191Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/electron-builder/node_modules
+
+  ⨯ 2026-10-18T15:22:48.192Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/electron-winstaller/node_modules
+
+  ⨯ 2026-10-18T15:22:48.192Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/express/node_modules
+
+  ⨯ 2026-10-18T15:22:48.192Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules
+
+  ⨯ 2026-10-18T15:22:48.193Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@asamuzakjp
+
+  ⨯ 2026-10-18T15:22:48.193Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@csstools
+
+  ⨯ 2026-10-18T15:22:48.193Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/filelist/node_modules
+
+  ⨯ 2026-10-18T15:22:48.193Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/form-data/node_modules
+
+  ⨯ 2026-10-18T15:22:48.194Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/glob/node_modules
+
+  ⨯ 2026-10-18T15:22:48.194Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/hosted-git-info/node_modules
+
+  ⨯ 2026-10-18T15:22:48.194Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/htmlparser2/node_modules
+
+  ⨯ 2026-10-18T15:22:48.194Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/is-ci/node_modules
+
+  ⨯ 2026-10-18T15:22:48.195Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/listr2/node_modules
+
+  ⨯ 2026-10-18T15:22:48.196Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/lmdb/node_modules
+
+  ⨯ 2026-10-18T15:22:48.196Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/log-update/node_modules
+
+  ⨯ 2026-10-18T15:22:48.196Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/micromatch/node_modules
+
+  ⨯ 2026-10-18T15:22:48.196Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/minipass-flush/node_modules
+
+  ⨯ 2026-10-18T15:22:48.197Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/minipass-pipeline/node_modules
+
+  ⨯ 2026-10-18T15:22:48.197Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/negotiator/node_modules
+
+  ⨯ 2026-10-18T15:22:48.197Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/node-fetch/node_modules
+
+  ⨯ 2026-10-18T15:22:48.197Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/node-gyp/node_modules
+
+  ⨯ 2026-10-18T15:22:48.197Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/npm-package-arg/node_modules
+
+  ⨯ 2026-10-18T15:22:48.198Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ora/node_modules
+
+  ⨯ 2026-10-18T15:22:48.198Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/parse5/node_modules
+
+  ⨯ 2026-10-18T15:22:48.198Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/parse5-html-rewriting-stream/node_modules
+
+  ⨯ 2026-10-18T15:22:48.198Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/patch-package/node_modules
+
+  ⨯ 2026-10-18T15:22:48.198Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/path-scurry/node_modules
+
+  ⨯ 2026-10-18T15:22:48.198Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pdf-lib/node_modules
+
+  ⨯ 2026-10-18T15:22:48.199Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pkijs/node_modules
+
+  ⨯ 2026-10-18T15:22:48.199Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pkijs/node_modules/@noble
+
+  ⨯ 2026-10-18T15:22:48.199Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/png-to-ico/node_modules
+
+  ⨯ 2026-10-18T15:22:48.199Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/png-to-ico/node_modules/@types
+
+  ⨯ 2026-10-18T15:22:48.199Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/postcss/node_modules
+
+  ⨯ 2026-10-18T15:22:48.199Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/postject/node_modules
+
+  ⨯ 2026-10-18T15:22:48.199Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/prebuild-install/node_modules
+
+  ⨯ 2026-10-18T15:22:48.199Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/proper-lockfile/node_modules
+
+  ⨯ 2026-10-18T15:22:48.200Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/rc/node_modules
+
+  ⨯ 2026-10-18T15:22:48.200Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/sass/node_modules
+
+  ⨯ 2026-10-18T15:22:48.200Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/slice-ansi/node_modules
+
+  ⨯ 2026-10-18T15:22:48.201Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/source-map-support/node_modules
+
+  ⨯ 2026-10-18T15:22:48.201Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tar/node_modules
+
+  ⨯ 2026-10-18T15:22:48.201Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tar-fs/node_modules
+
+  ⨯ 2026-10-18T15:22:48.201Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tar-stream/node_modules
+
+  ⨯ 2026-10-18T15:22:48.201Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/temp/node_modules
+
+  ⨯ 2026-10-18T15:22:48.202Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tiny-async-pool/node_modules
+
+  ⨯ 2026-10-18T15:22:48.202Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tmp-promise/node_modules
+
+  ⨯ 2026-10-18T15:22:48.202Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/type-is/node_modules
+
+  ⨯ 2026-10-18T15:22:48.202Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/unzipper/node_modules
+
+  ⨯ 2026-10-18T15:22:48.203Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/whatwg-encoding/node_modules
+
+  ⨯ 2026-10-18T15:22:48.203Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/wrap-ansi/node_modules
+
+  ⨯ 2026-10-18T15:22:48.203Z electron-rebuild scanning: /run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/yargs/node_modules
+
+  • preparing       moduleName=canvas arch=x64
+  ⨯ 2026-10-18T15:22:48.206Z electron-rebuild skipping: canvas as it is already built
+
+  • finished        moduleName=canvas arch=x64
+  • skipped. set ENV=electron-rebuild to determine why  moduleName=canvas arch=x64
+  • completed installing native dependencies
+  • packaging       platform=linux arch=x64 electron=44.9.0 appOutDir=bin/linux-unpacked
+  • no custom electronDist provided, unpacking default Electron distribution
+2026-10-18T15:22:48.215Z @electron/get:index Checking the cache (undefined) for electron-v44.9.0-linux-x64.zip (https://github.com/electron/electron/releases/download/v44.9.0/electron-v44.9.0-linux-x64.zip)
+2026-10-18T15:22:48.216Z @electron/get:index Cache hit
+2026-10-18T15:22:48.217Z @electron/get:index Downloading https://github.com/electron/electron/releases/download/v44.9.0/SHASUMS256.txt to /tmp/electron-download-sCY7MD/SHASUMS256.txt with options: {"timeout":{"request":600000}}
+  • downloaded      label=electron progress=100%
+2026-10-18T15:22:48.804Z sumchecker Reading "/tmp/electron-download-sCY7MD/SHASUMS256.txt (binary mode: false)"
+2026-10-18T15:22:48.805Z sumchecker Parsing checksum file
+2026-10-18T15:22:48.805Z sumchecker Parsed checksums: {
+  'chromedriver-v44.9.0-darwin-arm64.zip': [
+    '6b2384ad6d0d1f9f3a2962a9cfe098b162b7823b55808775c6260c0691b102e9',
+    true
+  ],
+  'chromedriver-v44.9.0-darwin-x64.zip': [
+    '35ed0330e8940214ed51307486d757e68c6510c2fa549072fe2a7634a6d1d123',
+    true
+  ],
+  'chromedriver-v44.9.0-linux-arm64.zip': [
+    '33b7a5d66f8778397e40a27b4c5827517746641a099c5619f72e356df91c11ce',
+    true
+  ],
+  'chromedriver-v44.9.0-linux-x64.zip': [
+    '2e6b7e406543c3929d39f703fe11f9d03af2f4283e1ceb67bffe323f0d9fbe92',
+    true
+  ],
+  'chromedriver-v44.9.0-mas-arm64.zip': [
+    'a1221376bbd10e730f861f057a5d7bdb2a08a6853a43101c0692642d4652ef14',
+    true
+  ],
+  'chromedriver-v44.9.0-mas-x64.zip': [
+    'b0302073563bfaff08661334adce56ea76cf566c53b0215a395588cc7b95a20d',
+    true
+  ],
+  'chromedriver-v44.9.0-win32-arm64.zip': [
+    '72c1e4b85d59260cab39f950726c2e4a68ebc3ff43e153ae370789769f8d35e7',
+    true
+  ],
+  'chromedriver-v44.9.0-win32-x64.zip': [
+    'd2e7c758141c5c3274b5372695974191806e56e921b91ab741ec487366bb16ec',
+    true
+  ],
+  'electron-api.json': [
+    '47f60eb00dfceaf3672df6c45d08d5f466630fc4aeb11a44f6bff4f3685e1228',
+    true
+  ],
+  'electron-v44.9.0-darwin-arm64-dsym-snapshot.zip': [
+    '791ed32c004a35870e5ed4a4cf39bba86764a5c0e5342e0b1a5253b145847c7d',
+    true
+  ],
+  'electron-v44.9.0-darwin-arm64-dsym.tar.xz': [
+    'a4be8d332c9bc7b15580f762b7349d371f8e1675c9b9c0b2811877f7a19e7968',
+    true
+  ],
+  'electron-v44.9.0-darwin-arm64-symbols.zip': [
+    'fc0e656e8b316086e5820240ea07bbf44a73cfcd99df11c9d9f277d8c453f36f',
+    true
+  ],
+  'electron-v44.9.0-darwin-arm64.zip': [
+    '12d873a5ae98a6598e730402e9278c5d132e97ea1a4405a7713bec2a3e83921f',
+    true
+  ],
+  'electron-v44.9.0-darwin-x64-dsym-snapshot.zip': [
+    '791ed32c004a35870e5ed4a4cf39bba86764a5c0e5342e0b1a5253b145847c7d',
+    true
+  ],
+  'electron-v44.9.0-darwin-x64-dsym.tar.xz': [
+    '716e52797904541c26ed688fa5bb774e1d5f889e039d5d3f459767261fe1060b',
+    true
+  ],
+  'electron-v44.9.0-darwin-x64-symbols.zip': [
+    '9919f5d6d5949710de5b9fe18eed925be0dd183c5036d478fe52309fa1efbb66',
+    true
+  ],
+  'electron-v44.9.0-darwin-x64.zip': [
+    'fd9d60a1d6cbe98105c3cdd345f7dcca0961364650e6fbbf49d13e58b0f34786',
+    true
+  ],
+  'electron-v44.9.0-linux-arm64-debug.zip': [
+    'e051337aab8639c615bf990ec8ca16bd56e7f72ec303edddb79baaa6a8c25e2f',
+    true
+  ],
+  'electron-v44.9.0-linux-arm64-symbols.zip': [
+    '81deb8f9b07487418071087d442a0a96af5019e5f56797cd556e12b56abf9980',
+    true
+  ],
+  'electron-v44.9.0-linux-arm64.zip': [
+    '37fe4dfc34a6dd35d65816864cc6ba9484565cda5ad6d29022e0ee3969e0ea15',
+    true
+  ],
+  'electron-v44.9.0-linux-x64-debug.zip': [
+    'ed6c61231f97f9e74f1127b6b1a2d6d747faa3566d7211689bd2c115008dd45a',
+    true
+  ],
+  'electron-v44.9.0-linux-x64-symbols.zip': [
+    '4283a91af59bc078f79c397f8c445659ebd08d1d20358e83dad626bcda688818',
+    true
+  ],
+  'electron-v44.9.0-linux-x64.zip': [
+    'ecced7ecb55697f92ca870939c5988557faa8acd8c222c232cae5913d318c8b9',
+    true
+  ],
+  'electron-v44.9.0-mas-arm64-dsym-snapshot.zip': [
+    '791ed32c004a35870e5ed4a4cf39bba86764a5c0e5342e0b1a5253b145847c7d',
+    true
+  ],
+  'electron-v44.9.0-mas-arm64-dsym.tar.xz': [
+    '30abeffc1a732765a3843df98dd47dd29f9dcddd104f5117af877daeb62bea8d',
+    true
+  ],
+  'electron-v44.9.0-mas-arm64-symbols.zip': [
+    'c73fdc63b5ef2e6ffcf149a4150f2098bf5bccbc32f00a98e97292ef6ab9ce47',
+    true
+  ],
+  'electron-v44.9.0-mas-arm64.zip': [
+    '0d42f985ee4b5065482761360fb869db2403c5f0418c2c5b318807e465c4bf0a',
+    true
+  ],
+  'electron-v44.9.0-mas-x64-dsym-snapshot.zip': [
+    '791ed32c004a35870e5ed4a4cf39bba86764a5c0e5342e0b1a5253b145847c7d',
+    true
+  ],
+  'electron-v44.9.0-mas-x64-dsym.tar.xz': [
+    '04e9e50a059b16ce14cfcb6d1fdcc0c548562d32d9bc3b8986a09571d8c6b2d1',
+    true
+  ],
+  'electron-v44.9.0-mas-x64-symbols.zip': [
+    '2dad838a39615797f50203df73d4443ab30cab409cc478306e319cb838ef786c',
+    true
+  ],
+  'electron-v44.9.0-mas-x64.zip': [
+    'f2b9d5cfbfcb61818ab97836ac96c6451ff8fa35b5053e0f69dfd3c68cddbc78',
+    true
+  ],
+  'electron-v44.9.0-win32-arm64-pdb.zip': [
+    '9df63ece4ce8a6e86ee8af0f0e303fc74681a0bef24316c0cdf5d7ff6b3f08dd',
+    true
+  ],
+  'electron-v44.9.0-win32-arm64-symbols.zip': [
+    'bb255aed3860c16d7584a9a86af7fb913351a6e55e8fb34536d6b32c9ded90f7',
+    true
+  ],
+  'electron-v44.9.0-win32-arm64-toolchain-profile.zip': [
+    '90386280bc7e4ac5d451e43e26a7c76ed1c8bcdc0206ec50762c7e4f09c59c28',
+    true
+  ],
+  'electron-v44.9.0-win32-arm64.zip': [
+    '4156e90faf61e2534f1c1cb10c8f05d38d199db8f788cc0c19f671a6ef881dce',
+    true
+  ],
+  'electron-v44.9.0-win32-x64-pdb.zip': [
+    '3782e230d4868b9f9a953af8b782f24293e3b8334928958b48c754acb80ee317',
+    true
+  ],
+  'electron-v44.9.0-win32-x64-symbols.zip': [
+    'dc41c12b590d49398141ffc5f13a5add69153bc796ebd6aff45b8a872b7b9aef',
+    true
+  ],
+  'electron-v44.9.0-win32-x64-toolchain-profile.zip': [
+    '90386280bc7e4ac5d451e43e26a7c76ed1c8bcdc0206ec50762c7e4f09c59c28',
+    true
+  ],
+  'electron-v44.9.0-win32-x64.zip': [
+    '88e08039d0ef359bab9f674e8051fa103bd8628ea7c5a5e1daaa610a8a0c6931',
+    true
+  ],
+  'electron.d.ts': [
+    '9f96ec8ad7f8a12f3b9934c0352f4592a019412f50336dc4020932b3ad4c590b',
+    true
+  ],
+  'ffmpeg-v44.9.0-darwin-arm64.zip': [
+    '2f21495c4d33ef132e66cbd345e679fbceb0131f46bdb88ea02cca178d27b551',
+    true
+  ],
+  'ffmpeg-v44.9.0-darwin-x64.zip': [
+    'cf410a2ed1e2848ce20b2aa2e00f5e49bdea0e92644cc340c027ab785baea372',
+    true
+  ],
+  'ffmpeg-v44.9.0-linux-arm64.zip': [
+    '0a2c2075df7ec9527468467419428059102ec8f68c21641a7e760bfcf55f977c',
+    true
+  ],
+  'ffmpeg-v44.9.0-linux-x64.zip': [
+    'f1ce628954333fc1461dc885d27ace577a38bb9620a7f1d25ace8fe9dfa36b15',
+    true
+  ],
+  'ffmpeg-v44.9.0-mas-arm64.zip': [
+    '2fb3dadb8ee9d1b30ab0c3e55b157696565f79ef2d889c81879147e315b5422c',
+    true
+  ],
+  'ffmpeg-v44.9.0-mas-x64.zip': [
+    '09599487648f72001df5012b6148f9ee81d885e3a1e330c5827e5b3b3f18e271',
+    true
+  ],
+  'ffmpeg-v44.9.0-win32-arm64.zip': [
+    '01053a8668535027f23582c1338eae4266319899b971492dbd5fef76dcccbecc',
+    true
+  ],
+  'ffmpeg-v44.9.0-win32-x64.zip': [
+    'e9f4e6f7df43ea56baa7064915870ef89892fc804d911097ab8e233385332f0a',
+    true
+  ],
+  'hunspell_dictionaries.zip': [
+    '41fc02332fc7cc2ea7230409de1bbe5d0a44b3a45b85f6d3acdaddd2b2047d8f',
+    true
+  ],
+  'libcxx-objects-v44.9.0-linux-arm64.zip': [
+    '4e33fa6a7a1b0d14270437c285e972b2f5d6b229209a84834b512cb365cb9771',
+    true
+  ],
+  'libcxx-objects-v44.9.0-linux-x64.zip': [
+    'cb544903ebc6633ad964fc7b0452fa4ce3a7ec213f48718711244a5b7759de6a',
+    true
+  ],
+  'libcxx_headers.zip': [
+    'b8f13bf073a38a5fee3a208e98731181f2c641ef3b89df68730a25cf4f2ef94b',
+    true
+  ],
+  'libcxxabi_headers.zip': [
+    'ff0571d69ffac9b7a1d4f31d0b7bddb0962cb578967f7777557a1adfb46abfa5',
+    true
+  ],
+  'mksnapshot-v44.9.0-darwin-arm64.zip': [
+    '555cb557f95da13b5b4278cdd64a643231fc608e4be024a153564c3e51b1d216',
+    true
+  ],
+  'mksnapshot-v44.9.0-darwin-x64.zip': [
+    '0ee8b5d33b12002cb56940e87d7deca4620f2d5300211c6b815068d643b4a57b',
+    true
+  ],
+  'mksnapshot-v44.9.0-linux-arm64-x64.zip': [
+    '9b71d3e37ec792eba8a7de1ec73d84ba8450d1ae1fccaca1ba0ef5ad1dd38ce5',
+    true
+  ],
+  'mksnapshot-v44.9.0-linux-x64.zip': [
+    '6e40f97a882b97c96c8c03ddadcbffc023a9dd13636e622d2bb6fec577bbd2ec',
+    true
+  ],
+  'mksnapshot-v44.9.0-mas-arm64.zip': [
+    '11c0646650f7aecbcf74fbb16f9082b42ec47882061caac0c01ec5836d6234fb',
+    true
+  ],
+  'mksnapshot-v44.9.0-mas-x64.zip': [
+    'dd346c27f833db71c44f7d97d0060b379f20a730475808850ccf9fb939b652e8',
+    true
+  ],
+  'mksnapshot-v44.9.0-win32-arm64-x64.zip': [
+    'deaa03f51f631e15a63fbdc49937482b1790ff2ffa1e699b08163a6e85e442b4',
+    true
+  ],
+  'mksnapshot-v44.9.0-win32-x64.zip': [
+    '70dca6f58d2d52e08ef99550f3848b2cdb1aae1e319fddc5324b39595010fafc',
+    true
+  ],
+  'xcache-v44.9.0-darwin-arm64.zip': [
+    '86ce5f2a8fc497d2c8ed1b0eb838909544fddfbc6f3f99c978817cbf0efe099b',
+    true
+  ],
+  'xcache-v44.9.0-darwin-x64.zip': [
+    '5ba99167b1644591d3a4b3b7401156c7aad0d61516fd7370ad7d6ade2ad0ad63',
+    true
+  ],
+  'xcache-v44.9.0-linux-arm64.zip': [
+    '63c2b144dcb402e3d8d35c716c898dc3349749df837b9ad399abec314235cb7e',
+    true
+  ],
+  'xcache-v44.9.0-linux-x64.zip': [
+    '5d814222ffca0a66ac12e7a730b47df91fce2232f1023be1909a812553e208da',
+    true
+  ],
+  'xcache-v44.9.0-win32-arm64.zip': [
+    'f8aac44751c9999dc1fb65260dd8e2a44a5b16186fb8b6fb3df5d833e498bde7',
+    true
+  ],
+  'xcache-v44.9.0-win32-x64.zip': [
+    'b72ccc935966a7ccfdf3b319418f41abc2502b3a2cab9435b2656cf16041ce6e',
+    true
+  ]
+}
+2026-10-18T15:22:48.806Z sumchecker validateFile: electron-v44.9.0-linux-x64.zip
+2026-10-18T15:22:48.806Z sumchecker Reading file with "binary" encoding
+2026-10-18T15:22:48.964Z sumchecker Expected checksum: ecced7ecb55697f92ca870939c5988557faa8acd8c222c232cae5913d318c8b9; Actual: ecced7ecb55697f92ca870939c5988557faa8acd8c222c232cae5913d318c8b9
+  • downloaded electron zip extracted successfully  output=/run/media/praveen/Zero/pdf/pdf-master-studio/bin/linux-unpacked
+  • no event listeners found  event=afterExtract
+  • searching for node modules  pm=npm searchDir=/run/media/praveen/Zero/pdf/pdf-master-studio
+  • node modules collection complete  packageName=PDF-Master-Studio depCount=182
+  • collected node modules  pm=npm nodeModules=[{"name":"@angular/common","version":"21.2.25","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/common"},{"name":"@angular/compiler","version":"21.2.25","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/compiler"},{"name":"@angular/core","version":"21.2.25","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/core"},{"name":"@angular/forms","version":"21.2.25","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/forms"},{"name":"@angular/platform-browser","version":"21.2.25","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/platform-browser"},{"name":"@angular/router","version":"21.2.25","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@angular/router"},{"name":"@asamuzakjp/css-color","version":"3.2.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@asamuzakjp/css-color"},{"name":"@csstools/color-helpers","version":"5.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@csstools/color-helpers"},{"name":"@csstools/css-calc","version":"2.1.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@csstools/css-calc"},{"name":"@csstools/css-color-parser","version":"3.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@csstools/css-color-parser"},{"name":"@csstools/css-parser-algorithms","version":"3.0.5","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@csstools/css-parser-algorithms"},{"name":"@csstools/css-tokenizer","version":"3.0.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/@csstools/css-tokenizer"},{"name":"@fortawesome/fontawesome-free","version":"7.3.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@fortawesome/fontawesome-free"},{"name":"@hyzyla/pdfium","version":"2.1.13","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@hyzyla/pdfium"},{"name":"@napi-rs/canvas","version":"1.0.11","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@napi-rs/canvas"},{"name":"@napi-rs/canvas-linux-x64-gnu","version":"1.0.11","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@napi-rs/canvas-linux-x64-gnu"},{"name":"@pdf-lib/fontkit","version":"1.1.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@pdf-lib/fontkit"},{"name":"@pdf-lib/standard-fonts","version":"1.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@pdf-lib/standard-fonts"},{"name":"@pdf-lib/upng","version":"1.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@pdf-lib/upng"},{"name":"@standard-schema/spec","version":"1.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@standard-schema/spec"},{"name":"@types/node","version":"26.6.5","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@types/node"},{"name":"accepts","version":"2.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/accepts"},{"name":"agent-base","version":"7.1.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/agent-base"},{"name":"base64-js","version":"1.5.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/base64-js"},{"name":"bl","version":"4.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/bl"},{"name":"bmp-js","version":"0.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/bmp-js"},{"name":"body-parser","version":"2.3.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/body-parser"},{"name":"buffer","version":"5.7.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/buffer"},{"name":"bytes","version":"3.1.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/bytes"},{"name":"call-bind-apply-helpers","version":"1.0.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/call-bind-apply-helpers"},{"name":"call-bound","version":"1.0.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/call-bound"},{"name":"canvas","version":"3.2.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/canvas"},{"name":"chownr","version":"1.1.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tar-fs/node_modules/chownr"},{"name":"content-disposition","version":"2.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/content-disposition"},{"name":"content-type","version":"2.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/type-is/node_modules/content-type"},{"name":"cookie","version":"0.7.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/cookie"},{"name":"cookie-signature","version":"1.2.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/cookie-signature"},{"name":"core-util-is","version":"1.0.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/core-util-is"},{"name":"cssstyle","version":"4.6.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/cssstyle"},{"name":"data-urls","version":"5.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/data-urls"},{"name":"debug","version":"4.4.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/debug"},{"name":"decimal.js","version":"10.6.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/decimal.js"},{"name":"decompress-response","version":"6.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/decompress-response"},{"name":"deep-extend","version":"0.6.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/deep-extend"},{"name":"depd","version":"2.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/depd"},{"name":"detect-libc","version":"2.1.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/detect-libc"},{"name":"docx","version":"9.12.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/docx"},{"name":"dunder-proto","version":"1.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/dunder-proto"},{"name":"ee-first","version":"1.1.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ee-first"},{"name":"encodeurl","version":"2.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/encodeurl"},{"name":"end-of-stream","version":"1.4.5","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/end-of-stream"},{"name":"entities","version":"6.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/entities"},{"name":"es-define-property","version":"1.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/es-define-property"},{"name":"es-errors","version":"1.3.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/es-errors"},{"name":"es-object-atoms","version":"1.1.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/es-object-atoms"},{"name":"escape-html","version":"1.0.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/escape-html"},{"name":"etag","version":"1.8.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/etag"},{"name":"expand-template","version":"2.0.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/expand-template"},{"name":"express","version":"5.3.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/express"},{"name":"fabric","version":"7.4.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric"},{"name":"finalhandler","version":"2.1.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/finalhandler"},{"name":"forwarded","version":"0.2.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/forwarded"},{"name":"fresh","version":"2.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fresh"},{"name":"fs-constants","version":"1.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fs-constants"},{"name":"function-bind","version":"1.1.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/function-bind"},{"name":"get-intrinsic","version":"1.3.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/get-intrinsic"},{"name":"get-proto","version":"1.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/get-proto"},{"name":"github-from-package","version":"0.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/github-from-package"},{"name":"gopd","version":"1.2.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/gopd"},{"name":"has-symbols","version":"1.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/has-symbols"},{"name":"hash.js","version":"1.1.7","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/hash.js"},{"name":"hasown","version":"2.0.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/hasown"},{"name":"html-encoding-sniffer","version":"4.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/html-encoding-sniffer"},{"name":"http-errors","version":"2.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/http-errors"},{"name":"http-proxy-agent","version":"7.0.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/http-proxy-agent"},{"name":"https-proxy-agent","version":"7.0.6","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/https-proxy-agent"},{"name":"iconv-lite","version":"0.7.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/iconv-lite"},{"name":"idb-keyval","version":"6.3.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/idb-keyval"},{"name":"ieee754","version":"1.2.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ieee754"},{"name":"immediate","version":"3.0.6","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/immediate"},{"name":"inherits","version":"2.0.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/inherits"},{"name":"ini","version":"1.3.8","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/rc/node_modules/ini"},{"name":"ipaddr.js","version":"1.9.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ipaddr.js"},{"name":"is-potential-custom-element-name","version":"1.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/is-potential-custom-element-name"},{"name":"is-promise","version":"4.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/is-promise"},{"name":"is-url","version":"1.2.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/is-url"},{"name":"isarray","version":"1.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/isarray"},{"name":"jsdom","version":"26.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/jsdom"},{"name":"jszip","version":"3.10.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/jszip","dependencies":[{"name":"readable-stream","version":"2.3.8","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/readable-stream"}]},{"name":"lie","version":"3.3.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/lie"},{"name":"lru-cache","version":"10.4.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/lru-cache"},{"name":"math-intrinsics","version":"1.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/math-intrinsics"},{"name":"media-typer","version":"1.1.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/media-typer"},{"name":"merge-descriptors","version":"2.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/merge-descriptors"},{"name":"mime-db","version":"1.54.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/mime-db"},{"name":"mime-types","version":"3.0.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/mime-types"},{"name":"mimic-response","version":"3.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/mimic-response"},{"name":"minimalistic-assert","version":"1.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/minimalistic-assert"},{"name":"minimist","version":"1.2.8","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/minimist"},{"name":"mkdirp-classic","version":"0.5.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/mkdirp-classic"},{"name":"ms","version":"2.1.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ms"},{"name":"nanoid","version":"6.0.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/nanoid"},{"name":"napi-build-utils","version":"2.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/napi-build-utils"},{"name":"negotiator","version":"1.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/negotiator"},{"name":"node-abi","version":"3.99.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/prebuild-install/node_modules/node-abi"},{"name":"node-addon-api","version":"7.1.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/node-addon-api"},{"name":"node-fetch","version":"2.7.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/node-fetch","dependencies":[{"name":"tr46","version":"0.0.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/node-fetch/node_modules/tr46"},{"name":"webidl-conversions","version":"3.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/node-fetch/node_modules/webidl-conversions"},{"name":"whatwg-url","version":"5.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/node-fetch/node_modules/whatwg-url"}]},{"name":"nwsapi","version":"2.2.28","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/nwsapi"},{"name":"object-inspect","version":"1.13.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/object-inspect"},{"name":"on-finished","version":"2.4.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/on-finished"},{"name":"once","version":"1.4.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/once"},{"name":"opencollective-postinstall","version":"2.0.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/opencollective-postinstall"},{"name":"pako","version":"1.0.11","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pako"},{"name":"parse5","version":"7.3.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/parse5"},{"name":"parseurl","version":"1.3.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/parseurl"},{"name":"path-to-regexp","version":"8.4.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/path-to-regexp"},{"name":"pdf-lib","version":"1.17.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pdf-lib","dependencies":[{"name":"tslib","version":"1.14.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pdf-lib/node_modules/tslib"}]},{"name":"pdfium-wasm","version":"0.0.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pdfium-wasm"},{"name":"pdfjs-dist","version":"6.4.299","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pdfjs-dist"},{"name":"prebuild-install","version":"7.1.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/prebuild-install"},{"name":"process-nextick-args","version":"2.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/process-nextick-args"},{"name":"proxy-addr","version":"2.0.8","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/proxy-addr"},{"name":"pump","version":"3.0.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/pump"},{"name":"punycode","version":"2.3.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/punycode"},{"name":"qpdf-wasm","version":"0.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/qpdf-wasm"},{"name":"qs","version":"6.16.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/qs"},{"name":"range-parser","version":"1.3.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/range-parser"},{"name":"raw-body","version":"3.0.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/raw-body"},{"name":"rc","version":"1.2.8","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/rc"},{"name":"readable-stream","version":"3.6.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tar-stream/node_modules/readable-stream"},{"name":"regenerator-runtime","version":"0.13.11","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/regenerator-runtime"},{"name":"router","version":"2.2.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/router"},{"name":"rrweb-cssom","version":"0.8.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/rrweb-cssom"},{"name":"rxjs","version":"7.8.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/rxjs"},{"name":"safe-buffer","version":"5.1.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/safe-buffer"},{"name":"safer-buffer","version":"2.1.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/safer-buffer"},{"name":"sax","version":"1.6.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/sax"},{"name":"saxes","version":"6.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/saxes"},{"name":"semver","version":"7.7.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/semver"},{"name":"send","version":"1.2.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/send"},{"name":"serve-static","version":"2.2.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/serve-static"},{"name":"setimmediate","version":"1.0.5","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/setimmediate"},{"name":"setprototypeof","version":"1.2.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/setprototypeof"},{"name":"side-channel","version":"1.1.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/side-channel"},{"name":"side-channel-list","version":"1.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/side-channel-list"},{"name":"side-channel-map","version":"1.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/side-channel-map"},{"name":"side-channel-weakmap","version":"1.0.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/side-channel-weakmap"},{"name":"simple-concat","version":"1.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/simple-concat"},{"name":"simple-get","version":"4.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/simple-get"},{"name":"statuses","version":"2.0.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/statuses"},{"name":"string_decoder","version":"1.1.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/string_decoder"},{"name":"strip-json-comments","version":"2.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/strip-json-comments"},{"name":"symbol-tree","version":"3.2.4","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/symbol-tree"},{"name":"tar-fs","version":"2.1.5","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tar-fs"},{"name":"tar-stream","version":"2.2.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tar-stream"},{"name":"tesseract.js","version":"7.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tesseract.js"},{"name":"tesseract.js-core","version":"7.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tesseract.js-core"},{"name":"tldts","version":"6.1.86","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/tldts"},{"name":"tldts-core","version":"6.1.86","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/tldts-core"},{"name":"toidentifier","version":"1.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/toidentifier"},{"name":"tough-cookie","version":"5.1.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/tough-cookie"},{"name":"tr46","version":"5.1.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/tr46"},{"name":"tslib","version":"2.8.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tslib"},{"name":"tunnel-agent","version":"0.6.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/tunnel-agent"},{"name":"type-is","version":"2.1.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/type-is"},{"name":"undici-types","version":"8.9.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/undici-types"},{"name":"unpipe","version":"1.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/unpipe"},{"name":"util-deprecate","version":"1.0.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/util-deprecate"},{"name":"vary","version":"1.1.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/vary"},{"name":"w3c-xmlserializer","version":"5.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/w3c-xmlserializer"},{"name":"wasm-feature-detect","version":"1.9.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/wasm-feature-detect"},{"name":"webidl-conversions","version":"7.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/webidl-conversions"},{"name":"whatwg-encoding","version":"3.1.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/whatwg-encoding","dependencies":[{"name":"iconv-lite","version":"0.6.3","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/whatwg-encoding/node_modules/iconv-lite"}]},{"name":"whatwg-mimetype","version":"4.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/whatwg-mimetype"},{"name":"whatwg-url","version":"14.2.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/fabric/node_modules/whatwg-url"},{"name":"wrappy","version":"1.0.2","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/wrappy"},{"name":"ws","version":"8.22.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/ws"},{"name":"xml","version":"1.0.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/xml"},{"name":"xml-js","version":"1.6.11","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/xml-js"},{"name":"xml-name-validator","version":"5.0.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/xml-name-validator"},{"name":"xmlchars","version":"2.2.0","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/xmlchars"},{"name":"zlibjs","version":"0.3.1","dir":"/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/zlibjs"}]
+  • duplicate dependency references  dependencies=["@angular/core@21.2.25","rxjs@7.8.2","@angular/compiler@21.2.25","rxjs@7.8.2","@angular/common@21.2.25","@angular/core@21.2.25","@angular/platform-browser@21.2.25","rxjs@7.8.2","@angular/common@21.2.25","@angular/core@21.2.25","@angular/common@21.2.25","@angular/core@21.2.25","@angular/platform-browser@21.2.25","rxjs@7.8.2","mime-types@3.0.2","debug@4.4.3","http-errors@2.0.1","on-finished@2.4.1","qs@6.16.1","http-errors@2.0.1","iconv-lite@0.7.3","type-is@2.1.0","debug@4.4.3","on-finished@2.4.1","get-intrinsic@1.3.0","call-bind-apply-helpers@1.0.2","call-bind-apply-helpers@1.0.2","es-object-atoms@1.1.2","call-bound@1.0.4","get-intrinsic@1.3.0","side-channel-map@1.0.1","debug@4.4.3","debug@4.4.3","http-errors@2.0.1","mime-types@3.0.2","on-finished@2.4.1","send@1.2.1","mime-types@3.0.2","once@1.4.0","once@1.4.0","once@1.4.0","pump@3.0.4","string_decoder@1.1.1","end-of-stream@1.4.5","string_decoder@1.1.1","canvas@3.2.3","whatwg-url@14.2.0","whatwg-encoding@3.1.1","debug@4.4.3","debug@4.4.3"]
+  • identified module  dep=@angular/common from=node_modules/@angular/common to=bin/linux-unpacked/resources/app/node_modules/@angular/common filesCount=3734
+  • identified module  dep=@angular/compiler from=node_modules/@angular/compiler to=bin/linux-unpacked/resources/app/node_modules/@angular/compiler filesCount=4
+  • identified module  dep=@angular/core from=node_modules/@angular/core to=bin/linux-unpacked/resources/app/node_modules/@angular/core filesCount=81
+  • identified module  dep=@angular/forms from=node_modules/@angular/forms to=bin/linux-unpacked/resources/app/node_modules/@angular/forms filesCount=11
+  • identified module  dep=@angular/platform-browser from=node_modules/@angular/platform-browser to=bin/linux-unpacked/resources/app/node_modules/@angular/platform-browser filesCount=14
+  • identified module  dep=@angular/router from=node_modules/@angular/router to=bin/linux-unpacked/resources/app/node_modules/@angular/router filesCount=12
+  • identified module  dep=@asamuzakjp/css-color from=node_modules/fabric/node_modules/@asamuzakjp/css-color to=bin/linux-unpacked/resources/app/node_modules/@asamuzakjp/css-color filesCount=44
+  • identified module  dep=@csstools/color-helpers from=node_modules/fabric/node_modules/@csstools/color-helpers to=bin/linux-unpacked/resources/app/node_modules/@csstools/color-helpers filesCount=4
+  • identified module  dep=@csstools/css-calc from=node_modules/fabric/node_modules/@csstools/css-calc to=bin/linux-unpacked/resources/app/node_modules/@csstools/css-calc filesCount=4
+  • identified module  dep=@csstools/css-color-parser from=node_modules/fabric/node_modules/@csstools/css-color-parser to=bin/linux-unpacked/resources/app/node_modules/@csstools/css-color-parser filesCount=4
+  • identified module  dep=@csstools/css-parser-algorithms from=node_modules/fabric/node_modules/@csstools/css-parser-algorithms to=bin/linux-unpacked/resources/app/node_modules/@csstools/css-parser-algorithms filesCount=4
+  • identified module  dep=@csstools/css-tokenizer from=node_modules/fabric/node_modules/@csstools/css-tokenizer to=bin/linux-unpacked/resources/app/node_modules/@csstools/css-tokenizer filesCount=4
+  • identified module  dep=@fortawesome/fontawesome-free from=node_modules/@fortawesome/fontawesome-free to=bin/linux-unpacked/resources/app/node_modules/@fortawesome/fontawesome-free filesCount=5838
+  • identified module  dep=@hyzyla/pdfium from=node_modules/@hyzyla/pdfium to=bin/linux-unpacked/resources/app/node_modules/@hyzyla/pdfium filesCount=11
+  • identified module  dep=@napi-rs/canvas from=node_modules/@napi-rs/canvas to=bin/linux-unpacked/resources/app/node_modules/@napi-rs/canvas filesCount=7
+  • identified module  dep=@napi-rs/canvas-linux-x64-gnu from=node_modules/@napi-rs/canvas-linux-x64-gnu to=bin/linux-unpacked/resources/app/node_modules/@napi-rs/canvas-linux-x64-gnu filesCount=3
+  • identified module  dep=@pdf-lib/fontkit from=node_modules/@pdf-lib/fontkit to=bin/linux-unpacked/resources/app/node_modules/@pdf-lib/fontkit filesCount=15
+  • identified module  dep=@pdf-lib/standard-fonts from=node_modules/@pdf-lib/standard-fonts to=bin/linux-unpacked/resources/app/node_modules/@pdf-lib/standard-fonts filesCount=42
+  • identified module  dep=@pdf-lib/upng from=node_modules/@pdf-lib/upng to=bin/linux-unpacked/resources/app/node_modules/@pdf-lib/upng filesCount=6
+  • identified module  dep=@standard-schema/spec from=node_modules/@standard-schema/spec to=bin/linux-unpacked/resources/app/node_modules/@standard-schema/spec filesCount=5
+  • identified module  dep=@types/node from=node_modules/@types/node to=bin/linux-unpacked/resources/app/node_modules/@types/node filesCount=2
+  • identified module  dep=accepts from=node_modules/accepts to=bin/linux-unpacked/resources/app/node_modules/accepts filesCount=4
+  • identified module  dep=agent-base from=node_modules/agent-base to=bin/linux-unpacked/resources/app/node_modules/agent-base filesCount=8
+  • identified module  dep=base64-js from=node_modules/base64-js to=bin/linux-unpacked/resources/app/node_modules/base64-js filesCount=4
+  • identified module  dep=bl from=node_modules/bl to=bin/linux-unpacked/resources/app/node_modules/bl filesCount=4
+  • identified module  dep=bmp-js from=node_modules/bmp-js to=bin/linux-unpacked/resources/app/node_modules/bmp-js filesCount=5
+  • identified module  dep=body-parser from=node_modules/body-parser to=bin/linux-unpacked/resources/app/node_modules/body-parser filesCount=9
+  • identified module  dep=buffer from=node_modules/buffer to=bin/linux-unpacked/resources/app/node_modules/buffer filesCount=4
+  • identified module  dep=bytes from=node_modules/bytes to=bin/linux-unpacked/resources/app/node_modules/bytes filesCount=4
+  • identified module  dep=call-bind-apply-helpers from=node_modules/call-bind-apply-helpers to=bin/linux-unpacked/resources/app/node_modules/call-bind-apply-helpers filesCount=10
+  • identified module  dep=call-bound from=node_modules/call-bound to=bin/linux-unpacked/resources/app/node_modules/call-bound filesCount=5
+  • identified module  dep=canvas from=node_modules/canvas to=bin/linux-unpacked/resources/app/node_modules/canvas filesCount=61
+  • identified module  dep=chownr from=node_modules/tar-fs/node_modules/chownr to=bin/linux-unpacked/resources/app/node_modules/chownr filesCount=3
+  • identified module  dep=content-disposition from=node_modules/content-disposition to=bin/linux-unpacked/resources/app/node_modules/content-disposition filesCount=4
+  • identified module  dep=content-type from=node_modules/type-is/node_modules/content-type to=bin/linux-unpacked/resources/app/node_modules/content-type filesCount=4
+  • identified module  dep=cookie from=node_modules/cookie to=bin/linux-unpacked/resources/app/node_modules/cookie filesCount=4
+  • identified module  dep=cookie-signature from=node_modules/cookie-signature to=bin/linux-unpacked/resources/app/node_modules/cookie-signature filesCount=4
+  • identified module  dep=core-util-is from=node_modules/core-util-is to=bin/linux-unpacked/resources/app/node_modules/core-util-is filesCount=3
+  • identified module  dep=cssstyle from=node_modules/fabric/node_modules/cssstyle to=bin/linux-unpacked/resources/app/node_modules/cssstyle filesCount=85
+  • identified module  dep=data-urls from=node_modules/fabric/node_modules/data-urls to=bin/linux-unpacked/resources/app/node_modules/data-urls filesCount=4
+  • identified module  dep=debug from=node_modules/debug to=bin/linux-unpacked/resources/app/node_modules/debug filesCount=6
+  • identified module  dep=decimal.js from=node_modules/decimal.js to=bin/linux-unpacked/resources/app/node_modules/decimal.js filesCount=4
+  • identified module  dep=decompress-response from=node_modules/decompress-response to=bin/linux-unpacked/resources/app/node_modules/decompress-response filesCount=3
+  • identified module  dep=deep-extend from=node_modules/deep-extend to=bin/linux-unpacked/resources/app/node_modules/deep-extend filesCount=4
+  • identified module  dep=depd from=node_modules/depd to=bin/linux-unpacked/resources/app/node_modules/depd filesCount=5
+  • identified module  dep=detect-libc from=node_modules/detect-libc to=bin/linux-unpacked/resources/app/node_modules/detect-libc filesCount=6
+  • identified module  dep=docx from=node_modules/docx to=bin/linux-unpacked/resources/app/node_modules/docx filesCount=37
+  • identified module  dep=dunder-proto from=node_modules/dunder-proto to=bin/linux-unpacked/resources/app/node_modules/dunder-proto filesCount=6
+  • identified module  dep=ee-first from=node_modules/ee-first to=bin/linux-unpacked/resources/app/node_modules/ee-first filesCount=3
+  • identified module  dep=encodeurl from=node_modules/encodeurl to=bin/linux-unpacked/resources/app/node_modules/encodeurl filesCount=3
+  • identified module  dep=end-of-stream from=node_modules/end-of-stream to=bin/linux-unpacked/resources/app/node_modules/end-of-stream filesCount=3
+  • identified module  dep=entities from=node_modules/fabric/node_modules/entities to=bin/linux-unpacked/resources/app/node_modules/entities filesCount=67
+  • identified module  dep=es-define-property from=node_modules/es-define-property to=bin/linux-unpacked/resources/app/node_modules/es-define-property filesCount=5
+  • identified module  dep=es-errors from=node_modules/es-errors to=bin/linux-unpacked/resources/app/node_modules/es-errors filesCount=10
+  • identified module  dep=es-object-atoms from=node_modules/es-object-atoms to=bin/linux-unpacked/resources/app/node_modules/es-object-atoms filesCount=7
+  • identified module  dep=escape-html from=node_modules/escape-html to=bin/linux-unpacked/resources/app/node_modules/escape-html filesCount=3
+  • identified module  dep=etag from=node_modules/etag to=bin/linux-unpacked/resources/app/node_modules/etag filesCount=4
+  • identified module  dep=expand-template from=node_modules/expand-template to=bin/linux-unpacked/resources/app/node_modules/expand-template filesCount=4
+  • identified module  dep=express from=node_modules/express to=bin/linux-unpacked/resources/app/node_modules/express filesCount=9
+  • identified module  dep=fabric from=node_modules/fabric to=bin/linux-unpacked/resources/app/node_modules/fabric filesCount=1886
+  • identified module  dep=finalhandler from=node_modules/finalhandler to=bin/linux-unpacked/resources/app/node_modules/finalhandler filesCount=4
+  • identified module  dep=forwarded from=node_modules/forwarded to=bin/linux-unpacked/resources/app/node_modules/forwarded filesCount=4
+  • identified module  dep=fresh from=node_modules/fresh to=bin/linux-unpacked/resources/app/node_modules/fresh filesCount=4
+  • identified module  dep=fs-constants from=node_modules/fs-constants to=bin/linux-unpacked/resources/app/node_modules/fs-constants filesCount=4
+  • identified module  dep=function-bind from=node_modules/function-bind to=bin/linux-unpacked/resources/app/node_modules/function-bind filesCount=5
+  • identified module  dep=get-intrinsic from=node_modules/get-intrinsic to=bin/linux-unpacked/resources/app/node_modules/get-intrinsic filesCount=4
+  • identified module  dep=get-proto from=node_modules/get-proto to=bin/linux-unpacked/resources/app/node_modules/get-proto filesCount=7
+  • identified module  dep=github-from-package from=node_modules/github-from-package to=bin/linux-unpacked/resources/app/node_modules/github-from-package filesCount=3
+  • identified module  dep=gopd from=node_modules/gopd to=bin/linux-unpacked/resources/app/node_modules/gopd filesCount=5
+  • identified module  dep=has-symbols from=node_modules/has-symbols to=bin/linux-unpacked/resources/app/node_modules/has-symbols filesCount=6
+  • identified module  dep=hash.js from=node_modules/hash.js to=bin/linux-unpacked/resources/app/node_modules/hash.js filesCount=14
+  • identified module  dep=hasown from=node_modules/hasown to=bin/linux-unpacked/resources/app/node_modules/hasown filesCount=6
+  • identified module  dep=html-encoding-sniffer from=node_modules/fabric/node_modules/html-encoding-sniffer to=bin/linux-unpacked/resources/app/node_modules/html-encoding-sniffer filesCount=3
+  • identified module  dep=http-errors from=node_modules/http-errors to=bin/linux-unpacked/resources/app/node_modules/http-errors filesCount=4
+  • identified module  dep=http-proxy-agent from=node_modules/http-proxy-agent to=bin/linux-unpacked/resources/app/node_modules/http-proxy-agent filesCount=5
+  • identified module  dep=https-proxy-agent from=node_modules/https-proxy-agent to=bin/linux-unpacked/resources/app/node_modules/https-proxy-agent filesCount=8
+  • identified module  dep=iconv-lite from=node_modules/iconv-lite to=bin/linux-unpacked/resources/app/node_modules/iconv-lite filesCount=24
+  • identified module  dep=idb-keyval from=node_modules/idb-keyval to=bin/linux-unpacked/resources/app/node_modules/idb-keyval filesCount=8
+  • identified module  dep=ieee754 from=node_modules/ieee754 to=bin/linux-unpacked/resources/app/node_modules/ieee754 filesCount=3
+  • identified module  dep=immediate from=node_modules/immediate to=bin/linux-unpacked/resources/app/node_modules/immediate filesCount=6
+  • identified module  dep=inherits from=node_modules/inherits to=bin/linux-unpacked/resources/app/node_modules/inherits filesCount=4
+  • identified module  dep=ini from=node_modules/rc/node_modules/ini to=bin/linux-unpacked/resources/app/node_modules/ini filesCount=3
+  • identified module  dep=ipaddr.js from=node_modules/ipaddr.js to=bin/linux-unpacked/resources/app/node_modules/ipaddr.js filesCount=4
+  • identified module  dep=is-potential-custom-element-name from=node_modules/is-potential-custom-element-name to=bin/linux-unpacked/resources/app/node_modules/is-potential-custom-element-name filesCount=3
+  • identified module  dep=is-promise from=node_modules/is-promise to=bin/linux-unpacked/resources/app/node_modules/is-promise filesCount=4
+  • identified module  dep=is-url from=node_modules/is-url to=bin/linux-unpacked/resources/app/node_modules/is-url filesCount=4
+  • identified module  dep=isarray from=node_modules/isarray to=bin/linux-unpacked/resources/app/node_modules/isarray filesCount=5
+  • identified module  dep=jsdom from=node_modules/fabric/node_modules/jsdom to=bin/linux-unpacked/resources/app/node_modules/jsdom filesCount=499
+  • identified module  dep=jszip from=node_modules/jszip to=bin/linux-unpacked/resources/app/node_modules/jszip filesCount=48
+  • identified module  dep=readable-stream from=node_modules/readable-stream to=bin/linux-unpacked/resources/app/node_modules/jszip/node_modules/readable-stream filesCount=22
+  • identified module  dep=lie from=node_modules/lie to=bin/linux-unpacked/resources/app/node_modules/lie filesCount=9
+  • identified module  dep=lru-cache from=node_modules/fabric/node_modules/lru-cache to=bin/linux-unpacked/resources/app/node_modules/lru-cache filesCount=14
+  • identified module  dep=math-intrinsics from=node_modules/math-intrinsics to=bin/linux-unpacked/resources/app/node_modules/math-intrinsics filesCount=18
+  • identified module  dep=media-typer from=node_modules/media-typer to=bin/linux-unpacked/resources/app/node_modules/media-typer filesCount=4
+  • identified module  dep=merge-descriptors from=node_modules/merge-descriptors to=bin/linux-unpacked/resources/app/node_modules/merge-descriptors filesCount=3
+  • identified module  dep=mime-db from=node_modules/mime-db to=bin/linux-unpacked/resources/app/node_modules/mime-db filesCount=5
+  • identified module  dep=mime-types from=node_modules/mime-types to=bin/linux-unpacked/resources/app/node_modules/mime-types filesCount=5
+  • identified module  dep=mimic-response from=node_modules/mimic-response to=bin/linux-unpacked/resources/app/node_modules/mimic-response filesCount=3
+  • identified module  dep=minimalistic-assert from=node_modules/minimalistic-assert to=bin/linux-unpacked/resources/app/node_modules/minimalistic-assert filesCount=3
+  • identified module  dep=minimist from=node_modules/minimist to=bin/linux-unpacked/resources/app/node_modules/minimist filesCount=4
+  • identified module  dep=mkdirp-classic from=node_modules/mkdirp-classic to=bin/linux-unpacked/resources/app/node_modules/mkdirp-classic filesCount=3
+  • identified module  dep=ms from=node_modules/ms to=bin/linux-unpacked/resources/app/node_modules/ms filesCount=3
+  • identified module  dep=nanoid from=node_modules/nanoid to=bin/linux-unpacked/resources/app/node_modules/nanoid filesCount=8
+  • identified module  dep=napi-build-utils from=node_modules/napi-build-utils to=bin/linux-unpacked/resources/app/node_modules/napi-build-utils filesCount=4
+  • identified module  dep=negotiator from=node_modules/negotiator to=bin/linux-unpacked/resources/app/node_modules/negotiator filesCount=8
+  • identified module  dep=node-abi from=node_modules/prebuild-install/node_modules/node-abi to=bin/linux-unpacked/resources/app/node_modules/node-abi filesCount=4
+  • identified module  dep=node-addon-api from=node_modules/node-addon-api to=bin/linux-unpacked/resources/app/node_modules/node-addon-api filesCount=18
+  • identified module  dep=node-fetch from=node_modules/node-fetch to=bin/linux-unpacked/resources/app/node_modules/node-fetch filesCount=6
+  • identified module  dep=tr46 from=node_modules/node-fetch/node_modules/tr46 to=bin/linux-unpacked/resources/app/node_modules/node-fetch/node_modules/tr46 filesCount=3
+  • identified module  dep=webidl-conversions from=node_modules/node-fetch/node_modules/webidl-conversions to=bin/linux-unpacked/resources/app/node_modules/node-fetch/node_modules/webidl-conversions filesCount=3
+  • identified module  dep=whatwg-url from=node_modules/node-fetch/node_modules/whatwg-url to=bin/linux-unpacked/resources/app/node_modules/node-fetch/node_modules/whatwg-url filesCount=7
+  • identified module  dep=nwsapi from=node_modules/nwsapi to=bin/linux-unpacked/resources/app/node_modules/nwsapi filesCount=6
+  • identified module  dep=object-inspect from=node_modules/object-inspect to=bin/linux-unpacked/resources/app/node_modules/object-inspect filesCount=7
+  • identified module  dep=on-finished from=node_modules/on-finished to=bin/linux-unpacked/resources/app/node_modules/on-finished filesCount=4
+  • identified module  dep=once from=node_modules/once to=bin/linux-unpacked/resources/app/node_modules/once filesCount=3
+  • identified module  dep=opencollective-postinstall from=node_modules/opencollective-postinstall to=bin/linux-unpacked/resources/app/node_modules/opencollective-postinstall filesCount=3
+  • identified module  dep=pako from=node_modules/pako to=bin/linux-unpacked/resources/app/node_modules/pako filesCount=25
+  • identified module  dep=parse5 from=node_modules/fabric/node_modules/parse5 to=bin/linux-unpacked/resources/app/node_modules/parse5 filesCount=33
+  • identified module  dep=parseurl from=node_modules/parseurl to=bin/linux-unpacked/resources/app/node_modules/parseurl filesCount=4
+  • identified module  dep=path-to-regexp from=node_modules/path-to-regexp to=bin/linux-unpacked/resources/app/node_modules/path-to-regexp filesCount=4
+  • identified module  dep=pdf-lib from=node_modules/pdf-lib to=bin/linux-unpacked/resources/app/node_modules/pdf-lib filesCount=983
+  • identified module  dep=tslib from=node_modules/pdf-lib/node_modules/tslib to=bin/linux-unpacked/resources/app/node_modules/pdf-lib/node_modules/tslib filesCount=9
+  • identified module  dep=pdfium-wasm from=node_modules/pdfium-wasm to=bin/linux-unpacked/resources/app/node_modules/pdfium-wasm filesCount=3
+  • identified module  dep=pdfjs-dist from=node_modules/pdfjs-dist to=bin/linux-unpacked/resources/app/node_modules/pdfjs-dist filesCount=402
+  • identified module  dep=prebuild-install from=node_modules/prebuild-install to=bin/linux-unpacked/resources/app/node_modules/prebuild-install filesCount=13
+  • identified module  dep=process-nextick-args from=node_modules/process-nextick-args to=bin/linux-unpacked/resources/app/node_modules/process-nextick-args filesCount=3
+  • identified module  dep=proxy-addr from=node_modules/proxy-addr to=bin/linux-unpacked/resources/app/node_modules/proxy-addr filesCount=4
+  • identified module  dep=pump from=node_modules/pump to=bin/linux-unpacked/resources/app/node_modules/pump filesCount=7
+  • identified module  dep=punycode from=node_modules/punycode to=bin/linux-unpacked/resources/app/node_modules/punycode filesCount=4
+  • identified module  dep=qpdf-wasm from=node_modules/qpdf-wasm to=bin/linux-unpacked/resources/app/node_modules/qpdf-wasm filesCount=4
+  • identified module  dep=qs from=node_modules/qs to=bin/linux-unpacked/resources/app/node_modules/qs filesCount=11
+  • identified module  dep=range-parser from=node_modules/range-parser to=bin/linux-unpacked/resources/app/node_modules/range-parser filesCount=4
+  • identified module  dep=raw-body from=node_modules/raw-body to=bin/linux-unpacked/resources/app/node_modules/raw-body filesCount=3
+  • identified module  dep=rc from=node_modules/rc to=bin/linux-unpacked/resources/app/node_modules/rc filesCount=8
+  • identified module  dep=readable-stream from=node_modules/tar-stream/node_modules/readable-stream to=bin/linux-unpacked/resources/app/node_modules/readable-stream filesCount=24
+  • identified module  dep=regenerator-runtime from=node_modules/regenerator-runtime to=bin/linux-unpacked/resources/app/node_modules/regenerator-runtime filesCount=4
+  • identified module  dep=router from=node_modules/router to=bin/linux-unpacked/resources/app/node_modules/router filesCount=6
+  • identified module  dep=rrweb-cssom from=node_modules/rrweb-cssom to=bin/linux-unpacked/resources/app/node_modules/rrweb-cssom filesCount=30
+  • identified module  dep=rxjs from=node_modules/rxjs to=bin/linux-unpacked/resources/app/node_modules/rxjs filesCount=2025
+  • identified module  dep=safe-buffer from=node_modules/safe-buffer to=bin/linux-unpacked/resources/app/node_modules/safe-buffer filesCount=3
+  • identified module  dep=safer-buffer from=node_modules/safer-buffer to=bin/linux-unpacked/resources/app/node_modules/safer-buffer filesCount=6
+  • identified module  dep=sax from=node_modules/sax to=bin/linux-unpacked/resources/app/node_modules/sax filesCount=3
+  • identified module  dep=saxes from=node_modules/saxes to=bin/linux-unpacked/resources/app/node_modules/saxes filesCount=3
+  • identified module  dep=semver from=node_modules/semver to=bin/linux-unpacked/resources/app/node_modules/semver filesCount=51
+  • identified module  dep=send from=node_modules/send to=bin/linux-unpacked/resources/app/node_modules/send filesCount=3
+  • identified module  dep=serve-static from=node_modules/serve-static to=bin/linux-unpacked/resources/app/node_modules/serve-static filesCount=3
+  • identified module  dep=setimmediate from=node_modules/setimmediate to=bin/linux-unpacked/resources/app/node_modules/setimmediate filesCount=3
+  • identified module  dep=setprototypeof from=node_modules/setprototypeof to=bin/linux-unpacked/resources/app/node_modules/setprototypeof filesCount=3
+  • identified module  dep=side-channel from=node_modules/side-channel to=bin/linux-unpacked/resources/app/node_modules/side-channel filesCount=6
+  • identified module  dep=side-channel-list from=node_modules/side-channel-list to=bin/linux-unpacked/resources/app/node_modules/side-channel-list filesCount=6
+  • identified module  dep=side-channel-map from=node_modules/side-channel-map to=bin/linux-unpacked/resources/app/node_modules/side-channel-map filesCount=6
+  • identified module  dep=side-channel-weakmap from=node_modules/side-channel-weakmap to=bin/linux-unpacked/resources/app/node_modules/side-channel-weakmap filesCount=6
+  • identified module  dep=simple-concat from=node_modules/simple-concat to=bin/linux-unpacked/resources/app/node_modules/simple-concat filesCount=3
+  • identified module  dep=simple-get from=node_modules/simple-get to=bin/linux-unpacked/resources/app/node_modules/simple-get filesCount=3
+  • identified module  dep=statuses from=node_modules/statuses to=bin/linux-unpacked/resources/app/node_modules/statuses filesCount=5
+  • identified module  dep=string_decoder from=node_modules/string_decoder to=bin/linux-unpacked/resources/app/node_modules/string_decoder filesCount=3
+  • identified module  dep=strip-json-comments from=node_modules/strip-json-comments to=bin/linux-unpacked/resources/app/node_modules/strip-json-comments filesCount=3
+  • identified module  dep=symbol-tree from=node_modules/symbol-tree to=bin/linux-unpacked/resources/app/node_modules/symbol-tree filesCount=6
+  • identified module  dep=tar-fs from=node_modules/tar-fs to=bin/linux-unpacked/resources/app/node_modules/tar-fs filesCount=3
+  • identified module  dep=tar-stream from=node_modules/tar-stream to=bin/linux-unpacked/resources/app/node_modules/tar-stream filesCount=7
+  • identified module  dep=tesseract.js from=node_modules/tesseract.js to=bin/linux-unpacked/resources/app/node_modules/tesseract.js filesCount=68
+  • identified module  dep=tesseract.js-core from=node_modules/tesseract.js-core to=bin/linux-unpacked/resources/app/node_modules/tesseract.js-core filesCount=21
+  • identified module  dep=tldts from=node_modules/fabric/node_modules/tldts to=bin/linux-unpacked/resources/app/node_modules/tldts filesCount=26
+  • identified module  dep=tldts-core from=node_modules/fabric/node_modules/tldts-core to=bin/linux-unpacked/resources/app/node_modules/tldts-core filesCount=59
+  • identified module  dep=toidentifier from=node_modules/toidentifier to=bin/linux-unpacked/resources/app/node_modules/toidentifier filesCount=4
+  • identified module  dep=tough-cookie from=node_modules/fabric/node_modules/tough-cookie to=bin/linux-unpacked/resources/app/node_modules/tough-cookie filesCount=21
+  • identified module  dep=tr46 from=node_modules/fabric/node_modules/tr46 to=bin/linux-unpacked/resources/app/node_modules/tr46 filesCount=6
+  • identified module  dep=tslib from=node_modules/tslib to=bin/linux-unpacked/resources/app/node_modules/tslib filesCount=11
+  • identified module  dep=tunnel-agent from=node_modules/tunnel-agent to=bin/linux-unpacked/resources/app/node_modules/tunnel-agent filesCount=3
+  • identified module  dep=type-is from=node_modules/type-is to=bin/linux-unpacked/resources/app/node_modules/type-is filesCount=4
+  • identified module  dep=undici-types from=node_modules/undici-types to=bin/linux-unpacked/resources/app/node_modules/undici-types filesCount=2
+  • identified module  dep=unpipe from=node_modules/unpipe to=bin/linux-unpacked/resources/app/node_modules/unpipe filesCount=4
+  • identified module  dep=util-deprecate from=node_modules/util-deprecate to=bin/linux-unpacked/resources/app/node_modules/util-deprecate filesCount=5
+  • identified module  dep=vary from=node_modules/vary to=bin/linux-unpacked/resources/app/node_modules/vary filesCount=4
+  • identified module  dep=w3c-xmlserializer from=node_modules/w3c-xmlserializer to=bin/linux-unpacked/resources/app/node_modules/w3c-xmlserializer filesCount=5
+  • identified module  dep=wasm-feature-detect from=node_modules/wasm-feature-detect to=bin/linux-unpacked/resources/app/node_modules/wasm-feature-detect filesCount=7
+  • identified module  dep=webidl-conversions from=node_modules/fabric/node_modules/webidl-conversions to=bin/linux-unpacked/resources/app/node_modules/webidl-conversions filesCount=3
+  • identified module  dep=whatwg-encoding from=node_modules/whatwg-encoding to=bin/linux-unpacked/resources/app/node_modules/whatwg-encoding filesCount=5
+  • identified module  dep=iconv-lite from=node_modules/whatwg-encoding/node_modules/iconv-lite to=bin/linux-unpacked/resources/app/node_modules/whatwg-encoding/node_modules/iconv-lite filesCount=23
+  • identified module  dep=whatwg-mimetype from=node_modules/fabric/node_modules/whatwg-mimetype to=bin/linux-unpacked/resources/app/node_modules/whatwg-mimetype filesCount=7
+  • identified module  dep=whatwg-url from=node_modules/fabric/node_modules/whatwg-url to=bin/linux-unpacked/resources/app/node_modules/whatwg-url filesCount=16
+  • identified module  dep=wrappy from=node_modules/wrappy to=bin/linux-unpacked/resources/app/node_modules/wrappy filesCount=3
+  • identified module  dep=ws from=node_modules/ws to=bin/linux-unpacked/resources/app/node_modules/ws filesCount=18
+  • identified module  dep=xml from=node_modules/xml to=bin/linux-unpacked/resources/app/node_modules/xml filesCount=4
+  • identified module  dep=xml-js from=node_modules/xml-js to=bin/linux-unpacked/resources/app/node_modules/xml-js filesCount=20
+  • identified module  dep=xml-name-validator from=node_modules/xml-name-validator to=bin/linux-unpacked/resources/app/node_modules/xml-name-validator filesCount=3
+  • identified module  dep=xmlchars from=node_modules/xmlchars to=bin/linux-unpacked/resources/app/node_modules/xmlchars filesCount=12
+  • identified module  dep=zlibjs from=node_modules/zlibjs to=bin/linux-unpacked/resources/app/node_modules/zlibjs filesCount=32
+  • not packed into asar archive  file=node_modules/@napi-rs/canvas-linux-x64-gnu/skia.linux-x64-gnu.node reason=contains executable code
+  • not packed into asar archive  file=node_modules/canvas/build/Release/canvas.node reason=contains executable code
+  • getPublishConfigsForUpdateInfo: no publishConfigs, detect using repository info
+2026-10-18T15:22:57.447Z electron-builder:publish getPublishConfigsForUpdateInfo: {
+  "domain": "github.com",
+  "type": "github",
+  "user": "praveenpl03",
+  "project": "pdf-master-studio"
+}
+  • calling getInfo  reason=owner or project is not specified explicitly provider=github owner=undefined project=undefined
+2026-10-18T15:22:57.447Z electron-builder:publish getPublishConfigsForUpdateInfo: resolve to publish config {
+  "owner": "praveenpl03",
+  "repo": "pdf-master-studio",
+  "provider": "github"
+}
+  • building        target=flatpak arch=x64 file=bin/PDF Master Studio-2.0.0-x86_64.flatpak
+  • no event listeners found  event=artifactBuildStarted
+2026-10-18T15:22:57.495Z @malept/flatpak-bundler Using manifest...
+{
+  "id": "com.pdfmasterstudio.app",
+  "command": "electron-wrapper",
+  "runtime": "org.freedesktop.Platform",
+  "runtime-version": "24.08",
+  "sdk": "org.freedesktop.Sdk",
+  "base": "org.electronjs.Electron2.BaseApp",
+  "base-version": "20.08",
+  "finish-args": [
+    "--socket=wayland",
+    "--socket=x11",
+    "--share=ipc",
+    "--device=dri",
+    "--socket=pulseaudio",
+    "--filesystem=home",
+    "--share=network",
+    "--talk-name=org.freedesktop.Notifications"
+  ]
+}
+2026-10-18T15:22:57.495Z @malept/flatpak-bundler Using options...
+{
+  "base-flatpakref": "app/org.electronjs.Electron2.BaseApp/x86_64/20.08",
+  "runtime-flatpakref": "runtime/org.freedesktop.Platform/x86_64/24.08",
+  "sdk-flatpakref": "runtime/org.freedesktop.Sdk/x86_64/24.08",
+  "arch": "x86_64",
+  "bundle-path": "/run/media/praveen/Zero/pdf/pdf-master-studio/bin/PDF Master Studio-2.0.0-x86_64.flatpak",
+  "files": [
+    [
+      "/run/media/praveen/Zero/pdf/pdf-master-studio/bin/__flatpak-x86_64",
+      "/"
+    ],
+    [
+      "/run/media/praveen/Zero/pdf/pdf-master-studio/bin/linux-unpacked",
+      "/lib/com.pdfmasterstudio.app"
+    ]
+  ],
+  "symlinks": [
+    [
+      "/lib/com.pdfmasterstudio.app/pdf-master-studio",
+      "/bin/pdf-master-studio"
+    ]
+  ],
+  "working-dir": "/tmp/flatpak-bundler-79526-YTotT8lDqveZ",
+  "build-dir": "/tmp/flatpak-bundler-79526-YTotT8lDqveZ/build",
+  "repo-dir": "/tmp/flatpak-bundler-79526-YTotT8lDqveZ/repo",
+  "manifest-path": "/tmp/flatpak-bundler-79526-YTotT8lDqveZ/manifest.json",
+  "extra-flatpak-builder-args": [],
+  "extra-flatpak-build-bundle-args": [],
+  "extra-flatpak-build-export-args": [],
+  "clean-tmpdirs": true,
+  "auto-install-runtime": true,
+  "auto-install-sdk": true,
+  "auto-install-base": true
+}
+2026-10-18T15:22:57.495Z @malept/flatpak-bundler Ensuring runtime is up to date
+2026-10-18T15:22:57.496Z @malept/flatpak-bundler Checking for install of org.freedesktop.Platform
+2026-10-18T15:22:57.496Z @malept/flatpak-bundler $ flatpak info --show-commit --user org.freedesktop.Platform/x86_64/24.08
+2026-10-18T15:22:57.511Z @malept/flatpak-bundler $ flatpak info --show-commit --system org.freedesktop.Platform/x86_64/24.08
+2026-10-18T15:22:57.522Z @malept/flatpak-bundler 1> 0ad7bef7a8e69b26b7e0d666a11b60dca10461c23cc0d2ee5391991c559c28c7
+
+2026-10-18T15:22:57.532Z @malept/flatpak-bundler 2> error: org.freedesktop.Platform/x86_64/24.08 not installed
+
+2026-10-18T15:22:57.534Z @malept/flatpak-bundler Found install of org.freedesktop.Platform, trying to update
+2026-10-18T15:22:57.547Z @malept/flatpak-bundler flatpak-builder is new enough, adding --assumeyes
+2026-10-18T15:22:57.547Z @malept/flatpak-bundler $ flatpak update --user --no-deps --arch x86_64 --assumeyes org.freedesktop.Platform 24.08
+2026-10-18T15:22:57.562Z @malept/flatpak-bundler 1> Looking for updates…
+
+2026-10-18T15:22:57.785Z @malept/flatpak-bundler 1> 
+Info: (pinned) runtime org.freedesktop.Platform branch 24.08 is end-of-life, with reason:
+   org.freedesktop.Platform 24.08 is no longer receiving fixes and security updates. Please update to a supported runtime version.
+
+2026-10-18T15:22:57.804Z @malept/flatpak-bundler 1> 
+Info: runtime org.freedesktop.Platform.VAAPI.Intel branch 24.08 is end-of-life, with reason:
+   org.freedesktop.Platform 24.08 is no longer receiving fixes and security updates. Please update to a supported runtime version.
+
+2026-10-18T15:22:57.805Z @malept/flatpak-bundler 1> 
+Info: runtime org.freedesktop.Platform.GL.default branch 24.08extra is end-of-life, with reason:
+   org.freedesktop.Platform 24.08 is no longer receiving fixes and security updates. Please update to a supported runtime version.
+
+2026-10-18T15:22:57.805Z @malept/flatpak-bundler 1> 
+Info: runtime org.freedesktop.Platform.GL.default branch 24.08 is end-of-life, with reason:
+   org.freedesktop.Platform 24.08 is no longer receiving fixes and security updates. Please update to a supported runtime version.
+
+2026-10-18T15:22:57.805Z @malept/flatpak-bundler 1> 
+Nothing to do.
+
+2026-10-18T15:22:57.809Z @malept/flatpak-bundler Ensuring sdk is up to date
+2026-10-18T15:22:57.809Z @malept/flatpak-bundler Checking for install of org.freedesktop.Sdk
+2026-10-18T15:22:57.809Z @malept/flatpak-bundler $ flatpak info --show-commit --user org.freedesktop.Sdk/x86_64/24.08
+2026-10-18T15:22:57.817Z @malept/flatpak-bundler $ flatpak info --show-commit --system org.freedesktop.Sdk/x86_64/24.08
+2026-10-18T15:22:57.836Z @malept/flatpak-bundler 1> f840a6835a5d303866d8309ca512833fb516910f6994662cbe1c298371ef6873
+
+2026-10-18T15:22:57.843Z @malept/flatpak-bundler 2> error: org.freedesktop.Sdk/x86_64/24.08 not installed
+
+2026-10-18T15:22:57.844Z @malept/flatpak-bundler Found install of org.freedesktop.Sdk, trying to update
+2026-10-18T15:22:57.845Z @malept/flatpak-bundler flatpak-builder is new enough, adding --assumeyes
+2026-10-18T15:22:57.845Z @malept/flatpak-bundler $ flatpak update --user --no-deps --arch x86_64 --assumeyes org.freedesktop.Sdk 24.08
+2026-10-18T15:22:57.865Z @malept/flatpak-bundler 1> Looking for updates…
+
+2026-10-18T15:22:58.043Z @malept/flatpak-bundler 1> 
+Info: (pinned) runtime org.freedesktop.Sdk branch 24.08 is end-of-life, with reason:
+   org.freedesktop.Platform 24.08 is no longer receiving fixes and security updates. Please update to a supported runtime version.
+
+2026-10-18T15:22:58.060Z @malept/flatpak-bundler 1> 
+Info: runtime org.freedesktop.Platform.VAAPI.Intel branch 24.08 is end-of-life, with reason:
+   org.freedesktop.Platform 24.08 is no longer receiving fixes and security updates. Please update to a supported runtime version.
+
+2026-10-18T15:22:58.061Z @malept/flatpak-bundler 1> 
+Info: runtime org.freedesktop.Platform.GL.default branch 24.08extra is end-of-life, with reason:
+   org.freedesktop.Platform 24.08 is no longer receiving fixes and security updates. Please update to a supported runtime version.
+
+2026-10-18T15:22:58.061Z @malept/flatpak-bundler 1> 
+Info: runtime org.freedesktop.Platform.GL.default branch 24.08 is end-of-life, with reason:
+   org.freedesktop.Platform 24.08 is no longer receiving fixes and security updates. Please update to a supported runtime version.
+
+2026-10-18T15:22:58.061Z @malept/flatpak-bundler 1> 
+Nothing to do.
+
+2026-10-18T15:22:58.066Z @malept/flatpak-bundler Ensuring base is up to date
+2026-10-18T15:22:58.066Z @malept/flatpak-bundler Checking for install of org.electronjs.Electron2.BaseApp
+2026-10-18T15:22:58.066Z @malept/flatpak-bundler $ flatpak info --show-commit --user org.electronjs.Electron2.BaseApp/x86_64/20.08
+2026-10-18T15:22:58.071Z @malept/flatpak-bundler $ flatpak info --show-commit --system org.electronjs.Electron2.BaseApp/x86_64/20.08
+2026-10-18T15:22:58.084Z @malept/flatpak-bundler 1> 177562ddd26de8f2d045076f05c1a81cf7c6a4009f2a9ea4a5b7682a2d36e6b9
+
+2026-10-18T15:22:58.093Z @malept/flatpak-bundler 2> error: org.electronjs.Electron2.BaseApp/x86_64/20.08 not installed
+
+2026-10-18T15:22:58.096Z @malept/flatpak-bundler Found install of org.electronjs.Electron2.BaseApp, trying to update
+2026-10-18T15:22:58.096Z @malept/flatpak-bundler flatpak-builder is new enough, adding --assumeyes
+2026-10-18T15:22:58.096Z @malept/flatpak-bundler $ flatpak update --user --no-deps --arch x86_64 --assumeyes org.electronjs.Electron2.BaseApp 20.08
+2026-10-18T15:22:58.113Z @malept/flatpak-bundler 1> Looking for updates…
+
+2026-10-18T15:22:58.329Z @malept/flatpak-bundler 1> 
+Nothing to do.
+
+2026-10-18T15:22:58.334Z @malept/flatpak-bundler flatpak-builder is new enough, adding --assumeyes
+2026-10-18T15:22:58.334Z @malept/flatpak-bundler $ flatpak-builder --arch x86_64 --force-clean --allow-missing-runtimes --build-only --assumeyes /tmp/flatpak-bundler-79526-YTotT8lDqveZ/build /tmp/flatpak-bundler-79526-YTotT8lDqveZ/manifest.json
+2026-10-18T15:22:58.410Z @malept/flatpak-bundler 1> Downloading sources
+
+2026-10-18T15:22:58.410Z @malept/flatpak-bundler 1> Initializing build dir
+
+2026-10-18T15:22:58.434Z @malept/flatpak-bundler 1> Committing stage init to cache
+
+2026-10-18T15:22:58.475Z @malept/flatpak-bundler 1> Starting build of com.pdfmasterstudio.app
+Pruning cache
+
+2026-10-18T15:22:58.479Z @malept/flatpak-bundler Copying /run/media/praveen/Zero/pdf/pdf-master-studio/bin/__flatpak-x86_64 to /tmp/flatpak-bundler-79526-YTotT8lDqveZ/build/files/
+2026-10-18T15:22:58.479Z @malept/flatpak-bundler Copying /run/media/praveen/Zero/pdf/pdf-master-studio/bin/linux-unpacked to /tmp/flatpak-bundler-79526-YTotT8lDqveZ/build/files/lib/com.pdfmasterstudio.app
+2026-10-18T15:22:58.718Z @malept/flatpak-bundler Symlinking /app/lib/com.pdfmasterstudio.app/pdf-master-studio at /tmp/flatpak-bundler-79526-YTotT8lDqveZ/build/files/bin/pdf-master-studio
+2026-10-18T15:22:58.719Z @malept/flatpak-bundler flatpak-builder is new enough, adding --assumeyes
+2026-10-18T15:22:58.719Z @malept/flatpak-bundler $ flatpak-builder --arch x86_64 --force-clean --allow-missing-runtimes --finish-only --assumeyes /tmp/flatpak-bundler-79526-YTotT8lDqveZ/build /tmp/flatpak-bundler-79526-YTotT8lDqveZ/manifest.json
+2026-10-18T15:22:58.949Z @malept/flatpak-bundler 1> Cleaning up
+
+2026-10-18T15:22:58.964Z @malept/flatpak-bundler 2> Error: Failure spawning rofiles-fuse, exit_status: 1024
+
+  • async task error  error=flatpak-builder failed with status code 1
+  ⨯ flatpak-builder failed with status code 1  failedTask=build stackTrace=Error: flatpak-builder failed with status code 1
+    at ChildProcess.<anonymous> (/run/media/praveen/Zero/pdf/pdf-master-studio/node_modules/@malept/flatpak-bundler/index.js:71:16)
+    at ChildProcess.emit (node:events:514:20)
+    at maybeClose (node:internal/child_process:1125:16)
+    at Socket.<anonymous> (node:internal/child_process:497:11)
+    at Socket.emit (node:events:514:20)
+    at Pipe.<anonymous> (node:net:362:12)
