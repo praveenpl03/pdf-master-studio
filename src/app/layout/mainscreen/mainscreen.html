@@ -7,6 +7,7 @@
         <h1>Smart way to edit PDFs</h1>
       </div>
     </div>
+    <app-language-picker [labels]="menuLabels" [activeLanguage]="uiLanguage" (translationsReady)="applyMenuTranslations($event)"></app-language-picker>
 
     <div class="file-actions">
       <!-- <label class="file-drop">
@@ -18,7 +19,7 @@
       <label class="file-drop compact">
         <input type="file" accept="application/pdf" multiple (change)="addMergeFiles($event)" />
         <span class="file-drop-icon" aria-hidden="true"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
-        <span class="file-drop-copy"><strong>Select PDFs</strong><small>{{ extraFiles.length }} files queued · click to add</small></span>
+        <span class="file-drop-copy"><strong>Open PDF</strong><small>One replaces the current PDF · multiple merge</small></span>
       </label>
     </div>
     <input id="imageUpload" class="hidden-upload" type="file" accept="image/png,image/jpeg" (change)="addImageOverlay($event)" />
@@ -129,6 +130,7 @@
         <div class="top-function-icons" aria-label="PDF editing menu">
           <button type="button" title="Insert blank page before current page" (click)="insertBlankPageBeforeActive()" [disabled]="busy"><i class="fa-regular fa-file"></i><span>Blank</span></button>
           <button type="button" title="Text" (click)="run('addText')" [disabled]="busy"><i class="fa-solid fa-font"></i><span>Text</span><i class="fa-solid fa-caret-down caret"></i></button>
+          <button type="button" class="summarize-toolbar-button" title="Summarize PDF with local AI" (click)="openLocalSummarizer()" [disabled]="busy"><i class="fa-solid fa-wand-magic-sparkles"></i><span>Summarize</span><span class="new-feature-badge">NEW</span></button>
           <button type="button" title="Images" (click)="run('chooseImage')" [disabled]="busy"><i class="fa-regular fa-image"></i><span>Images</span><i class="fa-solid fa-caret-down caret"></i></button>
           <button type="button" title="Sign" (click)="run('addSignature')" [disabled]="busy"><i class="fa-solid fa-signature"></i><span>Sign</span><i class="fa-solid fa-caret-down caret"></i></button>
           <button type="button" title="Whiteout" (click)="addWhiteout()" [disabled]="busy"><i class="fa-solid fa-eraser"></i><span>Whiteout</span></button>
@@ -393,10 +395,10 @@
                     @default { <i class="fa-solid fa-shield-halved"></i> }
                   }
                 </div>
-                <div class="welcome-card-title"><h4>{{ group.key === 'more' ? 'Optimize, protect & analyze' : group.title }}</h4><span>{{ toolsForCategory(group.key).length }} tools</span></div>
+                <div class="welcome-card-title"><h4>{{ group.key === 'more' ? uiText('more-title', 'Optimize, protect & analyze') : groupLabel(group) }}</h4><span>{{ toolsForCategory(group.key).length }} {{ uiText('tools-count', 'tools') }}</span></div>
                 <ul>
                   @for (tool of toolsForCategory(group.key); track tool.action + tool.name) {
-                    <li>{{ tool.name }}</li>
+                    <li>{{ toolLabel(tool) }}</li>
                   }
                 </ul>
               </article>
@@ -488,9 +490,9 @@
     <section class="services-menu" aria-label="PDF services">
       <div class="services-head">
         <div>
-          <p class="eyebrow">YOUR TOOLBOX</p>
-          <h2>PDF Tools</h2>
-          <span class="services-hint">Choose a category to get started</span>
+          <p class="eyebrow">{{ uiText('toolbox', 'YOUR TOOLBOX') }}</p>
+          <h2>{{ uiText('pdf-tools', 'PDF Tools') }}</h2>
+          <span class="services-hint">{{ uiText('category-hint', 'Choose a category to get started') }}</span>
         </div>
       </div>
 
@@ -498,7 +500,7 @@
         @for (group of toolGroups; track group.key) {
           <button type="button" class="service-category" [class.active]="activeToolGroup === group.key" (click)="toggleToolMenu(group.key)">
             <span class="service-icon"><i class="fa-solid" [ngClass]="iconForGroup(group.key)"></i></span>
-            <span>{{ group.title }}</span>
+            <span>{{ groupLabel(group) }}</span>
           </button>
         }
       </div>
@@ -512,16 +514,16 @@
             </div>
             <label class="tool-search">
               <i class="fa-solid fa-magnifying-glass"></i>
-              <input type="search" placeholder="Search function" [(ngModel)]="toolSearchTerm" />
+              <input type="search" [placeholder]="uiText('search-function', 'Search function')" [(ngModel)]="toolSearchTerm" />
             </label>
             <div class="tool-popup-list">
               @for (tool of activeMenuTools; track tool.name) {
                 <button type="button" (click)="runMenuTool(tool.action)" [disabled]="busy || !pages.length">
                   <i class="fa-solid" [ngClass]="iconForAction(tool.action)"></i>
-                  <span>{{ tool.name }}</span>
+                  <span>{{ toolLabel(tool) }}</span>
                 </button>
               } @empty {
-                <p>No function found.</p>
+                <p>{{ uiText('no-function', 'No function found.') }}</p>
               }
             </div>
           </section>
@@ -584,6 +586,7 @@
 
 
 </main>
+<app-local-summarizer #localSummarizer></app-local-summarizer>
   <footer class="site-footer">
   <div class="footer-container">
     <div class="footer-left">

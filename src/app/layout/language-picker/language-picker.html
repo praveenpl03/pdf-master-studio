@@ -1,0 +1,9 @@
+<section class="language-picker" aria-label="Application language">
+  <div class="language-picker-heading"><i class="fa-solid fa-globe"></i><div><strong>App language</strong><small>Translate the PDF tool menus</small></div></div>
+  <select class="language-input" [(ngModel)]="selectedLanguage" (ngModelChange)="onLanguageChange($event)" [disabled]="isLoading" aria-label="Choose a language">
+    <option value="English">English</option>
+    @for (language of (languages | keyvalue); track language.key) { <option [value]="language.key">{{ language.value.nativeName }}</option> }
+  </select>
+  @if (isLoading) { <small class="language-progress">Loading available languages…</small> }
+  @if (error) { <small class="language-error" role="alert">{{ error }}</small> }
+</section>

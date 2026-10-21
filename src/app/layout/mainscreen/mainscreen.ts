@@ -42,10 +42,12 @@ import type {
 import { MuPdfService } from '../services/mupdf/pdf-extract.service';
 import { AboutModalComponent } from '../../about/about';
 import { PrivacyModalComponent } from '../../privacy/privacy';
+import { LocalSummarizerComponent } from '../summarizer/summarizer';
+import { LanguagePickerComponent, MenuLabel, MenuTranslationResult } from '../language-picker/language-picker';
 
 @Component({
   selector: 'app-pdf-editor',
-  imports: [CommonModule, FormsModule, AboutModalComponent, PrivacyModalComponent],
+  imports: [CommonModule, FormsModule, AboutModalComponent, PrivacyModalComponent, LocalSummarizerComponent, LanguagePickerComponent],
   templateUrl: './mainscreen.html',
   styleUrls: ['./mainscreen.css'],
 })
@@ -53,6 +55,10 @@ export class Mainscreen implements AfterViewInit {
 
   @ViewChild('aboutModal') aboutModal!: AboutModalComponent;
 @ViewChild('privacyModal') privacyModal!: PrivacyModalComponent;
+@ViewChild('localSummarizer') localSummarizer!: LocalSummarizerComponent;
+  uiLanguage = 'English';
+  menuTranslations: Record<string, string> = {};
+  menuLabels: MenuLabel[] = [];
 
 openPrivacy() {
   this.privacyModal.open();
@@ -60,6 +66,37 @@ openPrivacy() {
   openAbout() {
    
     this.aboutModal.open();
+  }
+
+  async openLocalSummarizer(): Promise<void> {
+    if (!this.currentBytes.length || this.busy) return;
+    this.busy = true;
+    this.busyLabel = 'Extracting PDF text';
+    try {
+      const pdf = await this.openPdfJsDocument();
+      const pages: { pageNumber: number; text: string; selected: boolean }[] = [];
+      for (let index = 0; index < this.pages.length; index++) {
+        const pageItem = this.pages[index];
+        let text = '';
+        if (!pageItem.blank && pageItem.sourceIndex >= 0 && pageItem.sourceIndex < pdf.numPages) {
+          const page = await pdf.getPage(pageItem.sourceIndex + 1);
+          const content = await page.getTextContent();
+          text = (content.items as unknown[])
+            .map((item) => this.textConverter.isPdfTextItem(item) ? item.str : '')
+            .filter(Boolean)
+            .join(' ');
+        }
+        pages.push({ pageNumber: index + 1, text, selected: pageItem.selected });
+      }
+      this.localSummarizer.pages = pages;
+      this.localSummarizer.documentName = this.fileName;
+      this.localSummarizer.open();
+    } catch (error) {
+      this.status = error instanceof Error ? error.message : 'Could not read text from this PDF.';
+    } finally {
+      this.busy = false;
+      this.busyLabel = '';
+    }
   }
   private readonly fontFamilyAliases = {
     helvetica: ['helvetica', 'arial', 'sans-serif', 'sans serif'],
@@ -74,6 +111,24 @@ openPrivacy() {
       private textConverter: Textconverter,
        private mupdfService: MuPdfService
     ) {
+try {
+  this.uiLanguage = localStorage.getItem('pdf-master-studio-language') || 'English';
+  this.menuTranslations = JSON.parse(localStorage.getItem('pdf-master-studio-menu-translations') || '{}') as Record<string, string>;
+} catch {
+  this.uiLanguage = 'English';
+  this.menuTranslations = {};
+}
+this.menuLabels = [
+  { id: 'ui-toolbox', label: 'YOUR TOOLBOX' },
+  { id: 'ui-pdf-tools', label: 'PDF Tools' },
+  { id: 'ui-category-hint', label: 'Choose a category to get started' },
+  { id: 'ui-search-function', label: 'Search function' },
+  { id: 'ui-no-function', label: 'No function found.' },
+  { id: 'ui-tools-count', label: 'tools' },
+  { id: 'ui-more-title', label: 'Optimize, protect & analyze' },
+  ...this.toolGroups.map((group) => ({ id: `group-${group.key}`, label: group.title })),
+  ...this.tools.map((tool, index) => ({ id: `tool-${index}`, label: tool.name })),
+];
 this.fontService.loadFontsFromAssets().subscribe({
     next: (fonts) => {
       this.fontChoices = [
@@ -324,7 +379,7 @@ private activeRenderTask?: { cancel: () => void };
       : this.visibleTools.filter((tool) => tool.group === group);
     return base
       .filter((tool) => tool.action !== 'reconstructHtml')
-      .filter((tool) => !term || tool.name.toLowerCase().includes(term) || tool.action.toLowerCase().includes(term));
+      .filter((tool) => !term || this.toolLabel(tool).toLowerCase().includes(term) || tool.name.toLowerCase().includes(term) || tool.action.toLowerCase().includes(term));
   }
 
   get activeMenuTools(): PdfTool[] {
@@ -332,7 +387,32 @@ private activeRenderTask?: { cancel: () => void };
   }
 
   activeMenuTitle(): string {
-    return this.toolGroups.find((group) => group.key === this.activeToolGroup)?.title ?? 'Tools';
+    const group = this.toolGroups.find((item) => item.key === this.activeToolGroup);
+    return group ? this.groupLabel(group) : 'Tools';
+  }
+
+  groupLabel(group: { key: MenuCategoryKey; title: string }): string {
+    return this.menuTranslations[`group-${group.key}`] || group.title;
+  }
+
+  uiText(id: string, fallback: string): string {
+    return this.menuTranslations[`ui-${id}`] || fallback;
+  }
+
+  toolLabel(tool: PdfTool): string {
+    const index = this.tools.indexOf(tool);
+    return this.menuTranslations[`tool-${index}`] || tool.name;
+  }
+
+  applyMenuTranslations(result: MenuTranslationResult): void {
+    this.uiLanguage = result.language;
+    this.menuTranslations = result.translations;
+    try {
+      localStorage.setItem('pdf-master-studio-language', result.language);
+      localStorage.setItem('pdf-master-studio-menu-translations', JSON.stringify(result.translations));
+    } catch {
+      // Keep the current session localized when persistent storage is unavailable.
+    }
   }
 
   toggleToolMenu(group: MenuCategoryKey): void {
@@ -474,6 +554,17 @@ private activeRenderTask?: { cancel: () => void };
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
     if (!files.length) return;
+
+    // A single PDF selected in the sidebar is a replacement document. Keep
+    // multi-file selections on the explicit merge path.
+    if (files.length === 1) {
+      this.extraFiles = [];
+      const file = files[0];
+      input.value = '';
+      await this.loadBytes(new Uint8Array(await file.arrayBuffer()), file.name);
+      return;
+    }
+
     this.recordHistory();
     for (const file of files) {
       this.extraFiles.push({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });

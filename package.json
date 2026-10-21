@@ -1,6 +1,6 @@
 {
   "name": "PDF-Master-Studio",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "A desktop PDF management studio built with Angular and Electron",
   "author": "Praveen <praveenpl03>",
   "license": "MIT",
@@ -11,7 +11,9 @@
   "scripts": {
     "build:snap": "ng build --configuration production && electron-builder --linux snap",
     "ng": "ng",
-    "start": "ng serve",
+    "start": "node server/dev.js",
+    "api:serve": "node server/web-server.js --api-only",
+    "web:serve": "node server/web-server.js",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
@@ -34,6 +36,7 @@
     "@angular/platform-browser": "^21.2.0",
     "@angular/router": "^21.2.0",
     "@fortawesome/fontawesome-free": "^7.2.0",
+    "@google/genai": "^2.30.0",
     "@hyzyla/pdfium": "^2.1.13",
     "@pdf-lib/fontkit": "^1.1.1",
     "docx": "^9.7.1",
@@ -69,7 +72,7 @@
     "productName": "PDF Master Studio",
     "directories": {
       "buildResources": "build",
-      "output": "/run/media/praveen/Zero/pdf/pdf-master-studio/bin"
+      "output": "release"
     },
     "files": [
       "dist/**/*",
@@ -81,7 +84,26 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "public/favicon/win.ico"
+      "icon": "public/favicon/win.ico",
+      "extraResources": [
+        {
+          "from": "build/model1.gguf",
+          "to": "llama/model.gguf"
+        },
+        {
+          "from": "build/win",
+          "to": "llama/win",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "runAfterFinish": true
     },
     "mac": {
       "target": "default",
@@ -98,7 +120,20 @@
       "icon": "build/icons",
       "executableName": "pdf-master-studio",
       "synopsis": "PDF editing and management",
-      "description": "PDF Master Studio desktop PDF editor"
+      "description": "PDF Master Studio desktop PDF editor",
+      "extraResources": [
+        {
+          "from": "build/model1.gguf",
+          "to": "llama/model.gguf"
+        },
+        {
+          "from": "build/linux",
+          "to": "llama/linux",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
     },
     "flatpak": {
       "runtime": "org.freedesktop.Platform",

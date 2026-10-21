@@ -1,0 +1,52 @@
+@if (isOpen) {
+  <div class="summary-backdrop" (click)="close()">
+    <section class="summary-dialog" role="dialog" aria-modal="true" aria-labelledby="summary-title" (click)="$event.stopPropagation()">
+      <header class="summary-header">
+        <div class="summary-brand"><span class="summary-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span><div><p>{{ provider === 'online' ? 'ONLINE AI' : 'ON-DEVICE AI' }}</p><h2 id="summary-title">PDF Summary</h2></div></div>
+        <button class="summary-close" type="button" aria-label="Close summarizer" (click)="close()">×</button>
+      </header>
+      <div class="summary-document"><i class="fa-regular fa-file-pdf"></i><span>{{ documentName }}</span><span class="local-badge" [class.online-badge]="provider === 'online'"><i class="fa-solid" [ngClass]="provider === 'online' ? 'fa-cloud' : 'fa-lock'"></i> {{ provider === 'online' ? 'Online · Gemini' : 'Local' }}</span></div>
+      <fieldset class="summary-provider">
+        <legend>AI model</legend>
+        <div class="provider-options">
+          <button type="button" [class.active]="provider === 'local'" [attr.aria-pressed]="provider === 'local'" [disabled]="isSummarizing" (click)="selectProvider('local')"><i class="fa-solid fa-computer"></i><span>Local model</span><small>Private · on this device</small></button>
+          <button type="button" [class.active]="provider === 'online'" [attr.aria-pressed]="provider === 'online'" [disabled]="isSummarizing" (click)="selectProvider('online')"><i class="fa-solid fa-cloud"></i><span>Free online model</span><small>Gemini 3.8 Flash · internet required</small></button>
+        </div>
+      </fieldset>
+      @if (provider === 'online') {
+        <label class="online-key-field">Gemini API key
+          <span class="online-key-row"><input type="password" autocomplete="off" [(ngModel)]="onlineApiKey" [disabled]="isSummarizing" placeholder="Paste your API key" /><button type="button" (click)="openGeminiKeyPage()" [disabled]="isSummarizing">Get a free key</button></span>
+          <small class="online-key-note">Your key is used for this session only and is not saved.</small>
+        </label>
+        <label class="online-consent"><input type="checkbox" [(ngModel)]="onlineConsent" [disabled]="isSummarizing" /><span>I agree to send the extracted PDF text and API key through this app’s server to Google Gemini. On its free tier, Google may use submitted data to improve its products.</span></label>
+      } @else {
+        <p class="summary-note">Your document is summarized on this device. Its text stays local.</p>
+      }
+      <fieldset class="summary-scope">
+        <legend>Pages to summarize</legend>
+        <div class="scope-options">
+          <button type="button" [class.active]="scope === 'whole-pdf'" [attr.aria-pressed]="scope === 'whole-pdf'" [disabled]="isSummarizing" (click)="scope = 'whole-pdf'; error = ''; summary = ''"><i class="fa-solid fa-book-open"></i><span>Whole PDF</span><small>{{ pages.length }} pages</small></button>
+          <button type="button" [class.active]="scope === 'selected-pages'" [attr.aria-pressed]="scope === 'selected-pages'" [disabled]="isSummarizing || selectedPageCount === 0" (click)="scope = 'selected-pages'; error = ''; summary = ''"><i class="fa-solid fa-check-double"></i><span>Selected pages</span><small>{{ selectedPageCount }} selected</small></button>
+        </div>
+        @if (selectedPageCount === 0) { <small class="scope-hint">Select pages in the page strip before choosing this option.</small> }
+      </fieldset>
+      <label class="summary-style">Summary style
+        <select [(ngModel)]="style" [disabled]="isSummarizing">
+          <option value="concise">Concise</option><option value="detailed">Detailed</option><option value="bullet-points">Bullet points</option>
+        </select>
+      </label>
+      @if (error) { <div class="summary-error" role="alert"><i class="fa-solid fa-circle-exclamation"></i>{{ error }}</div> }
+      @if (summary) {
+        <article class="summary-result" aria-live="polite"><h3>Summary</h3><p>{{ summary }}</p></article>
+      } @else if (isSummarizing) {
+        <div class="summary-loading" aria-live="polite"><span class="summary-spinner"></span><div><strong>Reading your document</strong><small>{{ provider === 'online' ? 'Sending extracted text to Gemini for a summary.' : 'The first response can take a little while as the local model warms up.' }}</small></div></div>
+      } @else {
+        <div class="summary-empty"><i class="fa-solid fa-file-lines"></i><p>{{ summaryText ? 'Generate a clear summary of ' + (scope === 'selected-pages' ? 'the selected pages' : 'the whole PDF') + (provider === 'online' ? ' with Gemini.' : ' with your local model.') : scope === 'selected-pages' && selectedPageCount === 0 ? 'Select one or more pages in the page strip, then choose Selected pages.' : 'No selectable text was found in this scope. Scanned PDFs need OCR before they can be summarized.' }}</p></div>
+      }
+      <footer class="summary-actions">
+        @if (summary) { <button type="button" class="summary-secondary" (click)="copySummary()"><i class="fa-regular fa-copy"></i> Copy</button> }
+        <button type="button" class="summary-primary" (click)="summarize()" [disabled]="isSummarizing || !summaryText"><i class="fa-solid" [ngClass]="isSummarizing ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'"></i>{{ summary ? 'Regenerate summary' : isSummarizing ? 'Summarizing…' : scope === 'selected-pages' ? 'Summarize selected pages' : 'Summarize whole PDF' }}</button>
+      </footer>
+    </section>
+  </div>
+}
