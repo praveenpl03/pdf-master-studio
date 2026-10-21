@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { GoogleGenAI } from '@google/genai';
 
 type SummaryStyle = 'concise' | 'detailed' | 'bullet-points';
 type SummaryScope = 'whole-pdf' | 'selected-pages';
@@ -165,21 +166,16 @@ export class LocalSummarizerComponent {
     instructions: string;
     maxOutputTokens: number;
   }): Promise<string> {
-    const response = await fetch('/api/gemini/interactions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-      signal: AbortSignal.timeout(180_000),
+    const ai = new GoogleGenAI({
+      apiKey: request.apiKey,
+      httpOptions: { headers: { 'Api-Revision': '2026-05-20' } },
     });
-    if (!response.ok) {
-      if (response.status === 429) throw new Error('Gemini free-tier rate limit reached. Wait a little and try again.');
-      if (response.status === 401 || response.status === 403) throw new Error('Gemini rejected the API key or the key does not have access to this model.');
-      const detail = await response.json().catch(() => null) as { error?: string } | null;
-      throw new Error(detail?.error ?? `Gemini request failed (${response.status}).`);
-    }
-    const payload = await response.json() as { text?: string; error?: string };
-    if (payload.error) throw new Error(payload.error);
-    const summary = payload.text?.trim() ?? '';
+    const interaction = await ai.interactions.create({
+      model: 'gemini-3.8-flash',
+      input: `${request.instructions}\n\n${request.prompt}\n\n<extracted_pdf_text>\n${request.sourceText}\n</extracted_pdf_text>`,
+      generation_config: { max_output_tokens: request.maxOutputTokens, thinking_level: 'low' },
+    });
+    const summary = interaction.output_text?.trim() ?? '';
     if (!summary) throw new Error('Gemini returned no summary. Try a shorter document or another summary style.');
     this.summary = summary;
     return summary;
