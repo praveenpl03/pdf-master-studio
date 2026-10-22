@@ -3,9 +3,7 @@ const {
   BrowserWindow,
   Menu,
   protocol,
-  net,
-  ipcMain,
-  shell
+  net
 } = require('electron');
 
 const path = require('node:path');
@@ -73,61 +71,6 @@ function stopLocalAiServer() {
   localAiServer = undefined;
 }
 
-function isTrustedAiSender(event) {
-  if (!mainWindow || event.sender !== mainWindow.webContents) return false;
-  const senderUrl = event.senderFrame?.url ?? event.sender.getURL();
-  return senderUrl.startsWith('app://app/') || senderUrl.startsWith('http://localhost:4200/');
-}
-
-function registerOnlineAiHandlers() {
-  ipcMain.handle('online-ai:summarize', async (event, request) => {
-    if (!isTrustedAiSender(event)) {
-      throw new Error('Online summaries are only available from the app window.');
-    }
-    const apiKey = typeof request?.apiKey === 'string' ? request.apiKey.trim() : '';
-    const sourceText = typeof request?.sourceText === 'string' ? request.sourceText : '';
-    const prompt = typeof request?.prompt === 'string' ? request.prompt : '';
-    const instructions = typeof request?.instructions === 'string' ? request.instructions : '';
-    const maxOutputTokens = Number(request?.maxOutputTokens);
-    if (!apiKey || apiKey.length > 512) throw new Error('Enter a valid Gemini API key.');
-    if (!sourceText || sourceText.length > 24000) throw new Error('The extracted text is empty or too long for this request.');
-    if (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 1 || maxOutputTokens > 1024) {
-      throw new Error('The summary length setting is invalid.');
-    }
-
-    const { GoogleGenAI } = await import('@google/genai');
-    const ai = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        baseUrl: 'https://generativelanguage.googleapis.com',
-        apiVersion: 'v1beta',
-        headers: { 'Api-Revision': '2026-05-20' },
-      },
-    });
-    const stream = await ai.interactions.create({
-      model: 'gemini-3.8-flash',
-      input: `${instructions}\n\n${prompt}\n\n<extracted_pdf_text>\n${sourceText}\n</extracted_pdf_text>`,
-      stream: true,
-      generation_config: { max_output_tokens: maxOutputTokens, thinking_level: 'low' },
-    });
-    let summary = '';
-    for await (const event of stream) {
-      const delta = event;
-      if (delta.event_type === 'step.delta' && delta.delta.type === 'text') summary += delta.delta.text;
-    }
-    summary = summary.trim();
-    if (!summary) throw new Error('Gemini returned no summary. Try a shorter document or another summary style.');
-    return summary;
-  });
-
-  ipcMain.handle('online-ai:open-key-page', async (event) => {
-    if (!isTrustedAiSender(event)) {
-      throw new Error('This action is only available from the app window.');
-    }
-    await shell.openExternal('https://aistudio.google.com/apikey');
-  });
-}
-
 function getAngularPath() {
   return path.join(
     app.getAppPath(),
@@ -183,7 +126,6 @@ function createWindow() {
   frame: true,
   autoHideMenuBar: true,
   webPreferences: {
-    preload: path.join(__dirname, 'preload.js'),
     contextIsolation: true,
     nodeIntegration: false,
     sandbox: true
@@ -205,7 +147,6 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
 
   registerAppProtocol();
-  registerOnlineAiHandlers();
   startLocalAiServer();
   createWindow();
 

@@ -272,6 +272,20 @@ app-pdf-editor {
 .welcome-card ul { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
 .welcome-card li { position: relative; padding-left: 13px; color: #617087; font-size: 11px; line-height: 1.4; }
 .welcome-card li::before { position: absolute; top: 6px; left: 1px; width: 4px; height: 4px; border-radius: 50%; background: #8ba3c3; content: ''; }
+.welcome-summary-card { display: flex; align-items: center; gap: 16px; margin: 0 0 25px; padding: 18px 20px; border: 1px solid #d7e4fa; border-radius: 16px; background: linear-gradient(115deg, #f5f8ff, #fff 75%); box-shadow: 0 8px 22px rgba(35, 61, 103, .055); }
+.welcome-summary-icon { display: grid; place-items: center; flex: 0 0 42px; height: 42px; border-radius: 13px; background: #e8f0ff; color: #2563eb; font-size: 18px; }
+.welcome-summary-copy { min-width: 0; flex: 1; }
+.welcome-summary-kicker { color: #2563eb; font-size: 9px; font-weight: 800; letter-spacing: .13em; }
+.welcome-summary-copy h3 { margin: 3px 0 4px; color: #172033; font-size: 16px; }
+.welcome-summary-copy>p { margin: 0; color: #617087; font-size: 11px; }
+.welcome-summary-options { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; }
+.welcome-summary-options>span { display: grid; grid-template-columns: 17px auto; align-items: center; gap: 1px 6px; color: #334155; }
+.welcome-summary-options>span>i { grid-row: span 2; color: #2563eb; font-size: 13px; }
+.welcome-summary-options strong { font-size: 10px; }
+.welcome-summary-options small { color: #718096; font-size: 9px; }
+.welcome-summary-action { display: flex; align-items: center; justify-content: center; gap: 8px; flex: 0 0 auto; padding: 11px 14px; border-radius: 10px; background: #2563eb; color: #fff; cursor: pointer; font-size: 11px; font-weight: 700; }
+.welcome-summary-action:hover { background: #1d4ed8; }
+.welcome-summary-action input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 
 @media (max-width: 1250px) {
   .welcome-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -279,6 +293,9 @@ app-pdf-editor {
 
 @media (max-width: 768px) {
   .empty-state { padding: 2px 0 16px; }
+  .welcome-summary-card { align-items: stretch; flex-direction: column; gap: 11px; padding: 16px; }
+  .welcome-summary-icon { flex-basis: 38px; width: 38px; height: 38px; }
+  .welcome-summary-action { align-self: flex-start; }
   .welcome-hero { min-height: 0; padding: 25px 21px; border-radius: 16px; }
   .welcome-hero-art { flex-basis: 112px; height: 130px; transform: scale(.78); transform-origin: center right; margin-right: -12px; }
   .welcome-copy h2 { font-size: 26px; }

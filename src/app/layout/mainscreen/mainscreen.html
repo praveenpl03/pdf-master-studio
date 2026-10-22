@@ -380,6 +380,23 @@
               <div class="welcome-spark spark-two"><i class="fa-solid fa-check"></i></div>
             </div>
           </div>
+          <br>
+          <section class="welcome-summary-card" aria-labelledby="welcome-summary-title">
+            <div class="welcome-summary-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+            <div class="welcome-summary-copy">
+              <span class="welcome-summary-kicker">AI PDF SUMMARY</span>
+              <h3 id="welcome-summary-title">Turn a PDF into a clear summary</h3>
+              <p>Summarize the whole document or selected pages after opening a PDF.</p>
+              <div class="welcome-summary-options">
+                <span><i class="fa-brands fa-chrome"></i><strong>Chrome Summarizer</strong><small>On-device in supported Chrome</small></span>
+                <span><i class="fa-solid fa-computer"></i><strong>Local model</strong><small>In the installed desktop app</small></span>
+              </div>
+            </div>
+            <label class="welcome-summary-action">
+              <input type="file" accept="application/pdf" (change)="loadMainFile($event)" />
+              <i class="fa-solid fa-arrow-up-from-bracket"></i> Open a PDF
+            </label>
+          </section>
           <div class="welcome-section-head">
             <div><span>EXPLORE THE TOOLKIT</span><h3>What you can do</h3></div>
             <p>Choose a PDF to get started, then find each tool in the editor menus.</p>
