@@ -41,6 +41,23 @@ interface SummaryPage {
   selected: boolean;
 }
 
+interface LocalModelSetupStatus {
+  status: string;
+  downloadedBytes: number;
+  totalBytes: number;
+  error: string;
+  modelFilename: string;
+}
+
+declare global {
+  interface Window {
+    pdfMasterDesktop?: {
+      getLocalModelStatus(): Promise<LocalModelSetupStatus>;
+      retryLocalModelSetup(): Promise<boolean>;
+    };
+  }
+}
+
 @Component({
   selector: 'app-local-summarizer',
   standalone: true,
@@ -63,6 +80,9 @@ export class LocalSummarizerComponent {
   statusMessage = '';
   chromeAvailability: 'checking' | 'available' | 'unavailable' = 'checking';
   localAvailability: 'checking' | 'available' | 'unavailable' = 'checking';
+  localAvailabilityLabel = 'Checking availability…';
+  localUnavailableMessage = 'Checking the installed app’s local model…';
+  private localStatusCheckTimer?: number;
   browserName = '';
   browserVersion = '';
   chromeUnavailableMessage = 'Checking Chrome Summarizer support…';
@@ -89,6 +109,9 @@ export class LocalSummarizerComponent {
     this.error = '';
     this.chromeAvailability = 'checking';
     this.localAvailability = 'checking';
+    this.localAvailabilityLabel = 'Checking availability…';
+    this.localUnavailableMessage = 'Checking the installed app’s local model…';
+    if (this.localStatusCheckTimer !== undefined) window.clearTimeout(this.localStatusCheckTimer);
     const browser = this.getBrowserInfo();
     this.browserName = browser.name;
     this.browserVersion = browser.version;
@@ -98,6 +121,10 @@ export class LocalSummarizerComponent {
 
   close(): void {
     this.isOpen = false;
+    if (this.localStatusCheckTimer !== undefined) {
+      window.clearTimeout(this.localStatusCheckTimer);
+      this.localStatusCheckTimer = undefined;
+    }
   }
 
   async summarize(): Promise<void> {
@@ -106,7 +133,7 @@ export class LocalSummarizerComponent {
       return;
     }
     if (this.provider === 'local' && this.localAvailability !== 'available') {
-      this.error = 'The local model is available in the installed desktop app when its model is installed and running.';
+      this.error = this.localUnavailableMessage;
       return;
     }
     const text = this.summaryText;
@@ -213,15 +240,60 @@ export class LocalSummarizerComponent {
       }
     }
 
-    if (location.protocol !== 'app:') {
+    await this.checkLocalAvailability();
+  }
+
+  private async checkLocalAvailability(): Promise<void> {
+    const desktopBridge = typeof window !== 'undefined' ? window.pdfMasterDesktop : undefined;
+    if (!desktopBridge && location.protocol !== 'app:') {
       this.localAvailability = 'unavailable';
+      this.localAvailabilityLabel = 'Installed app required';
+      this.localUnavailableMessage = 'The local model runs in the installed desktop app. Install and open the Windows or Linux app to use it.';
       return;
     }
+
     try {
-      const response = await fetch('http://127.0.0.1:9931/health', { signal: AbortSignal.timeout(2_000) });
-      this.localAvailability = response.ok ? 'available' : 'unavailable';
-    } catch {
+      let status: LocalModelSetupStatus;
+      if (desktopBridge) {
+        status = await desktopBridge.getLocalModelStatus();
+      } else {
+        const response = await fetch('/_electron/local-model-status');
+        if (!response.ok) throw new Error('Could not read local model setup status.');
+        status = await response.json() as LocalModelSetupStatus;
+      }
+
+      if (status.status === 'ready') {
+        this.localAvailability = 'available';
+        this.localAvailabilityLabel = 'Private · on this device';
+        this.localUnavailableMessage = '';
+        return;
+      }
+
       this.localAvailability = 'unavailable';
+      if (status.status === 'downloading') {
+        const percent = status.totalBytes > 0 ? Math.min(100, Math.round(status.downloadedBytes / status.totalBytes * 100)) : 0;
+        this.localAvailabilityLabel = `Downloading model · ${percent}%`;
+        this.localUnavailableMessage = `The local model is downloading (${percent}%). You can use it when setup finishes.`;
+      } else if (status.status === 'starting' || status.status === 'checking') {
+        this.localAvailabilityLabel = 'Model starting…';
+        this.localUnavailableMessage = 'The local model is still setting up. Please wait a moment and try again.';
+      } else if (status.status === 'error') {
+        this.localAvailabilityLabel = 'Setup needs attention';
+        this.localUnavailableMessage = status.error || 'Local model setup failed. Retry setup from the home screen.';
+      } else {
+        this.localAvailabilityLabel = 'Unavailable';
+        this.localUnavailableMessage = status.error || 'The local model is not available in this app build.';
+      }
+      if (this.isOpen && ['downloading', 'starting', 'checking'].includes(status.status)) {
+        this.localStatusCheckTimer = window.setTimeout(() => {
+          this.localStatusCheckTimer = undefined;
+          void this.checkLocalAvailability();
+        }, 1500);
+      }
+    } catch (error) {
+      this.localAvailability = 'unavailable';
+      this.localAvailabilityLabel = 'Could not check setup';
+      this.localUnavailableMessage = error instanceof Error ? error.message : 'Could not check local model setup status.';
     }
   }
 

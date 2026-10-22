@@ -18,6 +18,12 @@ interface MenuCatalogEntry {
   tools: string[];
 }
 
+interface LanguageOption {
+  key: string;
+  name: string;
+  available: boolean;
+}
+
 @Component({
   selector: 'app-language-picker',
   standalone: true,
@@ -31,16 +37,37 @@ export class LanguagePickerComponent implements OnInit {
   @Output() translationsReady = new EventEmitter<MenuTranslationResult>();
 
   selectedLanguage = 'English';
+  languageSearch = '';
+  isLanguageListOpen = false;
   isLoading = true;
   error = '';
   languages: Record<string, MenuCatalogEntry> = {};
+  languageNames: string[] = [];
+
+  get languageOptions(): LanguageOption[] {
+    const names = new Set([...this.languageNames, ...Object.keys(this.languages)]);
+    names.delete('English');
+    return [...names].map((name) => ({
+      key: name,
+      name: this.languages[name]?.nativeName || name,
+      available: Boolean(this.languages[name]),
+    }));
+  }
+
+  get filteredLanguages(): LanguageOption[] {
+    const query = this.languageSearch.trim().toLocaleLowerCase();
+    return this.languageOptions
+      .filter((language) => !query || language.key.toLocaleLowerCase().includes(query) || language.name.toLocaleLowerCase().includes(query))
+      .sort((a, b) => a.key.localeCompare(b.key));
+  }
 
   async ngOnInit(): Promise<void> {
     try {
       const response = await fetch('/i18n/menu-translations.json');
       if (!response.ok) throw new Error('Could not load the bundled menu language file.');
-      const catalog = await response.json() as { languages?: Record<string, MenuCatalogEntry> };
+      const catalog = await response.json() as { languages?: Record<string, MenuCatalogEntry>; languageNames?: string[] };
       this.languages = catalog.languages ?? {};
+      this.languageNames = catalog.languageNames ?? Object.keys(this.languages);
       if (this.activeLanguage !== 'English' && !this.languages[this.activeLanguage]) {
         this.translationsReady.emit({ language: 'English', translations: {} });
       }
@@ -58,6 +85,12 @@ export class LanguagePickerComponent implements OnInit {
   onLanguageChange(language: string): void {
     this.selectedLanguage = language;
     this.applyLanguage();
+  }
+
+  chooseLanguage(language: string): void {
+    this.languageSearch = '';
+    this.isLanguageListOpen = false;
+    this.onLanguageChange(language);
   }
 
   applyLanguage(): void {

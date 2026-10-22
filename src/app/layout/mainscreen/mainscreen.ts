@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, ViewChild, ViewChildren, QueryList } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, ViewChild, ViewChildren, QueryList } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, StandardFonts, degrees, rgb, PDFFont } from 'pdf-lib';
@@ -45,13 +45,30 @@ import { PrivacyModalComponent } from '../../privacy/privacy';
 import { LocalSummarizerComponent } from '../summarizer/summarizer';
 import { LanguagePickerComponent, MenuLabel, MenuTranslationResult } from '../language-picker/language-picker';
 
+interface LocalModelSetupStatus {
+  status: string;
+  downloadedBytes: number;
+  totalBytes: number;
+  error: string;
+  modelFilename: string;
+}
+
+declare global {
+  interface Window {
+    pdfMasterDesktop?: {
+      getLocalModelStatus(): Promise<LocalModelSetupStatus>;
+      retryLocalModelSetup(): Promise<boolean>;
+    };
+  }
+}
+
 @Component({
   selector: 'app-pdf-editor',
   imports: [CommonModule, FormsModule, AboutModalComponent, PrivacyModalComponent, LocalSummarizerComponent, LanguagePickerComponent],
   templateUrl: './mainscreen.html',
   styleUrls: ['./mainscreen.css'],
 })
-export class Mainscreen implements AfterViewInit {
+export class Mainscreen implements AfterViewInit, OnDestroy {
 
   @ViewChild('aboutModal') aboutModal!: AboutModalComponent;
 @ViewChild('privacyModal') privacyModal!: PrivacyModalComponent;
@@ -59,6 +76,12 @@ export class Mainscreen implements AfterViewInit {
   uiLanguage = 'English';
   menuTranslations: Record<string, string> = {};
   menuLabels: MenuLabel[] = [];
+  readonly isDesktopApp = typeof window !== 'undefined' && (!!window.pdfMasterDesktop || location.protocol === 'app:');
+  localModelStatus: LocalModelSetupStatus = {
+    status: 'checking', downloadedBytes: 0, totalBytes: 0, error: '', modelFilename: '',
+  };
+  private localModelStatusTimer?: number;
+  private localModelStatusRequestActive = false;
 
 openPrivacy() {
   this.privacyModal.open();
@@ -126,6 +149,21 @@ this.menuLabels = [
   { id: 'ui-no-function', label: 'No function found.' },
   { id: 'ui-tools-count', label: 'tools' },
   { id: 'ui-more-title', label: 'Optimize, protect & analyze' },
+  { id: 'ui-home-workspace', label: 'YOUR PDF WORKSPACE' },
+  { id: 'ui-home-title', label: 'Everything you need to work with PDFs' },
+  { id: 'ui-home-description', label: 'Organize pages, make precise edits, convert files, and protect documents from one place.' },
+  { id: 'ui-home-open', label: 'Open a PDF' },
+  { id: 'ui-home-note', label: 'Your document is processed in your browser.' },
+  { id: 'ui-home-summary-kicker', label: 'AI PDF SUMMARY' },
+  { id: 'ui-home-summary-title', label: 'Turn a PDF into a clear summary' },
+  { id: 'ui-home-summary-description', label: 'Summarize the whole document or selected pages after opening a PDF.' },
+  { id: 'ui-home-chrome', label: 'Chrome Summarizer' },
+  { id: 'ui-home-chrome-description', label: 'On-device in supported Chrome' },
+  { id: 'ui-home-local', label: 'Local model' },
+  { id: 'ui-home-local-description', label: 'In the installed desktop app' },
+  { id: 'ui-home-explore', label: 'EXPLORE THE TOOLKIT' },
+  { id: 'ui-home-what', label: 'What you can do' },
+  { id: 'ui-home-explore-description', label: 'Choose a PDF to get started, then find each tool in the editor menus.' },
   ...this.toolGroups.map((group) => ({ id: `group-${group.key}`, label: group.title })),
   ...this.tools.map((tool, index) => ({ id: `tool-${index}`, label: tool.name })),
 ];
@@ -298,6 +336,60 @@ private activeRenderTask?: { cancel: () => void };
     this.configureMobileRendering();
     (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc = '/assets/pdf.worker.mjs';
     this.thumbCanvases.changes.subscribe(() => this.queueThumbRender());
+    if (this.isDesktopApp) {
+      await this.refreshLocalModelStatus();
+      this.startLocalModelStatusPolling();
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.localModelStatusTimer !== undefined) window.clearInterval(this.localModelStatusTimer);
+  }
+
+  async refreshLocalModelStatus(): Promise<void> {
+    if (!this.isDesktopApp || this.localModelStatusRequestActive) return;
+    this.localModelStatusRequestActive = true;
+    try {
+      if (window.pdfMasterDesktop) {
+        this.localModelStatus = await window.pdfMasterDesktop.getLocalModelStatus();
+      } else {
+        const response = await fetch('/_electron/local-model-status');
+        if (!response.ok) throw new Error('Could not read local model status.');
+        this.localModelStatus = await response.json() as LocalModelSetupStatus;
+      }
+      if (['ready', 'error', 'unsupported'].includes(this.localModelStatus.status)) {
+        if (this.localModelStatusTimer !== undefined) {
+          window.clearInterval(this.localModelStatusTimer);
+          this.localModelStatusTimer = undefined;
+        }
+      }
+    } catch {
+      // The desktop protocol can still be initializing while the home screen starts.
+    } finally {
+      this.localModelStatusRequestActive = false;
+    }
+  }
+
+  async retryLocalModelSetup(): Promise<void> {
+    if (!this.isDesktopApp) return;
+    this.localModelStatus = { ...this.localModelStatus, status: 'checking', error: '' };
+    if (window.pdfMasterDesktop) {
+      await window.pdfMasterDesktop.retryLocalModelSetup().catch(() => false);
+    } else {
+      await fetch('/_electron/local-model-retry', { method: 'POST' }).catch(() => undefined);
+    }
+    this.startLocalModelStatusPolling();
+    await this.refreshLocalModelStatus();
+  }
+
+  get localModelDownloadPercent(): number {
+    const { downloadedBytes, totalBytes } = this.localModelStatus;
+    return totalBytes > 0 ? Math.min(100, Math.round(downloadedBytes / totalBytes * 100)) : 0;
+  }
+
+  private startLocalModelStatusPolling(): void {
+    if (!this.isDesktopApp || this.localModelStatusTimer !== undefined) return;
+    this.localModelStatusTimer = window.setInterval(() => void this.refreshLocalModelStatus(), 1000);
   }
 
   get activePage(): PageItem | undefined {

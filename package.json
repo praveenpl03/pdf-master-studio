@@ -83,10 +83,6 @@
       "icon": "public/favicon/win.ico",
       "extraResources": [
         {
-          "from": "build/model1.gguf",
-          "to": "llama/model.gguf"
-        },
-        {
           "from": "build/win",
           "to": "llama/win",
           "filter": [
@@ -118,10 +114,6 @@
       "synopsis": "PDF editing and management",
       "description": "PDF Master Studio desktop PDF editor",
       "extraResources": [
-        {
-          "from": "build/model1.gguf",
-          "to": "llama/model.gguf"
-        },
         {
           "from": "build/linux",
           "to": "llama/linux",

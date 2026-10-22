@@ -364,15 +364,15 @@
         <section class="empty-state" aria-labelledby="welcome-title">
           <div class="welcome-hero">
             <div class="welcome-copy">
-              <span class="welcome-kicker"><i class="fa-solid fa-sparkles"></i> YOUR PDF WORKSPACE</span>
-              <h2 id="welcome-title">Everything you need to work with PDFs</h2>
-              <p>Organize pages, make precise edits, convert files, and protect documents from one place.</p>
+              <span class="welcome-kicker"><i class="fa-solid fa-sparkles"></i> {{ uiText('home-workspace', 'YOUR PDF WORKSPACE') }}</span>
+              <h2 id="welcome-title">{{ uiText('home-title', 'Everything you need to work with PDFs') }}</h2>
+              <p>{{ uiText('home-description', 'Organize pages, make precise edits, convert files, and protect documents from one place.') }}</p>
               <label class="welcome-open-button">
                 <input type="file" accept="application/pdf" (change)="loadMainFile($event)" />
                 <i class="fa-solid fa-arrow-up-from-bracket"></i>
-                <span>Open a PDF</span>
+                <span>{{ uiText('home-open', 'Open a PDF') }}</span>
               </label>
-              <small class="welcome-note">Your document is processed in your browser.</small>
+              <small class="welcome-note">{{ uiText('home-note', 'Your document is processed in your browser.') }}</small>
             </div>
             <div class="welcome-hero-art" aria-hidden="true">
               <div class="welcome-paper"><i class="fa-solid fa-file-pdf"></i><span></span><span></span><span></span></div>
@@ -384,22 +384,43 @@
           <section class="welcome-summary-card" aria-labelledby="welcome-summary-title">
             <div class="welcome-summary-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
             <div class="welcome-summary-copy">
-              <span class="welcome-summary-kicker">AI PDF SUMMARY</span>
-              <h3 id="welcome-summary-title">Turn a PDF into a clear summary</h3>
-              <p>Summarize the whole document or selected pages after opening a PDF.</p>
+              <span class="welcome-summary-kicker">{{ uiText('home-summary-kicker', 'AI PDF SUMMARY') }}</span>
+              <h3 id="welcome-summary-title">{{ uiText('home-summary-title', 'Turn a PDF into a clear summary') }}</h3>
+              <p>{{ uiText('home-summary-description', 'Summarize the whole document or selected pages after opening a PDF.') }}</p>
               <div class="welcome-summary-options">
-                <span><i class="fa-brands fa-chrome"></i><strong>Chrome Summarizer</strong><small>On-device in supported Chrome</small></span>
-                <span><i class="fa-solid fa-computer"></i><strong>Local model</strong><small>In the installed desktop app</small></span>
+                <span><i class="fa-brands fa-chrome"></i><strong>{{ uiText('home-chrome', 'Chrome Summarizer') }}</strong><small>{{ uiText('home-chrome-description', 'On-device in supported Chrome') }}</small></span>
+                <span><i class="fa-solid fa-computer"></i><strong>{{ uiText('home-local', 'Local model') }}</strong><small>{{ uiText('home-local-description', 'In the installed desktop app') }}</small></span>
               </div>
+              @if (isDesktopApp) {
+                <div class="welcome-model-status" role="status" aria-live="polite">
+                  @if (localModelStatus.status === 'checking') {
+                    <span><i class="fa-solid fa-circle-notch fa-spin"></i> Checking local AI setup…</span>
+                  } @else if (localModelStatus.status === 'downloading') {
+                    <span><i class="fa-solid fa-download"></i> Downloading local model · {{ localModelDownloadPercent }}%</span>
+                    <progress max="100" [value]="localModelDownloadPercent"></progress>
+                    <small>The 1.07 GB model downloads once and saves automatically inside the app.</small>
+                  } @else if (localModelStatus.status === 'starting') {
+                    <span><i class="fa-solid fa-circle-notch fa-spin"></i> Preparing the local model…</span>
+                    <small>This can take a little while the first time.</small>
+                  } @else if (localModelStatus.status === 'ready') {
+                    <span class="ready"><i class="fa-solid fa-circle-check"></i> Local model is ready</span>
+                  } @else if (localModelStatus.status === 'error') {
+                    <span class="failed"><i class="fa-solid fa-circle-exclamation"></i> {{ localModelStatus.error }}</span>
+                    <button type="button" (click)="retryLocalModelSetup()">Retry setup</button>
+                  } @else if (localModelStatus.status === 'unsupported') {
+                    <span>{{ localModelStatus.error }}</span>
+                  }
+                </div>
+              }
             </div>
             <label class="welcome-summary-action">
               <input type="file" accept="application/pdf" (change)="loadMainFile($event)" />
-              <i class="fa-solid fa-arrow-up-from-bracket"></i> Open a PDF
+              <i class="fa-solid fa-arrow-up-from-bracket"></i> {{ uiText('home-open', 'Open a PDF') }}
             </label>
           </section>
           <div class="welcome-section-head">
-            <div><span>EXPLORE THE TOOLKIT</span><h3>What you can do</h3></div>
-            <p>Choose a PDF to get started, then find each tool in the editor menus.</p>
+            <div><span>{{ uiText('home-explore', 'EXPLORE THE TOOLKIT') }}</span><h3>{{ uiText('home-what', 'What you can do') }}</h3></div>
+            <p>{{ uiText('home-explore-description', 'Choose a PDF to get started, then find each tool in the editor menus.') }}</p>
           </div>
           <div class="welcome-card-grid">
             @for (group of toolGroups; track group.key) {

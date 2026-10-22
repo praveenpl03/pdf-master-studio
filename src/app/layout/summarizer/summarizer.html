@@ -12,8 +12,8 @@
           <span class="provider-tooltip" [attr.title]="chromeAvailability === 'available' ? 'Summarize on this device with Chrome’s built-in model.' : chromeUnavailableMessage">
             <button type="button" [class.active]="provider === 'chrome'" [attr.aria-pressed]="provider === 'chrome'" [disabled]="isSummarizing || chromeAvailability !== 'available'" (click)="selectProvider('chrome')"><i class="fa-brands fa-chrome"></i><span>Chrome Summarizer</span><small>{{ chromeAvailability === 'checking' ? 'Checking availability…' : chromeAvailability === 'available' ? 'Built in · on this device' : browserName + (browserVersion ? ' ' + browserVersion : '') + ' · unavailable' }}</small></button>
           </span>
-          <span class="provider-tooltip" [attr.title]="localAvailability === 'checking' ? 'Checking the installed app’s local model…' : localAvailability === 'available' ? 'Use the local model in the installed desktop app.' : 'This option is available in the installed desktop app when its local model is installed and running.'">
-            <button type="button" [class.active]="provider === 'local'" [attr.aria-pressed]="provider === 'local'" [disabled]="isSummarizing || localAvailability !== 'available'" (click)="selectProvider('local')"><i class="fa-solid fa-computer"></i><span>Local model</span><small>{{ localAvailability === 'checking' ? 'Checking availability…' : localAvailability === 'available' ? 'Private · on this device' : 'Installed app required' }}</small></button>
+          <span class="provider-tooltip" [attr.title]="localAvailability === 'available' ? 'Use the ready local model in this installed desktop app.' : localUnavailableMessage">
+            <button type="button" [class.active]="provider === 'local'" [attr.aria-pressed]="provider === 'local'" [disabled]="isSummarizing || localAvailability !== 'available'" (click)="selectProvider('local')"><i class="fa-solid fa-computer"></i><span>Local model</span><small>{{ localAvailabilityLabel }}</small></button>
           </span>
         </div>
       </fieldset>

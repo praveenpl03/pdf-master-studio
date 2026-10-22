@@ -1,9 +1,20 @@
 <section class="language-picker" aria-label="Application language">
-  <div class="language-picker-heading"><i class="fa-solid fa-globe"></i><div><strong>App language</strong><small>Translate the PDF tool menus</small></div></div>
-  <select class="language-input" [(ngModel)]="selectedLanguage" (ngModelChange)="onLanguageChange($event)" [disabled]="isLoading" aria-label="Choose a language">
-    <option value="English">English</option>
-    @for (language of (languages | keyvalue); track language.key) { <option [value]="language.key">{{ language.value.nativeName }}</option> }
-  </select>
+  <div class="language-picker-heading"><i class="fa-solid fa-globe"></i><div><strong>App language</strong><small>Search {{ languageNames.length }} languages</small></div></div>
+  <button class="language-input language-trigger" type="button" (click)="isLanguageListOpen = !isLanguageListOpen" [disabled]="isLoading" [attr.aria-expanded]="isLanguageListOpen" aria-haspopup="listbox" aria-label="Choose a language">
+    <span>{{ languages[selectedLanguage]?.nativeName || selectedLanguage }}</span><i class="fa-solid fa-chevron-down"></i>
+  </button>
+  @if (isLanguageListOpen) {
+    <div class="language-menu">
+      <label class="language-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" [(ngModel)]="languageSearch" placeholder="Search languages" aria-label="Search languages" (keydown.escape)="isLanguageListOpen = false" /></label>
+      <div class="language-options" role="listbox" aria-label="Languages">
+        <button type="button" role="option" [attr.aria-selected]="selectedLanguage === 'English'" (click)="chooseLanguage('English')">English</button>
+        @for (language of filteredLanguages; track language.key) {
+          <button type="button" role="option" [attr.aria-selected]="selectedLanguage === language.key" [disabled]="!language.available" [title]="language.available ? 'Bundled offline translation' : 'Offline translation not bundled yet'" (click)="chooseLanguage(language.key)">{{ language.name }}<small>{{ language.key }}</small></button>
+        }
+        @if (!filteredLanguages.length && languageSearch.toLowerCase() !== 'english') { <p class="language-no-results">No languages found.</p> }
+      </div>
+    </div>
+  }
   @if (isLoading) { <small class="language-progress">Loading available languages…</small> }
   @if (error) { <small class="language-error" role="alert">{{ error }}</small> }
 </section>

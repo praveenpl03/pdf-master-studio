@@ -237,6 +237,12 @@ src/
 - Linux
 - macOS (Electron)
 
+## Local AI model setup
+
+The Windows and Linux desktop apps download the local Qwen3 model automatically the first time they launch. The download is about 1.07 GB, runs inside the app, and is saved in the app's own data folder. No administrator permission, folder picker, or separate model installation is needed. The home screen shows download and startup progress, and offers a retry button if setup cannot finish.
+
+An internet connection is needed for the first download. The model is checked against a pinned SHA-256 digest before the local AI server can use it. The installer only contains the platform's local server files; it does not include the model download.
+
 ---
 
 # Performance
