@@ -126,6 +126,7 @@ export interface HtmlTextItem extends InspectTextItem {
   originalText: string;
   originalSize: number;
   originalColor?: string;
+  originalFontFamily?: string;
   originalFontWeight?: string;
   originalFontStyle?: string;
   textAlign?: 'left' | 'center' | 'right';

@@ -296,7 +296,6 @@ private activeRenderTask?: { cancel: () => void };
     { name: 'US Letter fit copy', group: 'convert', action: 'letterFit' },
     { name: 'Flatten edits', group: 'convert', action: 'downloadFlattened' },
     { name: 'Rebuild visual PDF', group: 'convert', action: 'visualRebuild' },
-    { name: 'Export HTML rebuild', group: 'convert', action: 'htmlRebuildPdf' },
     { name: 'Generate watermarked PDF', group: 'convert', action: 'watermarkedPdf' },
     { name: 'Generate bookmarks', group: 'convert', action: 'generateBookmarks' },
     { name: 'Reconstruct HTML page', group: 'edit', action: 'reconstructHtml' },
@@ -575,7 +574,6 @@ private activeRenderTask?: { cancel: () => void };
       letterFit: 'fa-file',
       downloadFlattened: 'fa-layer-group',
       visualRebuild: 'fa-wand-magic-sparkles',
-      htmlRebuildPdf: 'fa-code',
       generateBookmarks: 'fa-bookmark',
       inspectText: 'fa-magnifying-glass',
       addText: 'fa-font',
@@ -708,7 +706,6 @@ private activeRenderTask?: { cancel: () => void };
         case 'letterFit': await this.downloadFittedPdf(612, 792, 'letter-fit.pdf'); break;
         case 'downloadFlattened': await this.downloadPdf(true, 'flattened.pdf'); break;
         case 'visualRebuild': await this.downloadVisualRebuildPdf(); break;
-        case 'htmlRebuildPdf': await this.downloadHtmlRebuildPdf(); break;
         case 'generateBookmarks': await this.generateBookmarks(); break;
         case 'watermarkedPdf': await this.downloadWatermarkedPdf(); break;
         case 'reconstructHtml': await this.reconstructAllHtmlFromCurrentPdf(); break;
@@ -2757,6 +2754,9 @@ const mupdfRuns =
     originalFontWeight:
       '400',
 
+    originalFontFamily:
+      'Arial, Helvetica, sans-serif',
+
 
     originalFontStyle:
       'normal',
@@ -3206,13 +3206,11 @@ await this.applyOverlays(output);
   }
 
   private async createExportPdf(applyMetadata = true): Promise<PDFDocument> {
-    // Standard export and merge always retain source PDF page content. Image
-    // flattening is intentionally reserved for the dedicated compression and
-    // visual-rebuild tools, never an automatic fallback during PDF assembly.
     const hasHtmlEdits = this.htmlTextItems.some((item) => this.htmlTextChanged(item));
-    return hasHtmlEdits
-      ? this.createHtmlEditedPdf(applyMetadata)
-      : this.createPdfDocument(applyMetadata);
+    // Render edited text through the same visual path as the editor so custom
+    // web fonts survive Generate PDF instead of falling back to a built-in font.
+    if (hasHtmlEdits) return this.createVisualHtmlRebuildPdf();
+    return this.createPdfDocument(applyMetadata);
   }
 
   private async editedPagesContainImages(): Promise<boolean> {
@@ -3348,6 +3346,8 @@ private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
       || item.height !== item.originalHeight
       || Math.abs(item.size - item.originalSize) > 0.2
       || (item.color ?? '#111111').toLowerCase() !== (item.originalColor ?? '#111111').toLowerCase()
+      || (item.fontFamily ?? 'Arial, Helvetica, sans-serif').toLowerCase()
+        !== (item.originalFontFamily ?? 'Arial, Helvetica, sans-serif').toLowerCase()
       || (item.fontWeight ?? '400') !== (item.originalFontWeight ?? '400')
       || (item.fontStyle ?? 'normal') !== (item.originalFontStyle ?? 'normal');
   }
@@ -4530,7 +4530,7 @@ private async structuredTextPages(): Promise<
 
     for (const item of htmlItems) {
       this.maskOriginalHtmlTextOnCanvas(context, item, safeScale);
-      this.paintHtmlTextToCanvas(context, item, safeScale);
+      await this.paintHtmlTextToCanvas(context, item, safeScale);
     }
     for (const overlay of this.overlays.filter((item) => item.pageId === pageItem.id)) {
       await this.paintOverlayToCanvas(context, overlay, safeScale);
@@ -4556,7 +4556,7 @@ private async structuredTextPages(): Promise<
       || this.htmlTextItems.some((item) => item.pageId === pageItem.id && this.htmlTextChanged(item));
   }
 
-  private paintHtmlTextToCanvas(context: CanvasRenderingContext2D, item: HtmlTextItem, scale: number): void {
+  private async paintHtmlTextToCanvas(context: CanvasRenderingContext2D, item: HtmlTextItem, scale: number): Promise<void> {
     context.save();
     const weight = this.htmlFontWeight(item.fontWeight);
     const style = item.fontStyle === 'italic' ? 'italic' : 'normal';
@@ -4565,7 +4565,17 @@ private async structuredTextPages(): Promise<
     const lineHeight = Math.max(fontSize * 1.05, (item.height || item.size * 1.15) * scale * 0.98);
     const boxWidth = Math.max(item.width, this.measureHtmlTextWidth(item));
     const boxHeight = Math.max(item.height, item.size * 1.12);
-    context.font = `${style} ${weight} ${fontSize}px ${family}`;
+    const canvasFamily = family.includes(',')
+      ? family
+      : `"${family.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+    await this.fontService.loadFontToDOM(family);
+    const font = `${style} ${weight} ${fontSize}px ${canvasFamily}`;
+    try {
+      await document.fonts.load(font, item.text);
+    } catch {
+      // Use the browser's installed fallback if the selected font is unavailable.
+    }
+    context.font = font;
     context.fillStyle = item.color ?? '#111111';
     context.textBaseline = 'alphabetic';
     context.textAlign = item.textAlign === 'center' ? 'center' : item.textAlign === 'right' ? 'right' : 'left';
@@ -4849,7 +4859,21 @@ private async renderPageCanvas(
       const weight = Number(overlay.fontWeight) >= 600 || overlay.fontWeight === 'bold' ? '700' : '400';
       const style = overlay.fontStyle === 'italic' ? 'italic' : 'normal';
       const family = overlay.fontFamily || 'Arial, Helvetica, sans-serif';
-      context.font = `${style} ${weight} ${overlay.size * scale}px ${family}`;
+      // Font picker values are often multiword names (for example "Open Sans").
+      // Quote those names in the canvas shorthand; otherwise the browser can
+      // reject the shorthand and silently keep the canvas's previous font.
+      const canvasFamily = family.includes(',')
+        ? family
+        : `"${family.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+      await this.fontService.loadFontToDOM(family);
+      const fontSize = overlay.size * scale;
+      const font = `${style} ${weight} ${fontSize}px ${canvasFamily}`;
+      try {
+        await document.fonts.load(font, overlay.text);
+      } catch {
+        // Fall back to the browser's installed font if the chosen web font is unavailable.
+      }
+      context.font = font;
       context.fillStyle = overlay.color;
       context.textBaseline = 'top';
       context.fillText(overlay.text, 0, 0);

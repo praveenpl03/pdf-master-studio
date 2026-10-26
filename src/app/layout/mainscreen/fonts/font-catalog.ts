@@ -15,6 +15,7 @@ export interface GoogleFontItem {
 export class GoogleFontService {
   private fontsMap = new Map<string, GoogleFontItem>();
   private loadedFontsToDOM = new Set<string>();
+  private fontStylesheetLoads = new Map<string, Promise<void>>();
 
   constructor(
     private http: HttpClient,
@@ -134,18 +135,27 @@ public buildFontApiUrl(fontData: GoogleFontItem): string {
 
 
   /** Loads the selected Google Font stylesheet once, so CSS font-family can use it immediately. */
-  public loadFontToDOM(fontFamily: string): void {
+  public loadFontToDOM(fontFamily: string): Promise<void> {
     const normalizedFamily = fontFamily.replace(/["']/g, '').trim();
-    if (!normalizedFamily || this.loadedFontsToDOM.has(normalizedFamily)) return;
+    if (!normalizedFamily) return Promise.resolve();
+    const existingLoad = this.fontStylesheetLoads.get(normalizedFamily);
+    if (existingLoad) return existingLoad;
+    if (this.loadedFontsToDOM.has(normalizedFamily)) return Promise.resolve();
 
     const fontData = this.fontsMap.get(normalizedFamily.toLowerCase());
-    if (!fontData) return; // Keep system fonts such as Arial available without a remote stylesheet.
+    if (!fontData) return Promise.resolve(); // Keep system fonts such as Arial available without a remote stylesheet.
 
     const link = this.document.createElement('link');
     link.rel = 'stylesheet';
     link.href = this.buildFontApiUrl(fontData);
     link.dataset['googleFont'] = normalizedFamily;
-    this.document.head.appendChild(link);
     this.loadedFontsToDOM.add(normalizedFamily);
+    const load = new Promise<void>((resolve) => {
+      link.onload = () => resolve();
+      link.onerror = () => resolve(); // Export can still use an installed/system fallback.
+      this.document.head.appendChild(link);
+    });
+    this.fontStylesheetLoads.set(normalizedFamily, load);
+    return load;
   }
 }
