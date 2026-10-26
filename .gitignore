@@ -7,7 +7,7 @@
 /bazel-out
 /bin
 /release
-
+*.snap
 # Node
 /node_modules
 npm-debug.log

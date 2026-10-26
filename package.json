@@ -23,7 +23,8 @@
     "desktop:all": "npm run build && electron-builder -mwl",
     "desktop:deb": "npm run build && electron-builder --linux deb",
     "desktop:rpm": "npm run build && electron-builder --linux rpm",
-    "desktop:flatpak": "npm run build && electron-builder --linux flatpak"
+    "desktop:flatpak": "npm run build && electron-builder --linux flatpak",
+    "desktop:appimage": "ng build --configuration production && electron-builder --linux AppImage"
   },
   "repository": "https://github.com/praveenpl03/pdf-master-studio",
   "dependencies": {
@@ -106,7 +107,8 @@
       "target": [
         "deb",
         "rpm",
-        "flatpak"
+        "flatpak",
+        "AppImage"
       ],
       "category": "Office",
       "icon": "build/icons",

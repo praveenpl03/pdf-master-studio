@@ -4,7 +4,7 @@
 name: pdf-master-studio
 base: core24
 title: PDF Master Studio
-version: '2.0.0'
+version: '3.0.0'
 summary: PDF editing and management desktop application
 
 description: |
@@ -70,7 +70,21 @@ parts:
       echo "Installing project dependencies..."
       npm ci --include=dev
       rm -f node_modules/@electron-internal/extract-zip/index.linux-x64-musl.node
+      echo "Installing llama.cpp runtime..."
 
+      mkdir -p \
+        "$SNAPCRAFT_PART_INSTALL/resources/llama"
+
+      cp -a build/linux \
+        "$SNAPCRAFT_PART_INSTALL/resources/llama/"
+
+      chmod 755 \
+        "$SNAPCRAFT_PART_INSTALL/resources/llama/linux/llama-server"
+
+      test -x \
+        "$SNAPCRAFT_PART_INSTALL/resources/llama/linux/llama-server"
+
+      echo "llama.cpp runtime installed."
       echo "Downloading the Electron runtime..."
       node node_modules/electron/install.js
 

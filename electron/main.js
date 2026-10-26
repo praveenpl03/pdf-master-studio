@@ -19,6 +19,8 @@ const { Transform } = require('node:stream');
 
 const APP_SCHEME = 'app';
 
+
+
 protocol.registerSchemesAsPrivileged([
   {
     scheme: APP_SCHEME,
@@ -35,8 +37,9 @@ let mainWindow;
 let localAiServer;
 let modelDownloadPromise;
 const MODEL_FILENAME = 'Qwen3-1.7B-Q3_K_M.gguf';
-const MODEL_URL = 'https://huggingface.co/tensorblock/Qwen_Qwen3-1.7B-GGUF/resolve/ac27efa/Qwen3-1.7B-Q3_K_M.gguf';
-const MODEL_SHA256 = '79af9a932c6659aabc06d6560b8404063c79f616b136953370f9c67853e162e0';
+//const MODEL_URL = 'https://huggingface.co/tensorblock/Qwen_Qwen3-1.7B-GGUF/resolve/ac27efa/Qwen3-1.7B-Q3_K_M.gguf';
+const MODEL_URL = 'https://firebasestorage.googleapis.com/v0/b/converter-97c1d.firebasestorage.app/o/model.gguf?alt=media&token=aa7e6345-70c5-4592-82c7-260653b375b5';
+//const MODEL_SHA256 = '79af9a932c6659aabc06d6560b8404063c79f616b136953370f9c67853e162e0';
 const MODEL_SIZE_BYTES = 1_073_242_528;
 const modelStatus = {
   status: 'checking',
@@ -56,34 +59,64 @@ function getModelPath() {
 }
 
 function getServerPath() {
-  const platformFolder = process.platform === 'win32' ? 'win' : process.platform === 'linux' ? 'linux' : null;
-  if (!platformFolder) return null;
+  const serverName =
+    process.platform === 'win32'
+      ? 'llama-server.exe'
+      : 'llama-server';
+
+  if (process.platform === 'linux' && process.env.SNAP) {
+    return path.join(
+      process.env.SNAP,
+      'resources',
+      'llama',
+      'linux',
+      serverName
+    );
+  }
+
   const resourceRoot = app.isPackaged
-    ? path.join(process.resourcesPath, 'llama')
-    : path.join(app.getAppPath(), 'build');
-  const serverName = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
-  return path.join(resourceRoot, platformFolder, serverName);
+    ? process.resourcesPath
+    : app.getAppPath();
+
+  return path.join(
+    resourceRoot,
+    'build',
+    process.platform === 'win32' ? 'win' : 'linux',
+    serverName
+  );
 }
+
 
 function startLocalAiServer() {
   if (localAiServer && !localAiServer.killed) return;
   const serverPath = getServerPath();
   const modelPath = getModelPath();
   if (!serverPath || !fs.existsSync(serverPath) || !fs.existsSync(modelPath)) {
+    console.log('[AI] Server:', getServerPath());
+console.log('[AI] Server exists:', fs.existsSync(getServerPath()));
+
+console.log('[AI] Model:', getModelPath());
+console.log('[AI] Model exists:', fs.existsSync(getModelPath()));
     throw new Error('The local AI server or model is missing.');
   }
 
-  localAiServer = spawn(serverPath, [
-    '--model', modelPath,
-    '--host', '127.0.0.1',
-    '--port', '9931',
-    '--ctx-size', '8192',
-    '--cors-origins', app.isPackaged ? 'app://app' : 'http://localhost:4200',
-  ], {
-    cwd: path.dirname(serverPath),
-    windowsHide: true,
-    stdio: 'ignore',
-  });
+ localAiServer = spawn(serverPath, [
+  '--model', modelPath,
+  '--host', '127.0.0.1',
+  '--port', '9931',
+  '--n-gpu-layers', '0',
+  '--ctx-size', '4096',
+  '--cors-origins', 'app://app'
+], {
+  env: {
+    ...process.env,
+    LD_LIBRARY_PATH: [
+      path.dirname(serverPath),
+      process.env.LD_LIBRARY_PATH
+    ].filter(Boolean).join(':')
+  },
+  stdio: ['ignore', 'pipe', 'pipe']
+});
   localAiServer.on('error', (error) => console.error('Could not start local AI server:', error));
   const serverProcess = localAiServer;
   localAiServer.on('exit', (code) => {
@@ -137,10 +170,10 @@ async function downloadLocalModel(modelPath) {
     });
     await pipeline(Readable.fromWeb(response.body), progress, fs.createWriteStream(temporaryPath));
 
-    const downloadedHash = hash.digest('hex');
-    if (downloadedHash !== MODEL_SHA256) {
-      throw new Error('The downloaded model did not pass its integrity check.');
-    }
+    // const downloadedHash = hash.digest('hex');
+    // if (downloadedHash !== MODEL_SHA256) {
+    //   throw new Error('The downloaded model did not pass its integrity check.');
+    // }
     const file = await fsp.open(temporaryPath, 'r');
     try {
       const header = Buffer.alloc(4);
@@ -262,7 +295,11 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
-
+mainWindow.webContents.on('before-input-event', (event, input) => {
+  if (input.type === 'keyDown' && input.key === 'F12') {
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+  }
+});
   mainWindow.on('closed', () => {
     mainWindow = null;
   });

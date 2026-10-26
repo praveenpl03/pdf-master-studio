@@ -201,19 +201,36 @@ export class LocalSummarizerComponent {
     }
   }
 
-  private async waitForServer(): Promise<void> {
-    const deadline = Date.now() + 120_000;
-    while (Date.now() < deadline) {
-      try {
-        const response = await fetch('http://127.0.0.1:9931/health', { signal: AbortSignal.timeout(2_000) });
-        if (response.ok) return;
-      } catch {
-        // The packaged model may need time to load before the server becomes ready.
+private async waitForServer(): Promise<void> {
+  const url = 'http://127.0.0.1:9931/health';
+  const deadline = Date.now() + 120_000;
+  let lastError = 'No successful health response';
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(2_000)
+      });
+
+      if (response.ok) {
+        console.log('[AI] Local server is ready');
+        return;
       }
-      await new Promise((resolve) => setTimeout(resolve, 1_500));
+
+      lastError = `HTTP ${response.status}`;
+    } catch (error) {
+      lastError = error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : String(error);
     }
-    throw new Error('The local model is still starting. Wait a moment, then try again.');
+
+    await new Promise(resolve => setTimeout(resolve, 1_500));
   }
+
+  throw new Error(
+    `Local AI server did not become ready at ${url}. Last error: ${lastError}`
+  );
+}
 
   private async checkProviderAvailability(): Promise<void> {
     const api = (globalThis as typeof globalThis & { Summarizer?: ChromeSummarizerApi }).Summarizer;
