@@ -1,6 +1,6 @@
 {
   "name": "PDF-Master-Studio",
-  "version": "3.0.0",
+  "version": "3.5.1",
   "description": "A desktop PDF management studio built with Angular and Electron",
   "author": "Praveen <praveenpl03>",
   "license": "MIT",
