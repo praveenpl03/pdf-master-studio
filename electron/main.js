@@ -55,15 +55,36 @@ function getModelPath() {
   return path.join(app.getPath('userData'), 'models', MODEL_FILENAME);
 }
 
+
 function getServerPath() {
-  const platformFolder = process.platform === 'win32' ? 'win' : process.platform === 'linux' ? 'linux' : null;
+  const platformFolder =
+    process.platform === 'win32'
+      ? 'win'
+      : process.platform === 'linux'
+        ? 'linux'
+        : null;
+
   if (!platformFolder) return null;
+
+  const serverName =
+    process.platform === 'win32'
+      ? 'llama-server.exe'
+      : 'llama-server';
+
   const resourceRoot = app.isPackaged
     ? path.join(process.resourcesPath, 'llama')
-    : path.join(app.getAppPath(), 'build');
-  const serverName = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
-  console.log(resourceRoot);
-  return path.join(resourceRoot, platformFolder, serverName);
+    : path.join(app.getAppPath(), 'resources', 'llama');
+
+  const serverPath = path.join(
+    resourceRoot,
+    platformFolder,
+    serverName
+  );
+
+  console.log('[AI] Server path:', serverPath);
+  console.log('[AI] Server exists:', require('fs').existsSync(serverPath));
+
+  return serverPath;
 }
 
 function startLocalAiServer() {
