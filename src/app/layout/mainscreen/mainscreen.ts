@@ -5,7 +5,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, StandardFonts, degrees, rgb, PDFFont } from 'pdf-lib';
 import * as fontkit from '@pdf-lib/fontkit';
 import { createWorker } from 'tesseract.js';
-import { GoogleFontService } from './fonts/font-catalog';
+import { GoogleFontService, GoogleFontItem } from './fonts/font-catalog';
 import { PdfFontDictionaryService, PdfFontDefinition } from '../services/pdf-font-dictionary';
 import {Textconverter} from '../services/textconverter';
 import {
@@ -169,14 +169,12 @@ this.menuLabels = [
 ];
 this.fontService.loadFontsFromAssets().subscribe({
     next: (fonts) => {
-      this.fontChoices = [
-        { value: 'Arial', label: 'Arial' },
-        ...fonts
-          .filter((font) => font.family.toLowerCase() !== 'arial')
-          .map((font) => ({ value: font.family, label: font.family })),
-      ];
+      this.setFontChoices(fonts);
     },
-    error: (err) => console.error('Failed to pre-fetch fonts-metadata.json', err)
+    error: (err) => {
+      console.error('Failed to pre-fetch fonts-metadata.json', err);
+      this.setFontChoices([]);
+    }
   });
   }
 
@@ -2545,6 +2543,10 @@ const mupdfRuns =
   await this.mupdfService.extractFonts(
     this.currentBytes
   );
+  const pdfJsHasBrokenText = (content.items as unknown[]).some(item => {
+    const text = this.textConverter.isPdfTextItem(item) ? item.str : '';
+    return /[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffd]/.test(text);
+  });
   extractedItems =
   this.textConverter.htmlItemsFromMuPdf(
     mupdfRuns.filter(
@@ -2556,6 +2558,8 @@ const mupdfRuns =
       viewport
     )
   );
+  const hasBrokenText = pdfJsHasBrokenText || extractedItems.some(item => /[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffd]/.test(item.text));
+  const hasHindiText = extractedItems.some(item => /[\u0900-\u097f]/.test(item.text));
     // extractedItems = this.textConverter.htmlItemsFromTextContent(
     //   content, 
     //   viewport, 
@@ -2587,8 +2591,51 @@ const mupdfRuns =
     const graphicFilteredItems = this.replaceGraphicHtmlItemsWithImages(pageItem, items, processingCanvas, rebuildScale);
 
     let fallbackItems = graphicFilteredItems;
-    if (!fallbackItems.length && this.isMobileScreen()) {
-      fallbackItems = await this.ocrCanvasToHtmlItems(processingCanvas, pageItem.id);
+    if (hasBrokenText || hasHindiText || (!fallbackItems.length && this.isMobileScreen())) {
+      const replaceItems = hasBrokenText || hasHindiText
+        ? graphicFilteredItems.filter(item => /[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffd\u0900-\u097f]/.test(item.text))
+        : [];
+      const ocrItems: HtmlTextItem[] = [];
+      if (replaceItems.length) {
+        for (const target of replaceItems) {
+          const padding = Math.max(3, target.size * 0.35);
+          const sx = Math.max(0, Math.floor((target.x - padding) * rebuildScale));
+          const sy = Math.max(0, Math.floor((target.y - padding) * rebuildScale));
+          const sw = Math.min(processingCanvas.width - sx, Math.ceil((target.width + padding * 2) * rebuildScale));
+          const sh = Math.min(processingCanvas.height - sy, Math.ceil((target.height + padding * 2) * rebuildScale));
+          if (sw <= 0 || sh <= 0) continue;
+          const crop = document.createElement('canvas');
+          crop.width = sw * 3;
+          crop.height = sh * 3;
+          const context = crop.getContext('2d');
+          context?.imageSmoothingEnabled && (context.imageSmoothingEnabled = false);
+          context?.drawImage(processingCanvas, sx, sy, sw, sh, 0, 0, crop.width, crop.height);
+          const lines = await this.ocrCanvasToHtmlItems(crop, pageItem.id);
+          const recognized = lines.map((line, index) => ({
+            ...line,
+            id: `${target.id}-ocr-${index}`,
+            text: line.text.replace(/[\u0000-\u001f\ufffd]/g, '').trim(),
+            x: target.x,
+            y: target.y,
+            width: target.width,
+            height: target.height,
+            size: target.size,
+            originalX: target.x,
+            originalY: target.y,
+            originalWidth: target.width,
+            originalHeight: target.height,
+          })).filter(line => line.text.length > 0);
+          ocrItems.push(...recognized);
+        }
+      } else if (!fallbackItems.length && this.isMobileScreen()) {
+        ocrItems.push(...await this.ocrCanvasToHtmlItems(processingCanvas, pageItem.id));
+      }
+      if (ocrItems.length) {
+        fallbackItems = [
+          ...graphicFilteredItems.filter(item => !replaceItems.includes(item)),
+          ...ocrItems,
+        ];
+      }
     }
 
     // 4. Convert the pristine, unmodified base canvas to the background URL
@@ -2640,45 +2687,45 @@ const mupdfRuns =
 
   private async ocrCanvasToHtmlItems(canvas: HTMLCanvasElement, pageId: string): Promise<HtmlTextItem[]> {
     try {
-      const worker = await createWorker('eng', 1, { logger: () => undefined });
+      const worker = await createWorker('eng+hin', 1, { logger: () => undefined });
+      await worker.setParameters({ tessedit_pageseg_mode: '7' as never });
       const { data } = await worker.recognize(canvas);
       await worker.terminate();
 
-      const lines = data.text
-        .split(/\r?\n/)
-        .map((line) => line.replace(/\s+/g, ' ').trim())
-        .filter(Boolean);
-
-      if (!lines.length) return [];
-
-      const lineHeight = Math.max(18, Math.min(28, canvas.height / 24));
-   return lines.map((line, index) => {
-
-  const x = 8;
-
-  const y =
-    8 + index * lineHeight;
-
-
-  const width =
-    Math.max(
-      160,
-      canvas.width * 0.72
-    );
-
-
-  const height =
-    lineHeight;
-
-
-  const size =
-    Math.max(
-      14,
-      Math.min(
-        18,
-        lineHeight
-      )
-    );
+      const words = (data as typeof data & { words?: Array<{ text: string; confidence: number; bbox: { x0: number; y0: number; x1: number; y1: number } }> }).words ?? [];
+      const usableWords = words.filter(word => word.text.trim() && word.confidence >= 25);
+      if (!usableWords.length) {
+        const recognizedText = data.text.split(/\r?\n/).map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+        if (!recognizedText.length) return [];
+        const lineHeight = Math.max(10, canvas.height / recognizedText.length);
+        return recognizedText.map((line, index) => {
+          const size = Math.max(8, Math.min(24, lineHeight * 0.72));
+          return {
+            id: `${pageId}-ocr-text-${index}`, pageId, text: line,
+            x: 0, y: index * lineHeight, width: canvas.width, height: lineHeight,
+            originalX: 0, originalY: index * lineHeight, originalWidth: canvas.width, originalHeight: lineHeight,
+            size, fontFamily: /[\u0900-\u097f]/.test(line) ? 'Noto Sans Devanagari, Nirmala UI, Mangal, sans-serif' : 'Arial, Helvetica, sans-serif',
+            fontWeight: '400', fontStyle: 'normal', color: '#111111', backgroundColor: '#ffffff',
+            originalText: line, originalSize: size, originalColor: '#111111', originalFontWeight: '400',
+            originalFontFamily: /[\u0900-\u097f]/.test(line) ? 'Noto Sans Devanagari, Nirmala UI, Mangal, sans-serif' : 'Arial, Helvetica, sans-serif',
+            originalFontStyle: 'normal', textAlign: 'left' as const,
+          };
+        });
+      }
+      const lineGroups: typeof usableWords[] = [];
+      for (const word of [...usableWords].sort((a, b) => a.bbox.y0 - b.bbox.y0 || a.bbox.x0 - b.bbox.x0)) {
+        let line = lineGroups.find(group => Math.abs(group[0].bbox.y0 - word.bbox.y0) < Math.max(8, (word.bbox.y1 - word.bbox.y0) * 0.55));
+        if (!line) lineGroups.push(line = []);
+        line.push(word);
+      }
+      return lineGroups.map((group, index) => {
+        group.sort((a, b) => a.bbox.x0 - b.bbox.x0);
+        const line = group.map(word => word.text.trim()).join(' ');
+        const x = group[0].bbox.x0;
+        const y = Math.min(...group.map(word => word.bbox.y0));
+        const width = Math.max(12, Math.max(...group.map(word => word.bbox.x1)) - x);
+        const height = Math.max(10, Math.max(...group.map(word => word.bbox.y1)) - y);
+        const size = Math.max(8, height * (canvas.width > 1000 ? 0.55 : 0.85));
 
 
   return {
@@ -2719,7 +2766,7 @@ const mupdfRuns =
 
 
     fontFamily:
-      'Arial, Helvetica, sans-serif',
+      /[\u0900-\u097f]/.test(line) ? 'Noto Sans Devanagari, Nirmala UI, Mangal, sans-serif' : 'Arial, Helvetica, sans-serif',
 
 
     fontWeight:
@@ -2755,7 +2802,7 @@ const mupdfRuns =
       '400',
 
     originalFontFamily:
-      'Arial, Helvetica, sans-serif',
+      /[\u0900-\u097f]/.test(line) ? 'Noto Sans Devanagari, Nirmala UI, Mangal, sans-serif' : 'Arial, Helvetica, sans-serif',
 
 
     originalFontStyle:
@@ -2770,6 +2817,7 @@ const mupdfRuns =
 });
     } catch (error) {
       console.warn('OCR fallback failed:', error);
+      this.status = `Hindi OCR could not run: ${error instanceof Error ? error.message : String(error)}`;
       return [];
     }
   }
@@ -3434,6 +3482,11 @@ private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
   }
 
   private pdfSafeText(value: string): string {
+    // Keep Unicode intact: PDF standard fonts cannot encode Devanagari or other
+    // scripts, but embedded Unicode fonts can. Callers that use standard fonts
+    // still sanitize their content through the existing fallback below.
+    // Preserve Unicode for embedded-font export paths and for Hindi/Devanagari.
+    if (/[\u0900-\u097f]/.test(value)) return value;
     // Standard PDF fonts use WinAnsi. PDF text extraction can surface
     // Wingdings/private-use glyphs (notably U+F0B7 for a bullet), which
     // pdf-lib cannot encode and would otherwise abort the whole export.
@@ -3854,7 +3907,25 @@ private async exportDocx(): Promise<void> {
     this.status = `${name} exported.`;
   }
   public selectedFontFamily: string = 'Arial';
+  private readonly hindiFontFamilies = [
+    'Noto Sans Devanagari', 'Noto Serif Devanagari', 'Noto Sans Devanagari UI', 'Noto Serif Devanagari UI',
+    'Mangal', 'Nirmala UI', 'Aparajita', 'Kokila', 'Utsaah', 'Sanskrit 2003', 'Lohit Devanagari',
+    'Sahadeva', 'Sarai', 'Chandas', 'Nakula', 'Samarkan', 'Kalimati', 'Gargi', 'Raghu', 'Yogesh',
+    'Devanagari Sangam MN', 'Shree Devanagari 714', 'Kruti Dev 010', 'Kruti Dev 020', 'Kruti Dev 040',
+    'Chanakya', 'DV-TTSurekh', 'DV-TTYogesh', 'DV-TTShree', 'Akruti Dev', 'APS-DV-Prakash',
+    'Arial Unicode MS', 'Noto Sans', 'Noto Serif',
+  ];
+
   public fontChoices = [{ value: 'Arial', label: 'Arial' }];
+
+  private setFontChoices(fonts: GoogleFontItem[]): void {
+    const hindi = this.hindiFontFamilies.map(family => ({ value: family, label: `${family} (Hindi)` }));
+    const catalog = fonts
+      .filter(font => font.family.toLowerCase() !== 'arial')
+      .map(font => ({ value: font.family, label: font.family }));
+    const choices = [{ value: 'Arial', label: 'Arial' }, ...hindi, ...catalog];
+    this.fontChoices = [...new Map(choices.map(font => [font.value.toLowerCase(), font])).values()];
+  }
 
   public onHtmlFontChange(item: HtmlTextItem): void {
     this.fontService.loadFontToDOM(item.fontFamily ?? 'Arial');

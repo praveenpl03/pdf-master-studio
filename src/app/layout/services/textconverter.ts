@@ -73,7 +73,10 @@ export class Textconverter {
 
 
 
-   const font = this.cleanMuPdfFont(run.family || run.fontName);
+   const detectedFont = this.cleanMuPdfFont(run.family || run.fontName);
+   const font = /[\u0900-\u097f]/.test(text)
+     ? 'Noto Sans Devanagari, Nirmala UI, Mangal, sans-serif'
+     : detectedFont;
 
 
 
@@ -199,11 +202,16 @@ private  cleanMuPdfFont(
     ''
   );
  const normalized = cleaned.toLowerCase().replace(/[\s_-]/g, '');
+ // Route unknown/subset PDF fonts to a Devanagari-capable stack. A font name
+ // alone cannot identify Hindi reliably, so callers should also inspect text.
  if (/times|serif|georgia/.test(normalized)) return 'Times New Roman';
  if (/helvetica|arial|sans/.test(normalized)) return 'Arial';
  if (/courier|mono/.test(normalized)) return 'Courier New';
  if (/calibri/.test(normalized)) return 'Calibri';
  if (/cambria/.test(normalized)) return 'Cambria';
+ // Devanagari PDFs often use embedded subset fonts with opaque names.
+ // Prefer a script-capable browser font for the editable text layer.
+ if (/devanagari|hindi|mangal|kokila|nirmala|kruti|chanakya|aparajita|sanskrit/.test(normalized)) return 'Noto Sans Devanagari, Nirmala UI, Mangal, sans-serif';
  return cleaned.replace(/-(bold|italic|oblique)$/i, '') || 'Arial';
 
 }
