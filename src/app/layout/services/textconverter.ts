@@ -73,9 +73,16 @@ export class Textconverter {
 
 
 
+<<<<<<< HEAD
    // Prefer the embedded PostScript font name (for example Mangal-Bold).
    // The generic family field only says serif/sans-serif and loses real fonts.
    const font = this.cleanMuPdfFont(run.fontName || run.family);
+=======
+   const detectedFont = this.cleanMuPdfFont(run.family || run.fontName);
+   const font = /[\u0900-\u097f]/.test(text)
+     ? 'Noto Sans Devanagari, Nirmala UI, Mangal, sans-serif'
+     : detectedFont;
+>>>>>>> 9300d7c4671cec552860d58fa4f62fbce507b75d
 
 
 
@@ -200,14 +207,27 @@ private  cleanMuPdfFont(
     /^[A-Z]{6}\+/,
     ''
   );
+<<<<<<< HEAD
  const baseName = cleaned.replace(/-(regular|roman|bolditalic|boldoblique|bold|italic|oblique|medium|semibold|demibold|black|heavy)$/i, '');
  const normalized = baseName.toLowerCase().replace(/[\s_-]/g, '');
+=======
+ const normalized = cleaned.toLowerCase().replace(/[\s_-]/g, '');
+ // Route unknown/subset PDF fonts to a Devanagari-capable stack. A font name
+ // alone cannot identify Hindi reliably, so callers should also inspect text.
+>>>>>>> 9300d7c4671cec552860d58fa4f62fbce507b75d
  if (/times|serif|georgia/.test(normalized)) return 'Times New Roman';
  if (/helvetica|arial|sans/.test(normalized)) return 'Arial';
  if (/courier|mono/.test(normalized)) return 'Courier New';
  if (/calibri/.test(normalized)) return 'Calibri';
  if (/cambria/.test(normalized)) return 'Cambria';
+<<<<<<< HEAD
  return baseName || 'Arial';
+=======
+ // Devanagari PDFs often use embedded subset fonts with opaque names.
+ // Prefer a script-capable browser font for the editable text layer.
+ if (/devanagari|hindi|mangal|kokila|nirmala|kruti|chanakya|aparajita|sanskrit/.test(normalized)) return 'Noto Sans Devanagari, Nirmala UI, Mangal, sans-serif';
+ return cleaned.replace(/-(bold|italic|oblique)$/i, '') || 'Arial';
+>>>>>>> 9300d7c4671cec552860d58fa4f62fbce507b75d
 
 }
 

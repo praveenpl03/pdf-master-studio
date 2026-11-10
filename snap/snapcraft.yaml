@@ -4,7 +4,7 @@
 name: pdf-master-studio
 base: core24
 title: PDF Master Studio
-version: '3.0.0'
+version: '3.5.1'
 summary: PDF editing and management desktop application
 
 description: |
