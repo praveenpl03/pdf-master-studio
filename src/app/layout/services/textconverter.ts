@@ -73,7 +73,9 @@ export class Textconverter {
 
 
 
-   const font = this.cleanMuPdfFont(run.family || run.fontName);
+   // Prefer the embedded PostScript font name (for example Mangal-Bold).
+   // The generic family field only says serif/sans-serif and loses real fonts.
+   const font = this.cleanMuPdfFont(run.fontName || run.family);
 
 
 
@@ -198,13 +200,14 @@ private  cleanMuPdfFont(
     /^[A-Z]{6}\+/,
     ''
   );
- const normalized = cleaned.toLowerCase().replace(/[\s_-]/g, '');
+ const baseName = cleaned.replace(/-(regular|roman|bolditalic|boldoblique|bold|italic|oblique|medium|semibold|demibold|black|heavy)$/i, '');
+ const normalized = baseName.toLowerCase().replace(/[\s_-]/g, '');
  if (/times|serif|georgia/.test(normalized)) return 'Times New Roman';
  if (/helvetica|arial|sans/.test(normalized)) return 'Arial';
  if (/courier|mono/.test(normalized)) return 'Courier New';
  if (/calibri/.test(normalized)) return 'Calibri';
  if (/cambria/.test(normalized)) return 'Cambria';
- return cleaned.replace(/-(bold|italic|oblique)$/i, '') || 'Arial';
+ return baseName || 'Arial';
 
 }
 

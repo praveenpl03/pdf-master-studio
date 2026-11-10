@@ -1,4 +1,4 @@
-<main class="workspace" [style.grid-template-columns]="(!pages.length && !isMobileDevice) ? '350px minmax(420px,1fr)' : null">
+<main class="workspace" [class.toolbox-only]="toolboxOnly" [style.grid-template-columns]="(!pages.length && !isMobileDevice) ? '350px minmax(420px,1fr)' : null">
   <aside class="left-panel">
     <div class="brand-row">
       <span class="brand-mark" aria-hidden="true"><i class="fa-solid fa-file-pdf"></i></span>
@@ -7,7 +7,9 @@
         <h1>Smart way to edit PDFs</h1>
       </div>
     </div>
-    <app-language-picker [labels]="menuLabels" [activeLanguage]="uiLanguage" (translationsReady)="applyMenuTranslations($event)"></app-language-picker>
+    @if (!toolboxOnly) {
+      <app-language-picker [labels]="menuLabels" [activeLanguage]="uiLanguage" (translationsReady)="applyMenuTranslations($event)"></app-language-picker>
+    }
 
     <div class="file-actions">
       <!-- <label class="file-drop">
@@ -524,6 +526,23 @@
 
   @if (pages.length) {
   <aside class="right-panel">
+    @if (toolboxOnly) {
+      <app-language-picker [labels]="menuLabels" [activeLanguage]="uiLanguage" (translationsReady)="applyMenuTranslations($event)"></app-language-picker>
+      <section class="layered-quick-tools" aria-label="Quick PDF tools">
+        <button type="button" (click)="run('insertBlankPage')" [disabled]="busy"><i class="fa-regular fa-file"></i><span>Blank</span></button>
+        <label class="layered-merge-tool"><i class="fa-solid fa-object-group"></i><span>Merge PDFs</span><input type="file" accept="application/pdf" multiple (change)="addMergeFiles($event)" /></label>
+        <button type="button" (click)="run('addText')" [disabled]="busy"><i class="fa-solid fa-font"></i><span>Text</span></button>
+        <button type="button" (click)="openToolSummarizer()" [disabled]="busy"><i class="fa-solid fa-wand-magic-sparkles"></i><span>Summarize</span></button>
+        <button type="button" (click)="run('chooseImage')" [disabled]="busy"><i class="fa-regular fa-image"></i><span>Image</span></button>
+        <button type="button" (click)="run('addSignature')" [disabled]="busy"><i class="fa-solid fa-signature"></i><span>Sign</span></button>
+        <button type="button" (click)="run('addWhiteout')" [disabled]="busy"><i class="fa-solid fa-eraser"></i><span>Whiteout</span></button>
+        <button type="button" (click)="run('addHighlight')" [disabled]="busy"><i class="fa-solid fa-pen"></i><span>Annotate</span></button>
+        <button type="button" (click)="run('addRectangle')" [disabled]="busy"><i class="fa-regular fa-square"></i><span>Box</span></button>
+        <button type="button" (click)="run('addSquare')" [disabled]="busy"><i class="fa-solid fa-square"></i><span>Square</span></button>
+        <button type="button" (click)="run('addEllipse')" [disabled]="busy"><i class="fa-regular fa-circle"></i><span>Circle</span></button>
+        <button type="button" (click)="run('addLine')" [disabled]="busy"><i class="fa-solid fa-minus"></i><span>Line</span></button>
+      </section>
+    }
     <section class="services-menu" aria-label="PDF services">
       <div class="services-head">
         <div>
@@ -572,8 +591,8 @@
 
     <div class="status-bar" [class.loading]="busy">{{ status }}</div>
     <div class="side-quick-actions">
-      <button type="button" title="Undo" (click)="undo()" [disabled]="busy || !canUndo"><i class="fa-solid fa-rotate-left"></i><span>Undo</span></button>
-      <button type="button" title="Redo" (click)="redo()" [disabled]="busy || !canRedo"><i class="fa-solid fa-rotate-right"></i><span>Redo</span></button>
+      <button type="button" title="Undo" (click)="toolboxOnly ? run('undo') : undo()" [disabled]="busy || !(toolboxOnly ? layeredCanUndo : canUndo)"><i class="fa-solid fa-rotate-left"></i><span>Undo</span></button>
+      <button type="button" title="Redo" (click)="toolboxOnly ? run('redo') : redo()" [disabled]="busy || !(toolboxOnly ? layeredCanRedo : canRedo)"><i class="fa-solid fa-rotate-right"></i><span>Redo</span></button>
       <button type="button" title="Compress PDF" (click)="run('compressedPdf')" [disabled]="busy"><i class="fa-solid fa-compress"></i><span>Compress</span></button>
       <button type="button" title="Generate PDF" (click)="run('downloadPdf', true)" [disabled]="busy"><i class="fa-solid fa-file-pdf"></i><span>Generate PDF</span></button>
     </div>

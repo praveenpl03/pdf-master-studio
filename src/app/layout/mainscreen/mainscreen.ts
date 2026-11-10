@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, ViewChild, ViewChildren, QueryList } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, NgZone, OnDestroy, Output, ViewChild, ViewChildren, QueryList } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, StandardFonts, degrees, rgb, PDFFont } from 'pdf-lib';
@@ -16,7 +16,13 @@ import {
     HeadingLevel,
     AlignmentType,
     UnderlineType,
-    ImageRun
+    ImageRun,
+    Table,
+    TableCell,
+    TableRow,
+    TableLayoutType,
+    WidthType,
+    BorderStyle
 } from "docx";
 
 import type {
@@ -70,6 +76,14 @@ declare global {
 })
 export class Mainscreen implements AfterViewInit, OnDestroy {
 
+  @Input() toolboxOnly = false;
+  @Input() layeredCanUndo = false;
+  @Input() layeredCanRedo = false;
+  @Input() beforeToolAction?: () => Promise<{ bytes?: Uint8Array; pageNumber: number; selectedPageNumbers: number[] } | undefined>;
+  @Output() layeredDocumentChanged = new EventEmitter<{ bytes: Uint8Array; fileName: string; pageNumber: number; selectedPageNumbers: number[] }>();
+  @Output() layeredVisualToolRequested = new EventEmitter<string>();
+  @Output() layeredHistoryRequested = new EventEmitter<'undo' | 'redo'>();
+
   @ViewChild('aboutModal') aboutModal!: AboutModalComponent;
 @ViewChild('privacyModal') privacyModal!: PrivacyModalComponent;
 @ViewChild('localSummarizer') localSummarizer!: LocalSummarizerComponent;
@@ -120,6 +134,19 @@ openPrivacy() {
       this.busy = false;
       this.busyLabel = '';
     }
+  }
+
+  async openToolSummarizer(): Promise<void> {
+    if (this.toolboxOnly && this.beforeToolAction) {
+      const layeredContext = await this.beforeToolAction();
+      if (layeredContext?.bytes?.length) await this.loadBytes(layeredContext.bytes, this.fileName || 'layered-edit.pdf');
+      if (layeredContext) {
+        this.activateLayeredPage(layeredContext.pageNumber);
+        const selected = new Set(layeredContext.selectedPageNumbers);
+        this.pages.forEach((page, index) => page.selected = selected.has(index + 1));
+      }
+    }
+    await this.openLocalSummarizer();
   }
   private readonly fontFamilyAliases = {
     helvetica: ['helvetica', 'arial', 'sans-serif', 'sans serif'],
@@ -201,7 +228,7 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   private sourcePageCount = 0;
   busy = false;
   busyLabel = '';
-  zoom = this.isMobileScreen() ? 1.0 : 1.7
+  zoom = this.isMobileScreen() ? 1.0 : 2.15
   rangeText = '';
   stampText = 'APPROVED';
   watermarkText = 'Confidential';
@@ -248,6 +275,7 @@ public isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   // the previous document must never paint into the newly opened document.
   private pdfDocumentEpoch = 0;
   private thumbnailRenderEpoch = 0;
+  private docxOcrWorker?: Awaited<ReturnType<typeof createWorker>>;
   private thumbnailRenderTimer: ReturnType<typeof setTimeout> | undefined;
   private thumbnailRenderPending = false;
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
@@ -261,6 +289,7 @@ private activeRenderTask?: { cancel: () => void };
   ];
 
   readonly tools: PdfTool[] = [
+    { name: 'Insert blank page', group: 'organize', action: 'insertBlankPage' },
     { name: 'Merge PDFs', group: 'organize', action: 'merge' },
     { name: 'Split selected pages', group: 'organize', action: 'splitSelected' },
     { name: 'Extract range', group: 'organize', action: 'extractRange' },
@@ -307,6 +336,8 @@ private activeRenderTask?: { cancel: () => void };
     { name: 'Add ellipse', group: 'edit', action: 'addEllipse' },
     { name: 'Add line', group: 'edit', action: 'addLine' },
     { name: 'Add redaction box', group: 'edit', action: 'addRedaction' },
+    { name: 'Add rectangle', group: 'edit', action: 'addRectangle' },
+    { name: 'Add square', group: 'edit', action: 'addSquare' },
     { name: 'Stamp page', group: 'edit', action: 'stampPage' },
     { name: 'Watermark all', group: 'edit', action: 'watermarkAll' },
     { name: 'Page numbers', group: 'edit', action: 'pageNumbers' },
@@ -333,7 +364,8 @@ private activeRenderTask?: { cancel: () => void };
 
   async ngAfterViewInit(): Promise<void> {
     this.configureMobileRendering();
-    (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc = '/assets/pdf.worker.mjs';
+    const runtime = await this.getPdfJsRuntime();
+    (runtime.GlobalWorkerOptions as { workerSrc: string }).workerSrc = this.toolboxOnly ? '/old/pdf.worker.min.js' : '/assets/pdf.worker.mjs';
     this.thumbCanvases.changes.subscribe(() => this.queueThumbRender());
     if (this.isDesktopApp) {
       await this.refreshLocalModelStatus();
@@ -652,25 +684,51 @@ private activeRenderTask?: { cancel: () => void };
       const file = files[0];
       input.value = '';
       await this.loadBytes(new Uint8Array(await file.arrayBuffer()), file.name);
+      if (this.toolboxOnly) await this.emitLayeredDocument();
       return;
     }
 
-    this.recordHistory();
+    if (!this.toolboxOnly) this.recordHistory();
     for (const file of files) {
       this.extraFiles.push({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
     }
     this.status = `${this.extraFiles.length} merge file(s) ready. Adding pages to workspace...`;
     input.value = '';
-    await this.mergePdfs();
+    if (this.toolboxOnly) await this.run('merge', true);
+    else await this.mergePdfs();
   }
 
   async run(action: string, optionsConfirmed = false): Promise<void> {
+    const preserveLayeredTextSource = this.toolboxOnly && ['exportDocx', 'exportDoc', 'exportExcel', 'exportText'].includes(action);
+    if (this.toolboxOnly && (action === 'undo' || action === 'redo')) {
+      this.layeredHistoryRequested.emit(action);
+      return;
+    }
+    if (this.toolboxOnly && ['addText', 'chooseImage', 'addSignature', 'addWhiteout', 'addRedaction', 'addHighlight', 'addRectangle', 'addSquare', 'addEllipse', 'addLine'].includes(action)) {
+      this.layeredVisualToolRequested.emit(action);
+      return;
+    }
     if (!optionsConfirmed && this.openToolOptions(action)) return;
     try {
+      if (this.toolboxOnly && this.beforeToolAction && !preserveLayeredTextSource) {
+        const layeredContext = await this.beforeToolAction();
+        if (layeredContext?.bytes?.length) await this.loadBytes(layeredContext.bytes, this.fileName || 'layered-edit.pdf');
+        if (layeredContext) {
+          this.activateLayeredPage(layeredContext.pageNumber);
+          const selected = new Set(layeredContext.selectedPageNumbers);
+          this.pages.forEach((page, index) => page.selected = selected.has(index + 1));
+        }
+      }
       if (this.shouldRecordHistory(action)) this.recordHistory();
       this.busy = true;
       this.busyLabel = this.busyMessageFor(action);
       switch (action) {
+        case 'undo': this.undo(); break;
+        case 'redo': this.redo(); break;
+        case 'insertBlankPage': this.insertBlankPageBeforeActive(); break;
+        case 'addRectangle': this.addShape('rectangle'); break;
+        case 'addSquare': this.addShape('square'); break;
+        case 'addWhiteout': this.addWhiteout(); break;
         case 'merge': await this.mergePdfs(); break;
         case 'splitSelected': await this.downloadSelectedAsOne(); break;
         case 'extractRange': await this.extractRange(); break;
@@ -738,9 +796,58 @@ private activeRenderTask?: { cancel: () => void };
     } catch (error) {
       this.status = error instanceof Error ? error.message : 'Operation failed.';
     } finally {
+      if (this.toolboxOnly && this.currentBytes.length && !preserveLayeredTextSource) {
+        try { await this.emitLayeredDocument(); }
+        catch (error) { this.status = error instanceof Error ? error.message : 'Could not refresh the layered view.'; }
+      }
       this.busy = false;
       this.busyLabel = '';
     }
+  }
+
+  async loadFromLayeredEditor(bytes: Uint8Array, fileName: string): Promise<void> {
+    await this.loadBytes(new Uint8Array(bytes), fileName);
+  }
+
+  async applyHistoryFromLayeredRoute(action: string): Promise<void> {
+    if (action === 'undo') this.undo();
+    else if (action === 'redo') this.redo();
+    else return;
+    if (this.currentBytes.length) await this.emitLayeredDocument();
+  }
+
+  getLayeredTextMetadata(pageNumber: number): Array<{
+    x: number; y: number; width: number; height: number; text: string;
+    fontFamily: string; fontWeight: string; fontStyle: string;
+  }> {
+    const page = this.pages[pageNumber - 1];
+    if (!page) return [];
+    return this.htmlTextItems
+      .filter(item => item.pageId === page.id)
+      .map(item => ({
+        x: item.x, y: item.y, width: item.width, height: item.height,
+        text: item.text, fontFamily: item.exactFont || item.fontFamily || '',
+        fontWeight: item.fontWeight || item.originalFontWeight || 'normal',
+        fontStyle: item.fontStyle || item.originalFontStyle || 'normal',
+      }));
+  }
+
+  activateLayeredPage(pageNumber: number): void {
+    const page = this.pages[Math.min(this.pages.length - 1, Math.max(0, pageNumber - 1))];
+    if (page && page.id !== this.activePageId) this.setActive(page);
+  }
+
+  private async emitLayeredDocument(): Promise<void> {
+    const edited = await this.createExportPdf(true);
+    const saved = await edited.save();
+    const bytes = new Uint8Array(saved.length);
+    bytes.set(saved);
+    this.layeredDocumentChanged.emit({
+      bytes,
+      fileName: this.fileName || 'layered-edit.pdf',
+      pageNumber: Math.max(1, this.pages.findIndex(page => page.id === this.activePageId) + 1),
+      selectedPageNumbers: this.pages.flatMap((page, index) => page.selected ? [index + 1] : []),
+    });
   }
 
   closeToolOptions(): void {
@@ -3090,7 +3197,8 @@ private queueThumbRender(): void {
 
   private async openPdfJsDocument(bytes = this.currentBytes): Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }> {
     return this.runPdfOutsideAngular(async () => {
-      const loadingTask = pdfjsLib.getDocument({
+      const runtime = await this.getPdfJsRuntime();
+      const loadingTask = runtime.getDocument({
         data: bytes.slice(),
         password: this.openPassword || undefined,
         disableWorker: false,
@@ -3106,6 +3214,21 @@ private queueThumbRender(): void {
       };
       return loadingTask.promise as Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<any> }>;
     });
+  }
+
+  private pdfJsRuntimePromise?: Promise<typeof pdfjsLib>;
+
+  private getPdfJsRuntime(): Promise<typeof pdfjsLib> {
+    if (!this.toolboxOnly) return Promise.resolve(pdfjsLib);
+    if (!this.pdfJsRuntimePromise) {
+      this.pdfJsRuntimePromise = (async () => {
+        const moduleUrl = new URL('/old/pdf.min.js', window.location.href).href;
+        const runtime = await import(moduleUrl) as typeof pdfjsLib;
+        (runtime.GlobalWorkerOptions as { workerSrc: string }).workerSrc = '/old/pdf.worker.min.js';
+        return runtime;
+      })();
+    }
+    return this.pdfJsRuntimePromise;
   }
 
   private async loadSourcePdfDocument(): Promise<PDFDocument> {
@@ -3220,10 +3343,11 @@ await this.applyOverlays(output);
     if (!editedPages.length) return false;
 
     const pdf = await this.getPdfDocument();
+    const runtime = await this.getPdfJsRuntime();
     const imageOperations = [
-      (pdfjsLib as any).OPS?.paintImageXObject,
-      (pdfjsLib as any).OPS?.paintImageMaskXObject,
-      (pdfjsLib as any).OPS?.paintJpegXObject,
+      (runtime as any).OPS?.paintImageXObject,
+      (runtime as any).OPS?.paintImageMaskXObject,
+      (runtime as any).OPS?.paintJpegXObject,
     ].filter((operation): operation is number => typeof operation === 'number');
 
     for (const pageItem of editedPages) {
@@ -3526,109 +3650,288 @@ private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
   // }
 private async exportDocx(): Promise<void> {
   try {
-
     this.status = 'Preparing DOCX...';
-
-    const pages = await this.structuredTextPages();
-
+    // Use the original PDF's positioned text. The editable overlay can contain
+    // fragmented or overlapping spans that do not reconstruct cleanly in Word.
+    const pages = await this.docxPagesFromPdfJsText();
+    if (!pages.some(page => page.rows.some((row: any) => row.cells.some((cell: any) => cell.text?.trim())))) {
+      throw new Error('No selectable text was found. This PDF may be scanned; run OCR before converting it to Word.');
+    }
     const sections: any[] = [];
-
     for (const page of pages) {
-
+      if (page.image) {
+        sections.push({
+          properties: {
+            page: {
+              size: { width: page.pageWidthTwips, height: page.pageHeightTwips },
+              margin: { top: 0, right: 0, bottom: 0, left: 0 },
+            },
+          },
+          children: [new Paragraph({
+            spacing: { before: 0, after: 0, line: 1 },
+            children: [new ImageRun({
+              data: page.image,
+              type: 'png',
+              transformation: { width: page.imageWidth, height: page.imageHeight },
+            })],
+          })],
+        });
+        continue;
+      }
       const children: any[] = [];
-
-      // Page title (optional)
       children.push(
         new Paragraph({
           heading: HeadingLevel.HEADING_2,
-          spacing: {
-            after: 300
-          },
-          children: [
-            new TextRun({
-              text: `Page ${page.page}`,
-              bold: true
-            })
-          ]
+          spacing: { after: 240 },
+          children: [new TextRun({ text: `Page ${page.page}`, bold: true })],
         })
       );
-
-      for (const row of page.rows) {
-
-        const runs: TextRun[] = [];
-
-        for (const cell of row.cells) {
-
-          if (!cell.text?.trim()) continue;
-
-          runs.push(
-            new TextRun({
-              text: cell.text + " ",
-              font: cell.fontFamily || "Calibri",
-              size: Math.round((cell.fontSize || 11) * 2),
-              bold: !!cell.bold,
-              italics: !!cell.italic,
-              underline: cell.underline
-                ? {
-                    type: UnderlineType.SINGLE
-                  }
-                : undefined,
-              color: (cell.color || "#000000").replace("#", "")
-            })
-          );
-
+      const tables = this.findDocxTableBlocks(page.rows);
+      const tableAt = new Map(tables.map(table => [table.start, table]));
+      for (let rowIndex = 0; rowIndex < page.rows.length;) {
+        const tableBlock = tableAt.get(rowIndex);
+        if (tableBlock) {
+          children.push(this.createDocxTable(tableBlock.rows, tableBlock.columns));
+          rowIndex = tableBlock.end + 1;
+          continue;
         }
-
-        children.push(
-          new Paragraph({
-            alignment:
-              row.align === "center"
-                ? AlignmentType.CENTER
-                : row.align === "right"
-                ? AlignmentType.RIGHT
-                : AlignmentType.LEFT,
-
-            spacing: {
-              after: 120
-            },
-
-            children: runs
-          })
-        );
-
+        const row = page.rows[rowIndex];
+        const runs = row.cells
+          .filter((cell: any) => cell.text?.trim())
+          .map((cell: any) => this.createDocxTextRun(cell));
+        children.push(new Paragraph({
+          alignment: row.align === 'center' ? AlignmentType.CENTER : row.align === 'right' ? AlignmentType.RIGHT : AlignmentType.LEFT,
+          spacing: { after: 100 },
+          children: runs.length ? runs : [new TextRun({ text: '' })],
+        }));
+        rowIndex++;
       }
-
-      sections.push({
-        properties: {},
-        children
-      });
-
+      sections.push({ properties: {}, children });
     }
-
     const doc = new Document({
-      creator: "TheConvertor",
-      title: "Converted PDF",
-      description: "Generated by TheConvertor",
-      sections
+      creator: 'TheConvertor',
+      title: 'Converted PDF',
+      description: 'Generated by TheConvertor',
+      styles: { default: { document: { run: { font: 'Calibri', size: 22 } } } },
+      sections,
     });
-
     const blob = await Packer.toBlob(doc);
-
-    this.downloadBlob(
-      blob,
-      "converted.docx",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    );
-
-    this.status = "DOCX exported.";
-
+    this.downloadBlob(blob, 'converted.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    this.status = 'Word file created. Pages with damaged Hindi text use the original page appearance to keep the conversion readable.';
   } catch (error) {
-
     console.error(error);
-
-    this.status = "DOCX export failed.";
-
+    this.status = error instanceof Error ? error.message : 'DOCX export failed.';
   }
+}
+
+private async docxPagesFromPdfJsText(): Promise<any[]> {
+  const pdf = await this.openPdfJsDocument(this.currentBytes);
+  const pages: any[] = [];
+  this.docxOcrWorker = undefined;
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const items = (content.items as unknown[]).filter((item): item is PdfTextItemLike & { fontName?: string } =>
+      this.textConverter.isPdfTextItem(item));
+    const rawText = items.map(item => item.str).join(' ');
+    const suspiciousCount = items.filter(item => this.isCorruptPdfText(item.str)).length;
+    const corrupted = items.length > 0 && (suspiciousCount / items.length >= 0.025 || this.isCorruptPdfText(rawText));
+    let rows = corrupted ? await this.ocrPdfPageForDocx(page) : [];
+    if (corrupted && !rows.length) {
+      const imagePage = await this.renderPdfPageForDocx(page);
+      if (imagePage) {
+        pages.push({ page: pageNumber, rows: [], ...imagePage });
+        continue;
+      }
+    }
+    if (!rows.length) rows = this.docxRowsFromPdfTextItems(items, content.styles || {});
+    pages.push({ page: pageNumber, rows });
+  }
+  const ocrWorker = this.docxOcrWorker as Awaited<ReturnType<typeof createWorker>> | undefined;
+  if (ocrWorker) {
+    await ocrWorker.terminate();
+    this.docxOcrWorker = undefined;
+  }
+  return pages;
+}
+
+private async renderPdfPageForDocx(page: any): Promise<any | undefined> {
+  try {
+    const viewport = page.getViewport({ scale: 4 / 3 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const context = canvas.getContext('2d');
+    if (!context) return undefined;
+    await page.render({ canvasContext: context, viewport }).promise;
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) return undefined;
+    return {
+      image: new Uint8Array(await blob.arrayBuffer()),
+      imageWidth: canvas.width,
+      imageHeight: canvas.height,
+      pageWidthTwips: Math.round(canvas.width * 15),
+      pageHeightTwips: Math.round(canvas.height * 15),
+    };
+  } catch (error) {
+    console.warn('Could not create a visual fallback for a PDF page', error);
+    return undefined;
+  }
+}
+
+private isCorruptPdfText(text: string): boolean {
+  return /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFD\uFFFE\uFFFF]/.test(text)
+    || /[\u0900-\u097F][A-Za-z%*`$][\u0900-\u097F]/.test(text);
+}
+
+private docxRowsFromPdfTextItems(items: Array<PdfTextItemLike & { fontName?: string }>, styles: Record<string, any>): any[] {
+  const positioned = items.map(item => ({
+    item, x: item.transform[4] || 0, y: item.transform[5] || 0,
+    size: Math.max(6, Math.hypot(item.transform[0] || 0, item.transform[1] || 0)),
+  })).filter(entry => entry.item.str.trim());
+  const unique = positioned.filter((entry, index) => !positioned.slice(0, index).some(previous =>
+    previous.item.str === entry.item.str && Math.abs(previous.x - entry.x) <= 0.8 && Math.abs(previous.y - entry.y) <= 0.8));
+  unique.sort((a, b) => Math.abs(a.y - b.y) > Math.max(a.size, b.size) * 0.42 ? b.y - a.y : a.x - b.x);
+
+  const lines: typeof unique[] = [];
+  for (const entry of unique) {
+    let line = lines.find(candidate => Math.abs(candidate[0].y - entry.y) <= Math.max(2, Math.min(candidate[0].size, entry.size) * 0.42));
+    if (!line) { line = []; lines.push(line); }
+    line.push(entry);
+  }
+  return lines.map(line => {
+    line.sort((a, b) => a.x - b.x);
+    const cells: any[] = [];
+    let current: any;
+    let previous: typeof line[number] | undefined;
+    for (const entry of line) {
+      const text = entry.item.str.replace(/[\r\n]+/g, ' ');
+      const gap = previous ? entry.x - (previous.x + previous.item.width) : 0;
+      if (!current || gap > Math.max(22, entry.size * 2.4)) {
+        current = {
+          x: entry.x, y: entry.y, text, width: entry.item.width, height: entry.item.height || entry.size,
+          fontFamily: styles[entry.item.fontName || '']?.fontFamily || 'Arial', fontSize: entry.size,
+          color: '#000000', bold: /bold|black|heavy|demi|semi/i.test(entry.item.fontName || ''),
+          italic: /italic|oblique/i.test(entry.item.fontName || ''), underline: false,
+        };
+        cells.push(current);
+      } else {
+        const needsSpace = /\s$/.test(current.text) || /^\s/.test(text) || gap > Math.max(1, entry.size * 0.16);
+        current.text += `${needsSpace && !/\s$/.test(current.text) ? ' ' : ''}${text.trimStart()}`;
+        current.width = Math.max(current.width, entry.x + entry.item.width - current.x);
+      }
+      previous = entry;
+    }
+    return { y: line[0]?.y || 0, align: 'left', cells: cells.filter(cell => cell.text.trim()) };
+  }).filter(row => row.cells.length);
+}
+
+private async ocrPdfPageForDocx(page: any): Promise<any[]> {
+  try {
+    this.docxOcrWorker ??= await createWorker('eng+hin', 1, { logger: () => undefined });
+    const viewport = page.getViewport({ scale: 2.5 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return [];
+    await page.render({ canvasContext: context, viewport }).promise;
+    const { data } = await this.docxOcrWorker.recognize(canvas);
+    const lines = (data.blocks || []).flatMap(block => block.paragraphs.flatMap(paragraph => paragraph.lines));
+    return lines.filter(line => line.text?.trim() && line.confidence >= 25).map(line => ({
+      y: canvas.height - line.bbox.y1, align: 'left',
+      cells: [{
+        x: line.bbox.x0, y: canvas.height - line.bbox.y1,
+        width: line.bbox.x1 - line.bbox.x0, height: line.bbox.y1 - line.bbox.y0,
+        text: line.text.trim(), fontFamily: 'Nirmala UI', fontSize: Math.max(8, line.bbox.y1 - line.bbox.y0),
+        color: '#000000', bold: false, italic: false, underline: false,
+      }],
+    }));
+  } catch (error) {
+    console.warn('Hindi OCR could not process a damaged PDF text page', error);
+    return [];
+  }
+}
+
+private createDocxTextRun(cell: any): TextRun {
+  const family = String(cell.fontFamily || 'Calibri').replace(/-[A-Za-z]+$/, '');
+  const rawColor = String(cell.color || '#000000');
+  const color = /^[0-9a-f]{6}$/i.test(rawColor.replace('#', '')) ? rawColor.replace('#', '').toUpperCase() : '000000';
+  const fonts = { ascii: family, hAnsi: family, eastAsia: family, cs: family };
+  return new TextRun({
+    text: cell.text || '', font: fonts, size: Math.max(10, Math.round((cell.fontSize || 11) * 2)),
+    bold: Boolean(cell.bold), boldComplexScript: Boolean(cell.bold),
+    italics: Boolean(cell.italic), italicsComplexScript: Boolean(cell.italic),
+    underline: cell.underline ? { type: UnderlineType.SINGLE } : undefined, color,
+  });
+}
+
+private findDocxTableBlocks(rows: any[]): Array<{ start: number; end: number; rows: any[]; columns: number[] }> {
+  const blocks: Array<{ start: number; end: number; rows: any[]; columns: number[] }> = [];
+  let index = 0;
+  while (index < rows.length) {
+    if ((rows[index]?.cells?.length ?? 0) < 2) { index++; continue; }
+    let end = index;
+    const group = [rows[index]];
+    while (end + 1 < rows.length && (rows[end + 1]?.cells?.length ?? 0) >= 2) {
+      const previous = rows[end], next = rows[end + 1];
+      const fontSize = Math.max(8, ...previous.cells.map((cell: any) => cell.fontSize || 10));
+      if (Math.abs(next.y - previous.y) > fontSize * 3.2) break;
+      group.push(next); end++;
+    }
+    if (group.length >= 2) {
+      const positions = group.flatMap(row => row.cells.map((cell: any) => cell.x)).sort((a: number, b: number) => a - b);
+      const anchors: number[] = [];
+      for (const x of positions) {
+        const last = anchors[anchors.length - 1];
+        if (last === undefined || Math.abs(x - last) > 14) anchors.push(x);
+        else anchors[anchors.length - 1] = (last + x) / 2;
+      }
+      const repeatedColumns = anchors.filter(anchor => group.filter(row => row.cells.some((cell: any) => Math.abs(cell.x - anchor) <= 18)).length >= 2);
+      const alignedRows = group.filter(row => new Set(row.cells.map((cell: any) => {
+        let closest = 0; let distance = Infinity;
+        repeatedColumns.forEach((anchor, column) => { const nextDistance = Math.abs(cell.x - anchor); if (nextDistance < distance) { distance = nextDistance; closest = column; } });
+        return distance <= 18 ? closest : -1;
+      }).filter((column: number) => column >= 0)).size >= 2);
+      if (repeatedColumns.length >= 2 && alignedRows.length >= 2 && repeatedColumns[1] - repeatedColumns[0] >= 36) {
+        blocks.push({ start: index, end, rows: group, columns: repeatedColumns });
+        index = end + 1;
+        continue;
+      }
+    }
+    index++;
+  }
+  return blocks;
+}
+
+private createDocxTable(rows: any[], columns: number[]): Table {
+  const tableRows = rows.map(row => {
+    const grouped = columns.map(() => [] as any[]);
+    for (const cell of row.cells) {
+      let columnIndex = 0; let distance = Infinity;
+      columns.forEach((x, index) => { const next = Math.abs(cell.x - x); if (next < distance) { distance = next; columnIndex = index; } });
+      if (distance <= 20) grouped[columnIndex].push(cell);
+    }
+    return new TableRow({ children: grouped.map(cells => new TableCell({
+      margins: { top: 60, bottom: 60, left: 90, right: 90 },
+      children: [new Paragraph({ spacing: { after: 40 }, children: cells.length ? cells.map(cell => this.createDocxTextRun(cell)) : [new TextRun({ text: '' })] })],
+    })) });
+  });
+  const columnWidth = Math.floor(10_800 / columns.length);
+  return new Table({
+    rows: tableRows,
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    columnWidths: columns.map((_, index) => index === columns.length - 1 ? 10_800 - columnWidth * (columns.length - 1) : columnWidth),
+    layout: TableLayoutType.FIXED,
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 3, color: 'C7D0DE' },
+      bottom: { style: BorderStyle.SINGLE, size: 3, color: 'C7D0DE' },
+      left: { style: BorderStyle.SINGLE, size: 3, color: 'C7D0DE' },
+      right: { style: BorderStyle.SINGLE, size: 3, color: 'C7D0DE' },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 2, color: 'D8DEE8' },
+      insideVertical: { style: BorderStyle.SINGLE, size: 2, color: 'D8DEE8' },
+    },
+  });
 }
 
   private async exportExcel(): Promise<void> {
@@ -4328,7 +4631,8 @@ private async structuredTextPages(): Promise<
   }
 
   private shouldRecordHistory(action: string): boolean {
-    return !/download|export|docInfo|countPages|findText|auditDimensions|listSelected/i.test(action);
+    return !/^(undo|redo)$/i.test(action)
+      && !/download|export|docInfo|countPages|findText|auditDimensions|listSelected/i.test(action);
   }
 
   private recordHistory(): void {

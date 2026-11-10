@@ -37,7 +37,7 @@ self.onmessage = (event) => {
         JSON.parse(
           page
           .toStructuredText(
-            "preserve-whitespace"
+            "preserve-whitespace,preserve-spans"
           )
           .asJSON()
         );
