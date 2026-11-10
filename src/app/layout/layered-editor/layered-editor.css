@@ -3,6 +3,7 @@
 .text-run:not(.changed):not(.selected):hover{border-color:#3676df;background:#ffffff55}
 .text-run.edit-mode:not(.changed):not(.selected){border:1px dashed #3676df80;background:#ffffff20}
 .element-toolbar{position:sticky;top:0;z-index:10;display:flex;flex:none;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;width:100%;padding:7px;border:1px solid #d5dfed;border-radius:9px;background:#fffffff2;box-shadow:0 5px 18px #17203314}
+.text-format-toolbar{position:absolute;z-index:12;width:max-content;max-width:min(680px,calc(100vw - 48px));justify-content:flex-start}
 .element-toolbar strong{margin:0 4px;color:#1c2b43;font:700 12px Arial,sans-serif}
 .element-toolbar button,.element-toolbar select,.element-toolbar label{min-height:30px;padding:4px 8px;border:1px solid #d5dfed;border-radius:6px;background:#fff;color:#34455e;font:500 11px Arial,sans-serif}
 .element-toolbar button{cursor:pointer}.element-toolbar button.active{border-color:#7ca4ec;background:#eaf1ff;color:#1d4ed8}

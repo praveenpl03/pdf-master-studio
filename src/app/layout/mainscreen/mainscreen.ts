@@ -675,22 +675,12 @@ private activeRenderTask?: { cancel: () => void };
     const files = Array.from(input.files ?? []);
     if (!files.length) return;
 
-    // A single PDF selected in the sidebar is a replacement document. Keep
-    // multi-file selections on the explicit merge path.
-    if (files.length === 1) {
-      this.extraFiles = [];
-      const file = files[0];
-      input.value = '';
-      await this.loadBytes(new Uint8Array(await file.arrayBuffer()), file.name);
-      if (this.toolboxOnly) await this.emitLayeredDocument();
-      return;
-    }
-
     if (!this.toolboxOnly) this.recordHistory();
+    this.extraFiles = [];
     for (const file of files) {
       this.extraFiles.push({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
     }
-    this.status = `${this.extraFiles.length} merge file(s) ready. Adding pages to workspace...`;
+    this.status = `Merging ${this.extraFiles.length} PDF${this.extraFiles.length === 1 ? '' : 's'} with the open document...`;
     input.value = '';
     if (this.toolboxOnly) await this.run('merge', true);
     else await this.mergePdfs();
