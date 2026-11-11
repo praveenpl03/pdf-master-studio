@@ -2,8 +2,9 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type * as pdfjsLib from 'pdfjs-dist';
-import { PDFDocument } from 'pdf-lib';
+import { degrees, PDFDocument, rgb } from 'pdf-lib';
 import { Mainscreen } from '../mainscreen/mainscreen';
+import { LanguagePickerComponent, MenuLabel, MenuTranslationResult } from '../language-picker/language-picker';
 
 interface EditableTextRun {
   id: string;
@@ -30,6 +31,7 @@ interface EditableTextRun {
   originalItalic: boolean;
   textAlign: 'left' | 'center' | 'right';
   originalTextAlign: 'left' | 'center' | 'right';
+  deleted?: boolean;
 }
 
 interface LayerImage {
@@ -87,7 +89,7 @@ interface PdfFontStyleRun {
 @Component({
   selector: 'app-layered-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, Mainscreen],
+  imports: [CommonModule, FormsModule, Mainscreen, LanguagePickerComponent],
   templateUrl: './layered-editor.html',
   styleUrl: './layered-editor.css',
 })
@@ -113,6 +115,29 @@ export class LayeredEditor implements OnDestroy {
   selectedShapeId = '';
   textEditing = true;
   toolsVisible = true;
+  uiLanguage = 'English';
+  menuTranslations: Record<string, string> = {};
+  readonly menuLabels: MenuLabel[] = [
+    { id: 'ui-home-workspace', label: 'YOUR PDF WORKSPACE' },
+    { id: 'ui-home-title', label: 'Everything you need to work with PDFs' },
+    { id: 'ui-home-description', label: 'Organize pages, make precise edits, convert files, and protect documents from one place.' },
+    { id: 'ui-home-open', label: 'Open a PDF' },
+    { id: 'ui-home-note', label: 'Your document is processed in your browser.' },
+    { id: 'group-organize', label: 'Organize' },
+    { id: 'group-convert', label: 'Convert' },
+    { id: 'group-edit', label: 'Edit' },
+    { id: 'group-more', label: 'More' },
+    { id: 'tool-0', label: 'Insert blank page' },
+    { id: 'tool-40', label: 'Add text' },
+    { id: 'tool-41', label: 'Add image' },
+    { id: 'tool-42', label: 'Add signature' },
+    { id: 'tool-43', label: 'Add highlight' },
+    { id: 'tool-44', label: 'Add ellipse' },
+    { id: 'tool-45', label: 'Add line' },
+    { id: 'tool-46', label: 'Add redaction box' },
+    { id: 'tool-47', label: 'Add rectangle' },
+    { id: 'tool-48', label: 'Add square' },
+  ];
 
   private document?: pdfjsLib.PDFDocumentProxy;
   private sourceBytes?: Uint8Array;
@@ -136,7 +161,30 @@ export class LayeredEditor implements OnDestroy {
 
   get pageNumbers(): number[] { return Array.from({ length: this.pageCount }, (_, index) => index + 1); }
 
-  constructor(private readonly changeDetector: ChangeDetectorRef) {}
+  constructor(private readonly changeDetector: ChangeDetectorRef) {
+    try {
+      this.uiLanguage = localStorage.getItem('pdf-master-studio-language') || 'English';
+      this.menuTranslations = JSON.parse(localStorage.getItem('pdf-master-studio-menu-translations') || '{}') as Record<string, string>;
+    } catch {
+      this.uiLanguage = 'English';
+      this.menuTranslations = {};
+    }
+  }
+
+  uiText(id: string, fallback: string): string { return this.menuTranslations[`ui-${id}`] || fallback; }
+  toolText(index: number, fallback: string): string { return this.menuTranslations[`tool-${index}`] || fallback; }
+
+  applyMenuTranslations(result: MenuTranslationResult): void {
+    this.uiLanguage = result.language;
+    this.menuTranslations = result.translations;
+    try {
+      localStorage.setItem('pdf-master-studio-language', result.language);
+      localStorage.setItem('pdf-master-studio-menu-translations', JSON.stringify(result.translations));
+    } catch {
+      // Keep the selected language for this session if storage is unavailable.
+    }
+    this.toolEngine?.applyMenuTranslations(result);
+  }
 
   get hasDocument(): boolean { return Boolean(this.document); }
   get selectedRun(): EditableTextRun | undefined { return this.editableRuns.find(run => run.id === this.selectedRunId); }
@@ -411,6 +459,7 @@ export class LayeredEditor implements OnDestroy {
   updateRunText(run: EditableTextRun, value: string): void {
     if (run.text !== value) this.recordLayeredHistory();
     run.text = value;
+    run.deleted = false;
     this.resizeRunForText(run);
   }
 
@@ -452,7 +501,12 @@ export class LayeredEditor implements OnDestroy {
 
   removeRun(run: EditableTextRun): void {
     this.recordLayeredHistory();
-    this.editableRuns = this.editableRuns.filter(item => item.id !== run.id);
+    if (run.originalText) {
+      run.text = '';
+      run.deleted = true;
+    } else {
+      this.editableRuns = this.editableRuns.filter(item => item.id !== run.id);
+    }
     this.selectedRunId = '';
     this.saveCurrentPageEdits();
   }
@@ -563,17 +617,25 @@ export class LayeredEditor implements OnDestroy {
   }
 
   hasChanged(run: EditableTextRun): boolean {
-    return run.text !== run.originalText || run.x !== run.originalX || run.y !== run.originalY
+    return Boolean(run.deleted) || run.text !== run.originalText || run.x !== run.originalX || run.y !== run.originalY
       || run.fontSize !== run.originalFontSize || run.fontFamily !== run.originalFontFamily
       || run.color !== run.originalColor || run.bold !== run.originalBold || run.italic !== run.originalItalic
       || run.textAlign !== run.originalTextAlign || run.width !== run.originalWidth || run.height !== run.originalHeight;
+  }
+
+  sourceMaskWidth(run: EditableTextRun): number {
+    return run.originalText ? Math.max(run.originalWidth, run.width) : run.width;
+  }
+
+  sourceMaskHeight(run: EditableTextRun): number {
+    return run.originalText ? Math.max(run.originalHeight, run.height, run.fontSize * 1.4) : run.height;
   }
 
   async downloadEditedPdf(): Promise<void> {
     if (!this.document || this.isSaving) return;
     this.isSaving = true;
     this.error = '';
-    this.status = 'Preparing a visual copy of the edited PDF…';
+    this.status = 'Preparing the edited PDF while preserving the original page content…';
     try {
       const ownedBytes = await this.buildEditedPdfBytes();
       const blob = new Blob([ownedBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
@@ -583,7 +645,7 @@ export class LayeredEditor implements OnDestroy {
       anchor.download = `${this.fileName.replace(/\.pdf$/i, '') || 'edited-document'}-visual-edit.pdf`;
       anchor.click();
       URL.revokeObjectURL(url);
-      this.status = 'Edited PDF downloaded as a visual copy.';
+      this.status = 'Edited PDF downloaded. Unchanged page text and vector content remain intact.';
     } catch (cause) {
       this.error = cause instanceof Error ? cause.message : 'Could not save the edited PDF.';
       this.status = '';
@@ -690,87 +752,118 @@ export class LayeredEditor implements OnDestroy {
   private async buildEditedPdfBytes(): Promise<Uint8Array> {
     if (!this.document) throw new Error('Open a PDF before exporting.');
     this.saveCurrentPageEdits();
-    const output = await PDFDocument.create();
+    if (!this.sourceBytes?.length) throw new Error('The original PDF data is unavailable. Reopen the PDF and try again.');
+    // Edit the original PDF pages in place. The previous export rendered every
+    // page to PNG, which destroyed selectable text and vector content.
+    const output = await PDFDocument.load(new Uint8Array(this.sourceBytes));
+    const pdfPages = output.getPages();
     for (let index = 1; index <= this.pageCount; index++) {
       const sourcePage = await this.document.getPage(index);
       const viewport = sourcePage.getViewport({ scale: 1, rotation: sourcePage.rotate });
-      const rasterScale = Math.min(1.8, 3000 / Math.max(viewport.width, viewport.height));
-      const renderViewport = sourcePage.getViewport({ scale: rasterScale, rotation: sourcePage.rotate });
-      const canvas = window.document.createElement('canvas');
-      canvas.width = Math.max(1, Math.ceil(renderViewport.width));
-      canvas.height = Math.max(1, Math.ceil(renderViewport.height));
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('Could not create a page canvas.');
-      await sourcePage.render({ canvas, canvasContext: context, viewport: renderViewport }).promise;
+      const pdfPage = pdfPages[index - 1];
+      if (!pdfPage) continue;
 
       for (const run of this.editsByPage.get(index) ?? []) {
         if (!this.hasChanged(run)) continue;
-        const factorX = canvas.width / viewport.width;
-        const factorY = canvas.height / viewport.height;
-        const x = run.x * factorX;
-        const y = run.y * factorY;
-        const maskX = (run.originalText ? run.originalX : run.x) * factorX;
-        const maskY = (run.originalText ? run.originalY : run.y) * factorY;
-        const width = Math.max(1, Math.max(run.originalWidth, run.width) * factorX);
-        const height = Math.max(run.height * factorY, run.fontSize * factorY * 1.2, run.originalHeight * factorY);
-        context.fillStyle = '#ffffff';
-        context.fillRect(maskX - 1, maskY - 1, width + 2, height + 2);
-        const fontSize = run.fontSize * factorY;
-        context.font = `${run.italic ? 'italic ' : ''}${run.bold ? '700 ' : '400 '}${fontSize}px ${run.fontFamily}`;
-        context.textBaseline = 'alphabetic';
-        context.fillStyle = run.color;
-        context.textAlign = run.textAlign;
-        const anchorX = run.textAlign === 'center' ? x + width / 2 : run.textAlign === 'right' ? x + width : x;
-        context.fillText(run.text, anchorX, y + Math.min(height, fontSize), width);
+        const mask = this.viewportRectToPdf(viewport,
+          run.originalText ? run.originalX : run.x,
+          run.originalText ? run.originalY : run.y,
+          Math.max(run.originalWidth, run.width),
+          Math.max(run.originalHeight, run.height, run.fontSize * 1.25));
+        pdfPage.drawRectangle({ x: mask.x - 1, y: mask.y - 1, width: mask.width + 2, height: mask.height + 2, color: rgb(1, 1, 1) });
+        if (run.deleted || !run.text) continue;
+
+        // Rasterize only the changed glyph run. The original PDF page, its
+        // selectable text, vector rules, and tables remain native PDF content.
+        const renderScale = 3;
+        const textCanvas = window.document.createElement('canvas');
+        textCanvas.width = Math.max(1, Math.ceil(run.width * renderScale));
+        textCanvas.height = Math.max(1, Math.ceil(Math.max(run.height, run.fontSize * 1.4) * renderScale));
+        const textContext = textCanvas.getContext('2d');
+        if (!textContext) throw new Error('Could not create an edited text layer.');
+        textContext.scale(renderScale, renderScale);
+        textContext.font = `${run.italic ? 'italic ' : ''}${run.bold ? '700 ' : '400 '}${run.fontSize}px ${run.fontFamily}`;
+        textContext.textBaseline = 'alphabetic';
+        textContext.textAlign = run.textAlign;
+        textContext.fillStyle = run.color;
+        const anchorX = run.textAlign === 'center' ? run.width / 2 : run.textAlign === 'right' ? run.width : 0;
+        textContext.fillText(run.text, anchorX, Math.min(run.height - 1, run.fontSize), run.width);
+        const textBlob = await new Promise<Blob>((resolve, reject) => textCanvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not encode edited text.')), 'image/png'));
+        const textImage = await output.embedPng(new Uint8Array(await textBlob.arrayBuffer()));
+        const textBox = this.viewportRectToPdf(viewport, run.x, run.y, run.width, Math.max(run.height, run.fontSize * 1.4));
+        pdfPage.drawImage(textImage, { x: textBox.x, y: textBox.y, width: textBox.width, height: textBox.height, rotate: degrees(-sourcePage.rotate) });
+        textCanvas.width = 1;
+        textCanvas.height = 1;
       }
 
       for (const imageItem of this.imagesByPage.get(index) ?? []) {
-        const image = await this.loadImage(imageItem.dataUrl);
-        const x = imageItem.x * canvas.width / viewport.width;
-        const y = imageItem.y * canvas.height / viewport.height;
-        const width = imageItem.width * canvas.width / viewport.width;
-        const height = imageItem.height * canvas.height / viewport.height;
-        context.save();
-        context.translate(x + width / 2, y + height / 2);
-        context.rotate(imageItem.rotation * Math.PI / 180);
-        context.drawImage(image, -width / 2, -height / 2, width, height);
-        context.restore();
+        const encoded = imageItem.dataUrl.split(',')[1] ?? '';
+        let imageDataUrl = imageItem.dataUrl;
+        // PDF-lib does not embed WebP. Normalize it through the browser canvas
+        // so pasted WebP images export instead of failing the whole PDF save.
+        if (imageDataUrl.startsWith('data:image/webp')) {
+          const imageElement = new Image();
+          imageElement.src = imageDataUrl;
+          await imageElement.decode();
+          const canvas = window.document.createElement('canvas');
+          canvas.width = imageElement.naturalWidth;
+          canvas.height = imageElement.naturalHeight;
+          const context = canvas.getContext('2d');
+          if (!context) throw new Error('Could not prepare an inserted image for PDF export.');
+          context.drawImage(imageElement, 0, 0);
+          imageDataUrl = canvas.toDataURL('image/png');
+        }
+        const imageBytes = Uint8Array.from(atob(imageDataUrl.split(',')[1] ?? ''), character => character.charCodeAt(0));
+        const image = imageDataUrl.startsWith('data:image/jpeg')
+          ? await output.embedJpg(imageBytes)
+          : await output.embedPng(imageBytes);
+        const box = this.viewportRectToPdf(viewport, imageItem.x, imageItem.y, imageItem.width, imageItem.height);
+        pdfPage.drawImage(image, { x: box.x, y: box.y, width: box.width, height: box.height, rotate: degrees(-sourcePage.rotate + imageItem.rotation) });
       }
 
       for (const shape of this.shapesByPage.get(index) ?? []) {
-        const factorX = canvas.width / viewport.width;
-        const x = shape.x * canvas.width / viewport.width;
-        const y = shape.y * canvas.height / viewport.height;
-        const width = shape.width * canvas.width / viewport.width;
-        const height = shape.height * canvas.height / viewport.height;
-        context.save();
-        context.fillStyle = shape.color;
-        context.strokeStyle = shape.borderColor;
-        context.lineWidth = Math.max(1, shape.borderWidth * factorX);
+        const box = this.viewportRectToPdf(viewport, shape.x, shape.y, shape.width, shape.height);
+        const fill = this.pdfColor(shape.color);
+        const border = this.pdfColor(shape.borderColor);
         if (shape.kind === 'line') {
-          context.beginPath(); context.moveTo(x, y); context.lineTo(x + width, y + height); context.stroke();
+          const start = viewport.convertToPdfPoint(shape.x, shape.y + shape.height / 2);
+          const end = viewport.convertToPdfPoint(shape.x + shape.width, shape.y + shape.height / 2);
+          pdfPage.drawLine({ start: { x: start[0], y: start[1] }, end: { x: end[0], y: end[1] }, thickness: Math.max(1, shape.borderWidth), color: border.color, opacity: border.opacity });
         } else if (shape.kind === 'ellipse') {
-          context.beginPath(); context.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
-          if (shape.color !== 'transparent') context.fill();
-          context.stroke();
+          pdfPage.drawEllipse({ x: box.x + box.width / 2, y: box.y + box.height / 2, xScale: box.width / 2, yScale: box.height / 2,
+            borderColor: border.color, borderWidth: shape.borderWidth, color: fill.color, opacity: fill.opacity, borderOpacity: border.opacity });
         } else {
-          if (shape.color !== 'transparent') context.fillRect(x, y, width, height);
-          if (shape.kind !== 'whiteout' && shape.kind !== 'highlight') context.strokeRect(x, y, width, height);
+          pdfPage.drawRectangle({ x: box.x, y: box.y, width: box.width, height: box.height,
+            ...(fill.color ? { color: fill.color, opacity: fill.opacity } : {}),
+            ...(shape.kind !== 'whiteout' && shape.kind !== 'highlight' ? { borderColor: border.color, borderWidth: shape.borderWidth, borderOpacity: border.opacity } : {}) });
         }
-        context.restore();
       }
-
-      const image = await new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not encode a rendered PDF page.')), 'image/png'));
-      const embedded = await output.embedPng(new Uint8Array(await image.arrayBuffer()));
-      const page = output.addPage([viewport.width, viewport.height]);
-      page.drawImage(embedded, { x: 0, y: 0, width: viewport.width, height: viewport.height });
-      canvas.width = 1;
-      canvas.height = 1;
     }
     const saved = await output.save();
     const ownedBytes = new Uint8Array(saved.length);
     ownedBytes.set(saved);
     return ownedBytes;
+  }
+
+  private viewportRectToPdf(viewport: any, x: number, y: number, width: number, height: number): { x: number; y: number; width: number; height: number } {
+    const points = [
+      viewport.convertToPdfPoint(x, y), viewport.convertToPdfPoint(x + width, y),
+      viewport.convertToPdfPoint(x, y + height), viewport.convertToPdfPoint(x + width, y + height),
+    ];
+    const xs = points.map(point => point[0]);
+    const ys = points.map(point => point[1]);
+    const left = Math.min(...xs), bottom = Math.min(...ys);
+    return { x: left, y: bottom, width: Math.max(...xs) - left, height: Math.max(...ys) - bottom };
+  }
+
+  private pdfColor(value: string): { color?: ReturnType<typeof rgb>; opacity: number } {
+    if (!value || value === 'transparent') return { opacity: 0 };
+    const raw = value.replace('#', '');
+    if (!/^(?:[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw)) return { color: rgb(0, 0, 0), opacity: 1 };
+    return {
+      color: rgb(parseInt(raw.slice(0, 2), 16) / 255, parseInt(raw.slice(2, 4), 16) / 255, parseInt(raw.slice(4, 6), 16) / 255),
+      opacity: raw.length === 8 ? parseInt(raw.slice(6, 8), 16) / 255 : 1,
+    };
   }
 
   private saveCurrentPageEdits(): void {

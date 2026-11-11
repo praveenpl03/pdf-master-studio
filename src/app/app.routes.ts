@@ -3,7 +3,7 @@ import { Mainscreen } from './layout/mainscreen/mainscreen';
 import { LayeredEditor } from './layout/layered-editor/layered-editor';
 
 export const routes: Routes = [
-  { path: '', component: Mainscreen },
+  { path: '', component: LayeredEditor },
   { path: 'layered-editor', component: LayeredEditor },
   { path: '**', redirectTo: '' },
 ];

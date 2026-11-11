@@ -527,7 +527,9 @@
   @if (pages.length) {
   <aside class="right-panel">
     @if (toolboxOnly) {
-      <app-language-picker [labels]="menuLabels" [activeLanguage]="uiLanguage" (translationsReady)="applyMenuTranslations($event)"></app-language-picker>
+      @if (!externalLanguagePicker) {
+        <app-language-picker [labels]="menuLabels" [activeLanguage]="uiLanguage" (translationsReady)="applyMenuTranslations($event)"></app-language-picker>
+      }
       <section class="layered-quick-tools" aria-label="Quick PDF tools">
         <button type="button" (click)="run('insertBlankPage')" [disabled]="busy"><i class="fa-regular fa-file"></i><span>Blank</span></button>
         <label class="layered-merge-tool"><i class="fa-solid fa-object-group"></i><span>Merge PDFs</span><input type="file" accept="application/pdf" multiple (change)="addMergeFiles($event)" /></label>

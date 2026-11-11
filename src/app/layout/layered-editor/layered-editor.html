@@ -4,9 +4,10 @@
       <strong>Canvas-preserving editor</strong>
       <span>Original PDF rendering with a separate editable text layer · {{ engineVersion }}</span>
     </div>
+    <app-language-picker [labels]="menuLabels" [activeLanguage]="uiLanguage" (translationsReady)="applyMenuTranslations($event)"></app-language-picker>
     <input #fileInput type="file" accept="application/pdf" multiple hidden (change)="onFileSelected($event)" />
     <input #imageInput type="file" accept="image/png,image/jpeg,image/webp" hidden (change)="onImageSelected($event)" />
-    <button type="button" class="secondary" (click)="openFilePicker()">Open PDF(s)</button>
+    <button type="button" class="secondary" (click)="openFilePicker()">{{ uiText('home-open', 'Open PDF(s)') }}</button>
     <a class="classic-link" href="/">Classic editor</a>
     @if (hasDocument) {
       <button type="button" class="secondary" (click)="toggleTools()">{{ toolsVisible ? 'Hide tools' : 'Show tools' }}</button>
@@ -27,18 +28,18 @@
 
   @if (hasDocument) {
     <nav class="layered-main-tools" aria-label="PDF editing tools">
-      <button type="button" (click)="runTool('insertBlankPage')"><i class="fa-regular fa-file"></i><span>Blank</span></button>
-      <button type="button" (click)="runTool('addText')"><i class="fa-solid fa-font"></i><span>Text</span></button>
+      <button type="button" (click)="runTool('insertBlankPage')"><i class="fa-regular fa-file"></i><span>{{ toolText(0, 'Blank') }}</span></button>
+      <button type="button" (click)="runTool('addText')"><i class="fa-solid fa-font"></i><span>{{ toolText(40, 'Text') }}</span></button>
       <button type="button" (click)="runToolSummarizer()"><i class="fa-solid fa-wand-magic-sparkles"></i><span>Summarize</span></button>
-      <button type="button" (click)="runTool('chooseImage')"><i class="fa-regular fa-image"></i><span>Images</span></button>
-      <button type="button" (click)="runTool('addSignature')"><i class="fa-solid fa-signature"></i><span>Sign</span></button>
-      <button type="button" (click)="runTool('addWhiteout')"><i class="fa-solid fa-eraser"></i><span>Whiteout</span></button>
-      <button type="button" (click)="runTool('addHighlight')"><i class="fa-solid fa-pen"></i><span>Annotate</span></button>
-      <button type="button" (click)="runTool('addRectangle')"><i class="fa-regular fa-square"></i><span>Box</span></button>
-      <button type="button" (click)="runTool('addSquare')"><i class="fa-solid fa-square"></i><span>Square</span></button>
-      <button type="button" (click)="runTool('addHighlight')"><i class="fa-solid fa-highlighter"></i><span>Highlight</span></button>
-      <button type="button" (click)="runTool('addEllipse')"><i class="fa-regular fa-circle"></i><span>Circle</span></button>
-      <button type="button" (click)="runTool('addLine')"><i class="fa-solid fa-minus"></i><span>Line</span></button>
+      <button type="button" (click)="runTool('chooseImage')"><i class="fa-regular fa-image"></i><span>{{ toolText(41, 'Images') }}</span></button>
+      <button type="button" (click)="runTool('addSignature')"><i class="fa-solid fa-signature"></i><span>{{ toolText(42, 'Sign') }}</span></button>
+      <button type="button" (click)="runTool('addWhiteout')"><i class="fa-solid fa-eraser"></i><span>{{ toolText(46, 'Whiteout') }}</span></button>
+      <button type="button" (click)="runTool('addHighlight')"><i class="fa-solid fa-pen"></i><span>{{ toolText(43, 'Annotate') }}</span></button>
+      <button type="button" (click)="runTool('addRectangle')"><i class="fa-regular fa-square"></i><span>{{ toolText(47, 'Box') }}</span></button>
+      <button type="button" (click)="runTool('addSquare')"><i class="fa-solid fa-square"></i><span>{{ toolText(48, 'Square') }}</span></button>
+      <button type="button" (click)="runTool('addHighlight')"><i class="fa-solid fa-highlighter"></i><span>{{ toolText(43, 'Highlight') }}</span></button>
+      <button type="button" (click)="runTool('addEllipse')"><i class="fa-regular fa-circle"></i><span>{{ toolText(44, 'Circle') }}</span></button>
+      <button type="button" (click)="runTool('addLine')"><i class="fa-solid fa-minus"></i><span>{{ toolText(45, 'Line') }}</span></button>
       <button type="button" [disabled]="!canUndoLayered" (click)="runTool('undo')"><i class="fa-solid fa-rotate-left"></i><span>Undo</span></button>
       <button type="button" [disabled]="!canRedoLayered" (click)="runTool('redo')"><i class="fa-solid fa-rotate-right"></i><span>Redo</span></button>
     </nav>
@@ -50,9 +51,9 @@
   @if (!hasDocument && !isLoading) {
     <section class="empty-state">
       <div class="empty-icon">PDF</div>
-      <h1>Keep the PDF page intact while editing text</h1>
-      <p>This editor keeps the rendered page underneath and places editable text boxes above it.</p>
-      <button type="button" class="primary" (click)="openFilePicker()">Choose PDF files</button>
+      <h1>{{ uiText('home-title', 'Keep the PDF page intact while editing text') }}</h1>
+      <p>{{ uiText('home-description', 'This editor keeps the rendered page underneath and places editable text boxes above it.') }}</p>
+      <button type="button" class="primary" (click)="openFilePicker()">{{ uiText('home-open', 'Choose PDF files') }}</button>
     </section>
   }
 
@@ -121,8 +122,9 @@
         <div class="text-layer" [style.width.px]="pageSize.width" [style.height.px]="pageSize.height" [style.transform]="'scale(' + zoom + ')'">
           @for (run of editableRuns; track run.id) {
             @if (selectedRunId === run.id || hasChanged(run)) {
-              <div class="source-mask" [style.left.px]="run.originalText ? run.originalX : run.x" [style.top.px]="run.originalText ? run.originalY : run.y" [style.width.px]="run.originalText ? run.originalWidth : run.width" [style.height.px]="run.originalText ? run.originalHeight : run.height"></div>
+              <div class="source-mask" [style.left.px]="run.originalText ? run.originalX : run.x" [style.top.px]="run.originalText ? run.originalY : run.y" [style.width.px]="sourceMaskWidth(run)" [style.height.px]="sourceMaskHeight(run)"></div>
             }
+            @if (!run.deleted) {
             <textarea class="text-run" [class.selected]="selectedRunId === run.id" [class.changed]="hasChanged(run)" [class.edit-mode]="textEditing"
               rows="1" wrap="off" spellcheck="false" [ngModel]="run.text"
               [style.left.px]="run.x" [style.top.px]="run.y" [style.width.px]="run.width" [style.height.px]="run.height"
@@ -132,6 +134,7 @@
               [style.color]="selectedRunId === run.id || hasChanged(run) ? run.color : 'transparent'"
               (click)="selectRun(run, $event)" (focus)="selectRun(run, $event)" (ngModelChange)="updateRunText(run, $event)" (input)="selectRun(run, $event)"
               [attr.aria-label]="'Edit text: ' + run.originalText"></textarea>
+            }
             @if (selectedRunId === run.id) {
               <button type="button" class="text-move-handle" aria-label="Move text" title="Move text" [style.left.px]="run.x - 20" [style.top.px]="run.y + (run.height - 18) / 2" (pointerdown)="beginTextMove(run, $event)"><i class="fa-solid fa-up-down-left-right"></i></button>
               <button type="button" class="element-resize-handle text-resize-handle" aria-label="Resize text" title="Drag to resize text" [style.left.px]="run.x + run.width - 6" [style.top.px]="run.y + run.height - 6" (pointerdown)="beginTextResize(run, $event)"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></button>
@@ -153,7 +156,7 @@
         </nav>
     </section>
       <aside class="layer-tool-panel" aria-label="PDF tools">
-        <app-pdf-editor #toolEngine [toolboxOnly]="true" [layeredCanUndo]="canUndoLayered" [layeredCanRedo]="canRedoLayered"
+        <app-pdf-editor #toolEngine [toolboxOnly]="true" [externalLanguagePicker]="true" [layeredCanUndo]="canUndoLayered" [layeredCanRedo]="canRedoLayered"
           [beforeToolAction]="beforeToolAction" (layeredVisualToolRequested)="runTool($event)"
           (layeredHistoryRequested)="runLayeredHistory($event)" (layeredDocumentChanged)="receiveToolDocument($event)"></app-pdf-editor>
       </aside>
