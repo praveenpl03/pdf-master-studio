@@ -25,6 +25,8 @@ interface EditableTextRun {
   originalFontFamily: string;
   color: string;
   originalColor: string;
+  backgroundColor: string;
+  originalBackgroundColor: string;
   bold: boolean;
   originalBold: boolean;
   italic: boolean;
@@ -226,7 +228,7 @@ export class LayeredEditor implements OnDestroy {
       x: Math.max(0, (this.pageSize.width - 180) / 2), y: Math.max(0, this.pageSize.height / 2),
       originalX: 0, originalY: 0, width: 180, originalWidth: 0, height: fontSize * 1.5, originalHeight: 0,
       fontSize, originalFontSize: fontSize, fontFamily: 'Arial', originalFontFamily: 'Arial',
-      color: '#111111', originalColor: '#111111', bold: false, originalBold: false,
+      color: '#111111', originalColor: '#111111', backgroundColor: '#ffffff', originalBackgroundColor: '#ffffff', bold: false, originalBold: false,
       italic: false, originalItalic: false, textAlign: 'left', originalTextAlign: 'left',
     };
     this.editableRuns = [...this.editableRuns, run];
@@ -424,16 +426,16 @@ export class LayeredEditor implements OnDestroy {
   }
 
   textToolbarLeft(run: EditableTextRun): number {
-    const toolbarWidth = Math.min(680, Math.max(360, window.innerWidth - 48));
+    const toolbarWidth = Math.max(320, Math.min(880, window.innerWidth - 32));
     const pageWidth = this.pageSize.width * this.zoom;
     return Math.max(8, Math.min(run.x * this.zoom, pageWidth - toolbarWidth - 8));
   }
 
   textToolbarTop(run: EditableTextRun): number {
-    const pageHeight = this.pageSize.height * this.zoom;
-    const aboveText = run.y * this.zoom - 56;
+    const toolbarHeight = window.innerWidth <= 760 ? 190 : 104;
+    const aboveText = run.y * this.zoom - toolbarHeight - 18;
     if (aboveText >= 8) return aboveText;
-    return Math.min(pageHeight - 48, run.y * this.zoom + run.height * this.zoom + 8);
+    return run.y * this.zoom + run.height * this.zoom + 18;
   }
 
   selectImage(image: LayerImage, event: Event): void {
@@ -485,6 +487,10 @@ export class LayeredEditor implements OnDestroy {
   setRunColor(run: EditableTextRun, color: string): void {
     if (run.color === color) return;
     this.recordLayeredHistory(); run.color = color;
+  }
+  setRunBackgroundColor(run: EditableTextRun, color: string): void {
+    if (run.backgroundColor === color) return;
+    this.recordLayeredHistory(); run.backgroundColor = color;
   }
   setRunAlignment(run: EditableTextRun, alignment: 'left' | 'center' | 'right'): void {
     if (run.textAlign === alignment) return;
@@ -620,6 +626,7 @@ export class LayeredEditor implements OnDestroy {
     return Boolean(run.deleted) || run.text !== run.originalText || run.x !== run.originalX || run.y !== run.originalY
       || run.fontSize !== run.originalFontSize || run.fontFamily !== run.originalFontFamily
       || run.color !== run.originalColor || run.bold !== run.originalBold || run.italic !== run.originalItalic
+      || run.backgroundColor !== run.originalBackgroundColor
       || run.textAlign !== run.originalTextAlign || run.width !== run.originalWidth || run.height !== run.originalHeight;
   }
 
@@ -771,6 +778,11 @@ export class LayeredEditor implements OnDestroy {
           Math.max(run.originalWidth, run.width),
           Math.max(run.originalHeight, run.height, run.fontSize * 1.25));
         pdfPage.drawRectangle({ x: mask.x - 1, y: mask.y - 1, width: mask.width + 2, height: mask.height + 2, color: rgb(1, 1, 1) });
+        if (run.backgroundColor.toLowerCase() !== '#ffffff') {
+          const background = this.pdfColor(run.backgroundColor);
+          pdfPage.drawRectangle({ x: mask.x - 1, y: mask.y - 1, width: mask.width + 2, height: mask.height + 2,
+            ...(background.color ? { color: background.color, opacity: background.opacity } : {}) });
+        }
         if (run.deleted || !run.text) continue;
 
         // Rasterize only the changed glyph run. The original PDF page, its
@@ -931,6 +943,7 @@ export class LayeredEditor implements OnDestroy {
           height, originalHeight: height, fontSize, originalFontSize: fontSize,
           fontFamily: runFontFamily, originalFontFamily: runFontFamily,
           color, originalColor: color,
+          backgroundColor: '#ffffff', originalBackgroundColor: '#ffffff',
           bold: runBold, originalBold: runBold,
           italic: runItalic, originalItalic: runItalic,
           textAlign: 'left', originalTextAlign: 'left',

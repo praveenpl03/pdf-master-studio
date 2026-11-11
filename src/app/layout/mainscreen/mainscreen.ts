@@ -313,6 +313,7 @@ private activeRenderTask?: { cancel: () => void };
     { name: 'Convert page to JPEG', group: 'convert', action: 'downloadJpeg' },
     { name: 'PDF to Word (.docx)', group: 'convert', action: 'exportDocx' },
     { name: 'PDF to DOC', group: 'convert', action: 'exportDoc' },
+    { name: 'Export to HTML', group: 'convert', action: 'exportHtml' },
     { name: 'PDF to Excel', group: 'convert', action: 'exportExcel' },
     { name: 'PDF to Text', group: 'convert', action: 'exportText' },
     { name: 'Export selected as PDFs', group: 'convert', action: 'downloadSelected' },
@@ -594,6 +595,7 @@ private activeRenderTask?: { cancel: () => void };
       downloadJpeg: 'fa-image',
       exportDocx: 'fa-file-word',
       exportDoc: 'fa-file-word',
+      exportHtml: 'fa-file-code',
       exportExcel: 'fa-file-excel',
       exportText: 'fa-file-lines',
       downloadSelected: 'fa-file-export',
@@ -685,7 +687,7 @@ private activeRenderTask?: { cancel: () => void };
   }
 
   async run(action: string, optionsConfirmed = false): Promise<void> {
-    const preserveLayeredTextSource = this.toolboxOnly && ['exportDocx', 'exportDoc', 'exportExcel', 'exportText'].includes(action);
+    const preserveLayeredTextSource = this.toolboxOnly && ['exportDocx', 'exportHtml', 'exportDoc', 'exportExcel', 'exportText'].includes(action);
     if (this.toolboxOnly && (action === 'undo' || action === 'redo')) {
       this.layeredHistoryRequested.emit(action);
       return;
@@ -697,10 +699,12 @@ private activeRenderTask?: { cancel: () => void };
     if (!optionsConfirmed && this.openToolOptions(action)) return;
     try {
       let docxSourceBytes: Uint8Array | undefined;
-      if (this.toolboxOnly && this.beforeToolAction && (!preserveLayeredTextSource || action === 'exportDocx')) {
+      let htmlSourceBytes: Uint8Array | undefined;
+      if (this.toolboxOnly && this.beforeToolAction && (!preserveLayeredTextSource || action === 'exportDocx' || action === 'exportHtml')) {
         const layeredContext = await this.beforeToolAction();
         if (layeredContext?.bytes?.length) {
           if (action === 'exportDocx') docxSourceBytes = new Uint8Array(layeredContext.bytes);
+          else if (action === 'exportHtml') htmlSourceBytes = new Uint8Array(layeredContext.bytes);
           else await this.loadBytes(layeredContext.bytes, this.fileName || 'layered-edit.pdf');
         }
         if (layeredContext) {
@@ -744,6 +748,7 @@ private activeRenderTask?: { cancel: () => void };
         case 'downloadJpeg': await this.downloadActiveImage('image/jpeg', 'page.jpg', this.jpegQuality); break;
         case 'exportDocx': await this.exportDocx(docxSourceBytes); break;
         case 'exportDoc': await this.exportDoc(); break;
+        case 'exportHtml': await this.exportHtml(htmlSourceBytes); break;
         case 'exportExcel': await this.exportExcel(); break;
         case 'exportText': await this.exportText(); break;
         case 'downloadSelected': await this.downloadSelectedSeparately(); break;
@@ -3698,6 +3703,111 @@ private async applyHtmlTextEdits(pdf: PDFDocument): Promise<void> {
     this.status = 'Word-compatible DOC exported.';
   }
 
+  private async exportHtml(layeredPdfBytes?: Uint8Array): Promise<void> {
+    this.status = 'Preparing HTML page previews...';
+    const sourceBytes = layeredPdfBytes?.length ? layeredPdfBytes : this.currentBytes;
+    const pdf = await this.openDocxPdfJsDocument(sourceBytes);
+    const pages: any[] = [];
+    const pageMarkup: string[] = [];
+    for (let pageIndex = 0; pageIndex < pdf.numPages; pageIndex++) {
+      const pdfPage = await pdf.getPage(pageIndex + 1);
+      const content = await pdfPage.getTextContent();
+      const items = (content.items as unknown[]).filter((item): item is PdfTextItemLike & { fontName?: string } =>
+        this.textConverter.isPdfTextItem(item) && Boolean(item.str?.trim()));
+      const rawText = items.map(item => item.str).join(' ');
+      const brokenTextMap = this.isCorruptPdfText(rawText);
+      const viewportAtOne = pdfPage.getViewport({ scale: 1 });
+      const rows = this.docxRowsFromPdfTextItems(items, content.styles || {}, viewportAtOne.width);
+      const page = {
+        page: pageIndex + 1,
+        rows,
+        warning: brokenTextMap ? 'The PDF preview shows the original page; its editable Hindi text has a broken character map.' : undefined,
+        pageWidthTwips: Math.round(viewportAtOne.width * 20),
+        pageHeightTwips: Math.round(viewportAtOne.height * 20),
+      };
+      pages.push(page);
+      const dimensions = this.pages[pageIndex];
+      const width = Math.max(1, Number(page.pageWidthTwips ? page.pageWidthTwips / 20 : dimensions?.width) || 612);
+      const height = Math.max(1, Number(page.pageHeightTwips ? page.pageHeightTwips / 20 : dimensions?.height) || 792);
+      let pageImage = '';
+      try {
+        const sourcePageIndex = layeredPdfBytes?.length ? pageIndex : (dimensions?.sourceIndex ?? pageIndex);
+        const pdfPageNumber = Math.max(1, Math.min(pdf.numPages, sourcePageIndex + 1));
+        const previewPage = await pdf.getPage(pdfPageNumber);
+        const renderScale = 1.35;
+        const viewport = previewPage.getViewport({ scale: renderScale, rotation: dimensions?.rotation ?? previewPage.rotate });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const context = canvas.getContext('2d');
+        if (context) {
+          await previewPage.render({ canvasContext: context, viewport }).promise;
+          pageImage = canvas.toDataURL('image/jpeg', 0.82);
+        }
+        canvas.width = 1; canvas.height = 1;
+      } catch (error) {
+        console.warn(`Could not render HTML preview for page ${page.page}`, error);
+      }
+      const textRows = (page.rows as any[]).map((row: any, rowIndex: number) => ({ ...row, originalIndex: rowIndex }));
+      const detectedTables = this.findDocxTableBlocks(textRows);
+      const tableAt = new Map(detectedTables.map(table => [table.start, table]));
+      const editableBlocks: string[] = [];
+      for (let rowIndex = 0; rowIndex < textRows.length;) {
+        const table = tableAt.get(rowIndex);
+        if (table) {
+          const tableRows = table.rows.map((tableRow: any) => {
+            const grouped = table.columns.map(() => [] as any[]);
+            for (const cell of tableRow.cells) {
+              let nearest = 0; let distance = Infinity;
+              table.columns.forEach((anchor: number, column: number) => {
+                const nextDistance = Math.abs(cell.x - anchor);
+                if (nextDistance < distance) { distance = nextDistance; nearest = column; }
+              });
+              if (distance <= 24) grouped[nearest].push(cell);
+            }
+            return `<tr>${grouped.map(cells => `<td>${cells.map(cell => this.htmlTextCell(cell)).join('')}</td>`).join('')}</tr>`;
+          }).join('');
+          editableBlocks.push(`<table><tbody>${tableRows}</tbody></table>`);
+          rowIndex = table.end + 1;
+          continue;
+        }
+        const row = textRows[rowIndex++];
+        editableBlocks.push(`<p>${row.cells.map((cell: any) => this.htmlTextCell(cell)).join(' ')}</p>`);
+      }
+      const preview = pageImage
+        ? `<img class="page-preview" src="${pageImage}" alt="Rendered view of PDF page ${page.page}">`
+        : '<div class="page-preview-unavailable">Page preview unavailable</div>';
+      const pageWarning = page.warning;
+      const warning = pageWarning ? `<p class="page-warning">${this.escapeHtml(pageWarning)}</p>` : '';
+      pageMarkup.push(`<section class="pdf-page" aria-label="Page ${page.page}" style="width:${width}px;height:${height}px">${preview}</section>
+<details><summary>Edit extracted content for page ${page.page}</summary><article class="editable-content" contenteditable="true">${warning}${editableBlocks.join('\n') || '<p>No text could be extracted from this page.</p>'}</article></details>`);
+    }
+    const html = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${this.escapeHtml(this.title || this.fileName || 'PDF export')}</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:24px;background:#eef1f5;color:#111;font-family:Arial,sans-serif}
+.pdf-page{position:relative;margin:0 auto 12px;background:#fff;box-shadow:0 2px 14px #0002;overflow:hidden;page-break-after:always}
+.page-preview{display:block;width:100%;height:100%;object-fit:fill}.page-preview-unavailable{padding:20px;color:#6b7280}
+details{max-width:900px;margin:0 auto 28px;background:#fff;border:1px solid #d5dbe5;border-radius:8px}summary{padding:12px 16px;cursor:pointer;font-weight:600}
+.editable-content{padding:12px 20px 20px;min-height:48px;outline-color:#3875db}.editable-content p{margin:5px 0;line-height:1.35;white-space:pre-wrap}.editable-content table{width:100%;border-collapse:collapse;margin:10px 0 16px;table-layout:auto}.editable-content td{border:1px solid #aeb8c6;padding:5px 8px;vertical-align:top}.page-warning{padding:8px 10px;background:#fff7ed;color:#9a3412;border-radius:4px}
+@media print{body{padding:0;background:#fff}.pdf-page{margin:0;box-shadow:none;break-after:page}details{break-after:page}}
+</style></head><body>${pageMarkup.join('\n')}</body></html>`;
+    this.downloadBlob(html, 'converted.html', 'text/html;charset=utf-8');
+    const brokenPages = pages.filter(page => page.warning).map(page => page.page);
+    this.status = brokenPages.length
+      ? `HTML exported. The visual previews are intact; editable text may be incorrect on page${brokenPages.length > 1 ? 's' : ''} ${brokenPages.join(', ')}.`
+      : 'HTML exported with full-page previews and editable extracted text and tables.';
+  }
+
+  private htmlTextCell(cell: any): string {
+    const fontFamily = String(cell.fontFamily || 'Arial').replace(/[^a-zA-Z0-9 ,_'"-]/g, '').slice(0, 120) || 'Arial';
+    const color = /^#[0-9a-f]{3,8}$/i.test(cell.color) ? cell.color : '#000000';
+    const fontSize = Number.isFinite(cell.fontSize) ? Math.max(4, Math.min(96, cell.fontSize)) : 11;
+    const style = `font-family:'${fontFamily.replace(/'/g, "\\'")}';font-size:${fontSize}px;color:${color};font-weight:${cell.bold ? '700' : '400'};font-style:${cell.italic ? 'italic' : 'normal'};${cell.underline ? 'text-decoration:underline' : ''}`;
+    return `<span style="${style}">${this.escapeHtml(cell.text)}</span>`;
+  }
+
   // private async exportDocx(): Promise<void> {
   //   const pages = await this.structuredTextPages();
   //   const paragraphs = pages.flatMap((page, index) => [
@@ -3745,16 +3855,22 @@ private async exportDocx(layeredPdfBytes?: Uint8Array): Promise<void> {
         const row = page.rows[rowIndex];
         const runs = row.cells.flatMap((cell: any, index: number) => [
           ...(index ? [new TextRun({ text: '\t' })] : []),
-          this.createDocxTextRun(cell),
+          ...this.createDocxTextRuns(cell),
         ]);
-        children.push(new Paragraph({ spacing: { after: 80 }, children: runs.length ? runs : [new TextRun({ text: '' })] }));
+        const followingRow = page.rows[rowIndex + 1];
+        const pageTop = rowIndex === 0 ? Math.max(0, page.pageHeightTwips - Math.round((row.y + (row.fontSize || 11)) * 20)) : 0;
+        const verticalGap = followingRow
+          ? Math.max(0, Math.round((Math.abs(row.y - followingRow.y) - (row.fontSize || 11) * 1.2) * 20))
+          : 80;
+        const alignment = row.align === 'center' ? AlignmentType.CENTER : row.align === 'right' ? AlignmentType.RIGHT : AlignmentType.LEFT;
+        children.push(new Paragraph({ alignment, spacing: { before: pageTop, after: verticalGap }, indent: row.align === 'left' ? { left: Math.max(0, Math.round((row.x || 0) * 20)) } : undefined, children: runs.length ? runs : [new TextRun({ text: '' })] }));
         rowIndex++;
       }
       sections.push({
         properties: {
-          page: {
+            page: {
             size: { width: page.pageWidthTwips, height: page.pageHeightTwips },
-            margin: { top: 540, right: 540, bottom: 540, left: 540 },
+            margin: { top: 0, right: 0, bottom: 0, left: 0 },
           },
         },
         children: children.length ? children : [new Paragraph({ children: [new TextRun({ text: '' })] })],
@@ -3769,7 +3885,10 @@ private async exportDocx(layeredPdfBytes?: Uint8Array): Promise<void> {
     });
     const blob = await Packer.toBlob(doc);
     this.downloadBlob(blob, 'converted.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    this.status = 'Word file created with editable text and detected tables.';
+    const skippedPages = pages.filter((page: any) => page.warning).map((page: any) => page.page);
+    this.status = skippedPages.length
+      ? `Word file created, but page${skippedPages.length > 1 ? 's' : ''} ${skippedPages.join(', ')} could not be recovered.`
+      : 'Word file created with editable text and detected tables.';
   } catch (error) {
     console.error(error);
     this.status = error instanceof Error ? error.message : 'DOCX export failed.';
@@ -3784,21 +3903,29 @@ private async docxPagesFromPdfJsText(bytes: Uint8Array): Promise<any[]> {
     const page = await pdf.getPage(pageNumber);
     const content = await page.getTextContent();
     const items = (content.items as unknown[]).filter((item): item is PdfTextItemLike & { fontName?: string } =>
-      this.textConverter.isPdfTextItem(item));
+      this.textConverter.isPdfTextItem(item) && Boolean(item.str?.trim()));
     const rawText = items.map(item => item.str).join(' ');
     const suspiciousCount = items.filter(item => this.isCorruptPdfText(item.str)).length;
     const corrupted = items.length > 0 && (suspiciousCount / items.length >= 0.025 || this.isCorruptPdfText(rawText));
     const requiresOcr = !items.length || corrupted;
     let rows = requiresOcr ? await this.ocrPdfPageForDocx(page) : [];
-    if (corrupted && !rows.length) {
+    if (!rows.length && !requiresOcr) rows = this.docxRowsFromPdfTextItems(items, content.styles || {}, page.getViewport({ scale: 1 }).width);
+    if (!rows.length) {
+      // Some PDFs expose text items but omit usable transforms or glyph data.
+      // A second pass through OCR recovers these cases instead of silently
+      // producing an empty page in the Word document.
+      rows = await this.ocrPdfPageForDocx(page);
+    }
+    const warning = !rows.length
+      ? `Text and OCR could not be recovered on page ${pageNumber}.`
+      : undefined;
+    if (warning && this.docxOcrWorker) {
       const failedWorker = this.docxOcrWorker as Awaited<ReturnType<typeof createWorker>> | undefined;
       this.docxOcrWorker = undefined;
       if (failedWorker) await failedWorker.terminate();
-      throw new Error(`Page ${pageNumber} has an invalid Hindi character map and OCR could not recover it. Word export stopped without inserting a page image. Connect to the internet so Hindi OCR data can load, then retry.`);
     }
-    if (!rows.length && !requiresOcr) rows = this.docxRowsFromPdfTextItems(items, content.styles || {});
     const viewport = page.getViewport({ scale: 1 });
-    pages.push({ page: pageNumber, rows, pageWidthTwips: Math.round(viewport.width * 20), pageHeightTwips: Math.round(viewport.height * 20) });
+    pages.push({ page: pageNumber, rows, warning, pageWidthTwips: Math.round(viewport.width * 20), pageHeightTwips: Math.round(viewport.height * 20) });
     this.status = `Reading PDF text… ${pageNumber}/${pdf.numPages}`;
   }
   const ocrWorker = this.docxOcrWorker as Awaited<ReturnType<typeof createWorker>> | undefined;
@@ -3814,7 +3941,7 @@ private isCorruptPdfText(text: string): boolean {
     || /[\u0900-\u097F][A-Za-z%*`$][\u0900-\u097F]/.test(text);
 }
 
-private docxRowsFromPdfTextItems(items: Array<PdfTextItemLike & { fontName?: string }>, styles: Record<string, any>): any[] {
+private docxRowsFromPdfTextItems(items: Array<PdfTextItemLike & { fontName?: string }>, styles: Record<string, any>, pageWidth: number): any[] {
   const positioned = items.map(item => ({
     item, x: item.transform[4] || 0, y: item.transform[5] || 0,
     size: Math.max(6, Math.hypot(item.transform[0] || 0, item.transform[1] || 0)),
@@ -3837,22 +3964,40 @@ private docxRowsFromPdfTextItems(items: Array<PdfTextItemLike & { fontName?: str
     for (const entry of line) {
       const text = entry.item.str.replace(/[\r\n]+/g, ' ');
       const gap = previous ? entry.x - (previous.x + previous.item.width) : 0;
+      const pdfFontName = entry.item.fontName || '';
+      const style = styles[pdfFontName] || {};
+      const family = /[\u0900-\u097f]/.test(text) ? 'Noto Sans Devanagari' : style.fontFamily || pdfFontName.replace(/^[A-Z]{6}\+/, '') || 'Arial';
+      const fragment = {
+        text,
+        fontFamily: family,
+        fontSize: entry.size,
+        color: '#000000',
+        bold: /bold|black|heavy|demi|semi/i.test(pdfFontName),
+        italic: /italic|oblique/i.test(pdfFontName),
+        underline: false,
+      };
       if (!current || gap > Math.max(22, entry.size * 2.4)) {
         current = {
           x: entry.x, y: entry.y, text, width: entry.item.width, height: entry.item.height || entry.size,
-          fontFamily: styles[entry.item.fontName || '']?.fontFamily || 'Arial', fontSize: entry.size,
-          color: '#000000', bold: /bold|black|heavy|demi|semi/i.test(entry.item.fontName || ''),
-          italic: /italic|oblique/i.test(entry.item.fontName || ''), underline: false,
+          fontFamily: family, fontSize: entry.size, color: '#000000', bold: fragment.bold,
+          italic: fragment.italic, underline: false, fragments: [fragment],
         };
         cells.push(current);
       } else {
         const needsSpace = /\s$/.test(current.text) || /^\s/.test(text) || gap > Math.max(1, entry.size * 0.16);
-        current.text += `${needsSpace && !/\s$/.test(current.text) ? ' ' : ''}${text.trimStart()}`;
+        const normalizedText = `${needsSpace && !/\s$/.test(current.text) ? ' ' : ''}${text.trimStart()}`;
+        current.text += normalizedText;
+        current.fragments.push({ ...fragment, text: normalizedText });
         current.width = Math.max(current.width, entry.x + entry.item.width - current.x);
       }
       previous = entry;
     }
-    return { y: line[0]?.y || 0, align: 'left', cells: cells.filter(cell => cell.text.trim()) };
+    const minX = Math.min(...line.map(entry => entry.x));
+    const maxX = Math.max(...line.map(entry => entry.x + entry.item.width));
+    const centerOffset = Math.abs((minX + maxX) / 2 - pageWidth / 2);
+    const rightGap = pageWidth - maxX;
+    const align = centerOffset <= pageWidth * 0.035 ? 'center' : rightGap < pageWidth * 0.08 && minX > pageWidth * 0.35 ? 'right' : 'left';
+    return { y: line[0]?.y || 0, x: minX, fontSize: Math.max(...line.map(entry => entry.size)), align, cells: cells.filter(cell => cell.text.trim()) };
   }).filter(row => row.cells.length);
 }
 
@@ -3887,7 +4032,7 @@ private async ocrPdfPageForDocx(page: any): Promise<any[]> {
         }
         previousEnd = x + width;
       }
-      return { y: line.bbox.y0 / scale, align: 'left', cells };
+      return { y: line.bbox.y0 / scale, x: Math.min(...cells.map(cell => cell.x)), fontSize, align: 'left', cells };
     }).filter(row => row.cells.length);
   } catch (error) {
     console.warn('Hindi OCR could not process a damaged PDF text page', error);
@@ -3906,6 +4051,11 @@ private createDocxTextRun(cell: any): TextRun {
     italics: Boolean(cell.italic), italicsComplexScript: Boolean(cell.italic),
     underline: cell.underline ? { type: UnderlineType.SINGLE } : undefined, color,
   });
+}
+
+private createDocxTextRuns(cell: any): TextRun[] {
+  const fragments = Array.isArray(cell.fragments) && cell.fragments.length ? cell.fragments : [cell];
+  return fragments.map((fragment: any) => this.createDocxTextRun(fragment));
 }
 
 private findDocxTableBlocks(rows: any[]): Array<{ start: number; end: number; rows: any[]; columns: number[] }> {
@@ -3956,7 +4106,7 @@ private createDocxTable(rows: any[], columns: number[]): Table {
     }
     return new TableRow({ children: grouped.map(cells => new TableCell({
       margins: { top: 60, bottom: 60, left: 90, right: 90 },
-      children: [new Paragraph({ spacing: { after: 40 }, children: cells.length ? cells.map(cell => this.createDocxTextRun(cell)) : [new TextRun({ text: '' })] })],
+      children: [new Paragraph({ spacing: { after: 40 }, children: cells.length ? cells.flatMap(cell => this.createDocxTextRuns(cell)) : [new TextRun({ text: '' })] })],
     })) });
   });
   const columnWidth = Math.floor(10_800 / columns.length);

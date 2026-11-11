@@ -1,29 +1,29 @@
 <main class="layered-editor">
   <header class="toolbar">
-    <div class="brand">
-      <strong>Canvas-preserving editor</strong>
-      <span>Original PDF rendering with a separate editable text layer · {{ engineVersion }}</span>
+    <div class="header-brand">
+      <img class="app-logo" src="/logo.png" alt="PDF Master Studio" />
+      <button type="button" class="secondary open-pdf-button" (click)="openFilePicker()"><i class="fa-solid fa-folder-open" aria-hidden="true"></i>{{ uiText('home-open', 'Open PDF(s)') }}</button>
     </div>
-    <app-language-picker [labels]="menuLabels" [activeLanguage]="uiLanguage" (translationsReady)="applyMenuTranslations($event)"></app-language-picker>
     <input #fileInput type="file" accept="application/pdf" multiple hidden (change)="onFileSelected($event)" />
     <input #imageInput type="file" accept="image/png,image/jpeg,image/webp" hidden (change)="onImageSelected($event)" />
-    <button type="button" class="secondary" (click)="openFilePicker()">{{ uiText('home-open', 'Open PDF(s)') }}</button>
-    <a class="classic-link" href="/">Classic editor</a>
-    @if (hasDocument) {
-      <button type="button" class="secondary" (click)="toggleTools()">{{ toolsVisible ? 'Hide tools' : 'Show tools' }}</button>
-      <button type="button" [class.primary]="textEditing" (click)="toggleTextEditing()">{{ textEditing ? 'Hide edit guides' : 'Show edit guides' }}</button>
-      <div class="page-controls">
-        <button type="button" class="icon" aria-label="Previous page" [disabled]="pageNumber <= 1" (click)="goToPage(pageNumber - 1)">‹</button>
-        <span>Page {{ pageNumber }} / {{ pageCount }}</span>
-        <button type="button" class="icon" aria-label="Next page" [disabled]="pageNumber >= pageCount" (click)="goToPage(pageNumber + 1)">›</button>
-      </div>
-      <div class="zoom-controls">
-        <button type="button" class="icon" aria-label="Zoom out" (click)="changeZoom(-0.1)">−</button>
-        <span>{{ zoom * 100 | number:'1.0-0' }}%</span>
-        <button type="button" class="icon" aria-label="Zoom in" (click)="changeZoom(0.1)">+</button>
-      </div>
-      <button type="button" class="primary" [disabled]="isSaving || isLoading" (click)="downloadEditedPdf()">{{ isSaving ? 'Saving…' : 'Download edited PDF' }}</button>
-    }
+    <div class="header-actions">
+      @if (hasDocument) {
+        <button type="button" class="secondary" (click)="toggleTools()"><i class="fa-solid" [class.fa-eye-slash]="toolsVisible" [class.fa-eye]="!toolsVisible" aria-hidden="true"></i>{{ toolsVisible ? 'Hide tools' : 'Show tools' }}</button>
+        <button type="button" class="secondary" [class.active-toggle]="textEditing" (click)="toggleTextEditing()"><i class="fa-solid fa-i-cursor" aria-hidden="true"></i>{{ textEditing ? 'Hide edit guides' : 'Show edit guides' }}</button>
+        <div class="page-controls">
+          <button type="button" class="icon" aria-label="Previous page" [disabled]="pageNumber <= 1" (click)="goToPage(pageNumber - 1)">‹</button>
+          <span>Page <strong>{{ pageNumber }}</strong> / {{ pageCount }}</span>
+          <button type="button" class="icon" aria-label="Next page" [disabled]="pageNumber >= pageCount" (click)="goToPage(pageNumber + 1)">›</button>
+        </div>
+        <div class="zoom-controls">
+          <button type="button" class="icon" aria-label="Zoom out" (click)="changeZoom(-0.1)">−</button>
+          <span>{{ zoom * 100 | number:'1.0-0' }}%</span>
+          <button type="button" class="icon" aria-label="Zoom in" (click)="changeZoom(0.1)">+</button>
+        </div>
+        <button type="button" class="primary download-button" [disabled]="isSaving || isLoading" (click)="downloadEditedPdf()"><i class="fa-solid fa-download" aria-hidden="true"></i>{{ isSaving ? 'Saving…' : 'Download PDF' }}</button>
+      }
+    </div>
+    <app-language-picker [labels]="menuLabels" [activeLanguage]="uiLanguage" (translationsReady)="applyMenuTranslations($event)"></app-language-picker>
   </header>
 
   @if (hasDocument) {
@@ -84,7 +84,7 @@
           <div class="element-toolbar text-format-toolbar" [style.left.px]="textToolbarLeft(run)" [style.top.px]="textToolbarTop(run)"
             (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
             <strong>Text</strong>
-            <select aria-label="Font family" [ngModel]="run.fontFamily" (ngModelChange)="setRunFontFamily(run, $event)">
+            <select class="font-family-picker" aria-label="Font family" title="Choose a font" [ngModel]="run.fontFamily" (ngModelChange)="setRunFontFamily(run, $event)">
               @for (font of editableFonts; track font) { <option [value]="font">{{ font }}</option> }
               @if (!editableFonts.includes(run.fontFamily)) { <option [value]="run.fontFamily">{{ run.fontFamily }}</option> }
             </select>
@@ -94,6 +94,7 @@
             <button type="button" [class.active]="run.bold" aria-label="Bold" title="Bold" (click)="toggleRunBold(run)"><strong>B</strong></button>
             <button type="button" [class.active]="run.italic" aria-label="Italic" title="Italic" (click)="toggleRunItalic(run)"><i>I</i></button>
             <label class="color-control">Color <input type="color" [ngModel]="run.color" (ngModelChange)="setRunColor(run, $event)" /></label>
+            <label class="color-control">Background <input type="color" aria-label="Text background color" [ngModel]="run.backgroundColor" (ngModelChange)="setRunBackgroundColor(run, $event)" /></label>
             <select aria-label="Text alignment" [ngModel]="run.textAlign" (ngModelChange)="setRunAlignment(run, $event)"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
             <button type="button" class="remove-element" (click)="removeRun(run)">Delete</button>
           </div>
@@ -131,13 +132,13 @@
               [style.font-size.px]="run.fontSize" [style.font-family]="run.fontFamily"
               [style.font-weight]="run.bold ? '700' : '400'" [style.font-style]="run.italic ? 'italic' : 'normal'"
               [style.text-align]="run.textAlign"
+              [style.background-color]="selectedRunId === run.id || hasChanged(run) ? run.backgroundColor : 'transparent'"
               [style.color]="selectedRunId === run.id || hasChanged(run) ? run.color : 'transparent'"
               (click)="selectRun(run, $event)" (focus)="selectRun(run, $event)" (ngModelChange)="updateRunText(run, $event)" (input)="selectRun(run, $event)"
               [attr.aria-label]="'Edit text: ' + run.originalText"></textarea>
             }
             @if (selectedRunId === run.id) {
               <button type="button" class="text-move-handle" aria-label="Move text" title="Move text" [style.left.px]="run.x - 20" [style.top.px]="run.y + (run.height - 18) / 2" (pointerdown)="beginTextMove(run, $event)"><i class="fa-solid fa-up-down-left-right"></i></button>
-              <button type="button" class="element-resize-handle text-resize-handle" aria-label="Resize text" title="Drag to resize text" [style.left.px]="run.x + run.width - 6" [style.top.px]="run.y + run.height - 6" (pointerdown)="beginTextResize(run, $event)"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></button>
             }
           }
         </div>
